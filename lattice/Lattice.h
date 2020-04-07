@@ -8,12 +8,14 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <map>
+#include <unordered_map>
 
 // Sascha willems
 #include "../vulkan/VulkanDevice.hpp"
 #include "../vulkan/VulkanBuffer.hpp"
 #include "../vulkan/VulkanUIOverlay.h"
+
+#include "LocalSurface.h"
 
 
 namespace OML {
@@ -22,14 +24,14 @@ namespace OML {
 	using Vec3f = OpenMesh::Vec3f;
 	using Col3 = OpenMesh::Vec3uc;
 
-	// TODO: Maybe move?
-	struct LocalSurface
-	{
-
-	};
-
+	// TODO: Move maybe?
 	struct BoundaryInfo
 	{
+		BoundaryInfo()
+			: us(0.0f), ue(1.0f), vs(0.0f), ve(1.0f) {}
+		BoundaryInfo(float us, float ue, float vs, float ve)
+			: us(us), ue(ue), vs(vs), ve(ve) {}
+
 		float us, ue, vs, ve;
 	};
 
@@ -68,6 +70,7 @@ namespace OML {
 	namespace LatticeProperties {
 		static OpenMesh::VPropHandleT<size_t> LocusValence;
 		static OpenMesh::VPropHandleT<uint32_t> LocusLocalSurfaceIdx;
+		static OpenMesh::VPropHandleT<std::unordered_map<OpenMesh::FaceHandle, BoundaryInfo>> FaceMappings;
 	};
 
 	const Col3 BOUNDARY_EDGE_COLOR = Col3(0, 0, 0);
@@ -157,20 +160,25 @@ namespace OML {
 		int numPatches() { return n_faces(); }
 
 	private:
+		void setupEdgeColor();
+		void setupLociValenceAndPointColor();
+		void handleTLoci();
+		void setupLocalSurfacesAndPatches();
+
 		void addLatticeProperties();
 
 		void addLocalSurfaceOnLocus(
-			OpenMesh::VertexHandle vho, OpenMesh::VertexHandle vhn,
-			OpenMesh::VertexHandle vhp, int vertexIndexOnFace);
+			OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
+			OpenMesh::VertexHandle prev_locus, int locusIndexOnFace);
 		void addLocalSurfaceOnCornerLocus(
-			OpenMesh::VertexHandle vho, OpenMesh::VertexHandle vhn,
-			OpenMesh::VertexHandle vhp, int vertexIndexOnFace);
+			OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
+			OpenMesh::VertexHandle prev_locus, int locusIndexOnFace);
 		void addLocalSurfaceOnEdgeLocus(
-			OpenMesh::VertexHandle vho, OpenMesh::VertexHandle vhn,
-			OpenMesh::VertexHandle vhp, int vertexIndexOnFace);
+			OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
+			OpenMesh::VertexHandle prev_locus, int locusIndexOnFace);
 		void addLocalSurfaceOnInnerLocus(
-			OpenMesh::VertexHandle vho, OpenMesh::VertexHandle vhn,
-			OpenMesh::VertexHandle vhp, int vertexIndexOnFace);
+			OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
+			OpenMesh::VertexHandle prev_locus, int locusIndexOnFace);
 
 		void addLocalSurface(
 			Vec3f topLeft, Vec3f topRight, Vec3f bottomLeft, Vec3f bottomRight, Vec3f offset);
@@ -190,7 +198,7 @@ namespace OML {
 			VkBuffer buffer = VK_NULL_HANDLE;
 			VkDeviceMemory memory = VK_NULL_HANDLE;
 			int count;
-		} m_pointsBuffer, m_linesBuffer;
+		} m_pointsBuffer, m_linesBuffer, m_localSurfaceBuffer;
 
 		// Vulkan functions
 		void createDeviceLocalBuffer(
@@ -217,6 +225,8 @@ namespace OML {
 
 		VkPipeline m_pointsPipeline;
 		VkPipeline m_linesPipeline;
+		VkPipeline m_localSurfacePipeline;
+		VkPipeline m_localSurfaceWireframePipeline;
 
 		VkPipelineLayout m_pipelineLayout;
 		VkDescriptorSetLayout m_descriptorSetLayout;
@@ -232,7 +242,11 @@ namespace OML {
 		bool m_wireframe = false;
 		bool m_drawPixelAccurate = false;
 
+
 		std::vector<LocalSurface> m_localSurfaces;
+		std::vector<Locus> m_loci;
+		std::vector<Patch> m_patches;
+
 
 
 		// Vulkan stuff

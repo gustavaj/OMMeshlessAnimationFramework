@@ -156,8 +156,132 @@ namespace OML
 
 	void Lattice::induceLattice()
 	{
+		// Set the edge color of gridlines depending on if the edge is on the boundary or not
+		setupEdgeColor();
+
+		// Setup the valence property of the loci, and set the color of gridpoints based on the point's valence
+		setupLociValenceAndPointColor();
+
+		// Find and resolve T-loci, and add local surface for them
+		handleTLoci();
+
+		// Add regular local surfaces for each loci, and setup patches
+		setupLocalSurfacesAndPatches();
+	}
+
+	void Lattice::initVulkanStuff(
+		VkDevice* device, vks::VulkanDevice* vulkanDevice,
+		VkQueue* queue, VkCommandPool* commandPool,
+		VkDescriptorPool* descriptorPool, VkRenderPass* renderPass,
+		VkAllocationCallbacks* allocator)
+	{
+		m_device = device;
+		m_vulkanDevice = vulkanDevice;
+		m_queue = queue;
+		m_commandPool = commandPool;
+		m_descriptorPool = descriptorPool;
+		m_renderPass = renderPass;
+		m_allocator = allocator;
+
+		createBuffers();
+		prepareUniformBuffers();
+		setupDescriptorSetLayouts();
+		preparePipelines();
+		setupDescriptorPool();
+		setupDescriptorSets();
+	}
+
+	void Lattice::destroyVulkanStuff()
+	{
+		vkDestroyPipeline(*m_device, m_pointsPipeline, m_allocator);
+		vkDestroyPipeline(*m_device, m_linesPipeline, m_allocator);
+
+		vkDestroyPipelineLayout(*m_device, m_pipelineLayout, m_allocator);
+		vkDestroyDescriptorSetLayout(*m_device, m_descriptorSetLayout, m_allocator);
+	}
+
+	void Lattice::addToCommandbuffer(VkCommandBuffer& commandBuffer)
+	{
+		if (!m_draw) return;
+
+		VkDeviceSize offsets[1] = { 0 };
+
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, NULL);
+
+		// Draw local surfaces
+		if (m_drawLocalSurfaces)
+		{
+			if (m_wireframe)
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_localSurfaceWireframePipeline);
+			else
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_localSurfacePipeline);
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_localSurfaceBuffer.buffer, offsets);
+			vkCmdDraw(commandBuffer, m_localSurfaceBuffer.count, 1, 0, 0);
+		}
+
+		// Draw Lattice Grid
+		if (m_drawLatticeGrid)
+		{
+			// Draw gridlines
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_linesPipeline);
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_linesBuffer.buffer, offsets);
+			vkCmdDraw(commandBuffer, m_linesBuffer.count, 1, 0, 0);
+
+			// Draw gridpoints
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pointsPipeline);
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_pointsBuffer.buffer, offsets);
+			vkCmdDraw(commandBuffer, m_pointsBuffer.count, 1, 0, 0);
+		}
+	}
+
+	void Lattice::onViewChanged(glm::mat4 projection, glm::mat4 view)
+	{
+		m_ubo.projection = projection;
+		m_ubo.modelview = view; // Model matrix for this?
+		updateUniformBuffer();
+	}
+
+	bool Lattice::onUpdateUIOverlay(vks::UIOverlay* overlay)
+	{
+		bool rebuildCmd = false;
+
+		if (overlay->header(m_name.c_str(), false))
+		{
+			if (overlay->checkBox("Render", &m_draw)) rebuildCmd = true;
+			if (overlay->header("Settings", false))
+			{
+				if (overlay->checkBox("Draw Surface", &m_drawSurface)) rebuildCmd = true;
+				if (overlay->checkBox("Draw Local", &m_drawLocalSurfaces)) rebuildCmd = true;
+				if (overlay->checkBox("Draw Grid", &m_drawLatticeGrid)) rebuildCmd = true;
+				if (overlay->checkBox("Draw Wireframe", &m_wireframe)) rebuildCmd = true;
+				if (overlay->checkBox("Draw Normals", &m_drawNormals)) rebuildCmd = true;
+				if (overlay->checkBox("Pixel-Accurate", &m_drawPixelAccurate)) rebuildCmd = true;
+				if (!m_drawPixelAccurate)
+				{
+					if (overlay->sliderInt("TessInner", &m_ubo.tessInner, 0, 64)) updateUniformBuffer();
+					if (overlay->sliderInt("TessOuter", &m_ubo.tessOuter, 0, 64)) updateUniformBuffer();
+				}
+				if (overlay->comboBox("B-Function", &m_ubo.bFunctionIndex, BFunctionNames)) updateUniformBuffer();
+			}
+		}
+
+		// TODO: Local Surface Editing
+
+		return rebuildCmd;
+	}
+
+	void Lattice::setupEdgeColor()
+	{
+		// Set the color of the edges based on if they are on the boundary or not
+		for (auto e_itr = edges_begin(); e_itr != edges_end(); e_itr++)
+		{
+			set_color(*e_itr, is_boundary(*e_itr) ? BOUNDARY_EDGE_COLOR : INNER_EDGE_COLOR);
+		}
+	}
+
+	void Lattice::setupLociValenceAndPointColor()
+	{
 		// Loop over vertices, set valence and color based on valence.
-		// Create local surfaces for each vertex
 		for (auto v_itr = vertices_begin(); v_itr != vertices_end(); v_itr++)
 		{
 			auto vh = (*v_itr);
@@ -171,7 +295,10 @@ namespace OML
 			// Initialize local surface idx to -1
 			property(LatticeProperties::LocusLocalSurfaceIdx, vh) = -1;
 		}
+	}
 
+	void Lattice::handleTLoci()
+	{
 		// Look for T-loci, and handle it!
 		for (auto v_itr = vertices_begin(); v_itr != vertices_end(); v_itr++)
 		{
@@ -255,15 +382,11 @@ namespace OML
 				}
 			}
 		}
+	}
 
-		// Set the color of the edges based on if they are on the boundary or not
-		for (auto e_itr = edges_begin(); e_itr != edges_end(); e_itr++)
-		{
-			set_color(*e_itr, is_boundary(*e_itr) ? BOUNDARY_EDGE_COLOR : INNER_EDGE_COLOR);
-		}
-
+	void Lattice::setupLocalSurfacesAndPatches()
+	{
 		// Add local surfaces
-		float idx = 0.0f;
 		for (auto f_itr = faces_begin(); f_itr != faces_end(); f_itr++)
 		{
 			// Face
@@ -289,6 +412,7 @@ namespace OML
 			auto vh3 = to_vertex_handle(leftheh); // Bottom left
 			auto vh4 = to_vertex_handle(bottomheh); // Bottom right
 
+			// Local surfaces are handled differently based on where it is in the patch
 			if (property(LatticeProperties::LocusLocalSurfaceIdx, vh1) == -1)
 				addLocalSurfaceOnLocus(vh1, vh3, vh2, 1);
 			if (property(LatticeProperties::LocusLocalSurfaceIdx, vh2) == -1)
@@ -342,203 +466,172 @@ namespace OML
 		}
 	}
 
-	void Lattice::initVulkanStuff(
-		VkDevice* device, vks::VulkanDevice* vulkanDevice,
-		VkQueue* queue, VkCommandPool* commandPool,
-		VkDescriptorPool* descriptorPool, VkRenderPass* renderPass,
-		VkAllocationCallbacks* allocator)
-	{
-		m_device = device;
-		m_vulkanDevice = vulkanDevice;
-		m_queue = queue;
-		m_commandPool = commandPool;
-		m_descriptorPool = descriptorPool;
-		m_renderPass = renderPass;
-		m_allocator = allocator;
-
-		createBuffers();
-		prepareUniformBuffers();
-		setupDescriptorSetLayouts();
-		preparePipelines();
-		setupDescriptorPool();
-		setupDescriptorSets();
-	}
-
-	void Lattice::destroyVulkanStuff()
-	{
-		vkDestroyPipeline(*m_device, m_pointsPipeline, m_allocator);
-		vkDestroyPipeline(*m_device, m_linesPipeline, m_allocator);
-
-		vkDestroyPipelineLayout(*m_device, m_pipelineLayout, m_allocator);
-		vkDestroyDescriptorSetLayout(*m_device, m_descriptorSetLayout, m_allocator);
-	}
-
-	void Lattice::addToCommandbuffer(VkCommandBuffer& commandBuffer)
-	{
-		if (!m_draw) return;
-
-		VkDeviceSize offsets[1] = { 0 };
-
-		// Draw Lattice Grid
-		if (m_drawLatticeGrid)
-		{
-			// Draw gridlines
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_linesPipeline);
-			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, NULL);
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_linesBuffer.buffer, offsets);
-			vkCmdDraw(commandBuffer, m_linesBuffer.count, 1, 0, 0);
-
-			// Draw gridpoints
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pointsPipeline);
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_pointsBuffer.buffer, offsets);
-			vkCmdDraw(commandBuffer, m_pointsBuffer.count, 1, 0, 0);
-		}
-	}
-
-	void Lattice::onViewChanged(glm::mat4 projection, glm::mat4 view)
-	{
-		m_ubo.projection = projection;
-		m_ubo.modelview = view; // Model matrix for this?
-		updateUniformBuffer();
-	}
-
-	bool Lattice::onUpdateUIOverlay(vks::UIOverlay* overlay)
-	{
-		bool rebuildCmd = false;
-
-		if (overlay->header(m_name.c_str(), false))
-		{
-			if (overlay->checkBox("Render", &m_draw)) rebuildCmd = true;
-			if (overlay->header("Settings", false))
-			{
-				if (overlay->checkBox("Draw Surface", &m_drawSurface)) rebuildCmd = true;
-				if (overlay->checkBox("Draw Local", &m_drawLocalSurfaces)) rebuildCmd = true;
-				if (overlay->checkBox("Draw Grid", &m_drawLatticeGrid)) rebuildCmd = true;
-				if (overlay->checkBox("Draw Wireframe", &m_wireframe)) rebuildCmd = true;
-				if (overlay->checkBox("Draw Normals", &m_drawNormals)) rebuildCmd = true;
-				if (overlay->checkBox("Pixel-Accurate", &m_drawPixelAccurate)) rebuildCmd = true;
-				if (!m_drawPixelAccurate)
-				{
-					if (overlay->sliderInt("TessInner", &m_ubo.tessInner, 0, 64)) updateUniformBuffer();
-					if (overlay->sliderInt("TessOuter", &m_ubo.tessOuter, 0, 64)) updateUniformBuffer();
-				}
-				if (overlay->comboBox("B-Function", &m_ubo.bFunctionIndex, BFunctionNames)) updateUniformBuffer();
-			}
-		}
-
-		// TODO: Local Surface Editing
-
-		return rebuildCmd;
-	}
-
 	void Lattice::addLatticeProperties()
 	{
 		add_property(LatticeProperties::LocusValence);
 		add_property(LatticeProperties::LocusLocalSurfaceIdx);
+		add_property(LatticeProperties::FaceMappings);
 	}
 
 	void Lattice::addLocalSurfaceOnLocus(
-		OpenMesh::VertexHandle vho, OpenMesh::VertexHandle vhn, 
-		OpenMesh::VertexHandle vhp, int vertexIndexOnFace)
+		OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
+		OpenMesh::VertexHandle prev_locus, int locusIndexOnFace)
 	{
-		auto valence = property(LatticeProperties::LocusValence, vho);
+		auto valence = property(LatticeProperties::LocusValence, locus);
 		switch (valence) {
-		case 2: { addLocalSurfaceOnCornerLocus(vho, vhn, vhp, vertexIndexOnFace); break; }
-		case 3: { addLocalSurfaceOnEdgeLocus(vho, vhn, vhp, vertexIndexOnFace); break; }
-		case 4: { addLocalSurfaceOnInnerLocus(vho, vhn, vhp, vertexIndexOnFace); break; }
+			case 2: { addLocalSurfaceOnCornerLocus(locus, next_locus, prev_locus, locusIndexOnFace); break; }
+			case 3: { addLocalSurfaceOnEdgeLocus(locus, next_locus, prev_locus, locusIndexOnFace); break; }
+			case 4: { addLocalSurfaceOnInnerLocus(locus, next_locus, prev_locus, locusIndexOnFace); break; }
 		}
 	}
 
 	void Lattice::addLocalSurfaceOnCornerLocus(
-		OpenMesh::VertexHandle vho, OpenMesh::VertexHandle vhn, 
-		OpenMesh::VertexHandle vhp, int vertexIndexOnFace)
+		OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
+		OpenMesh::VertexHandle prev_locus, int locusIndexOnFace)
 	{
-		auto hehon = find_halfedge(vho, vhn);
-		Vec3f po = point(vho);
+		auto heh_locus_to_next = find_halfedge(locus, next_locus);
+		Vec3f offset = point(locus);
 		Vec3f zero(0.0f, 0.0f, 0.0f);
-		Vec3f on = calc_edge_vector(hehon);
-		Vec3f onn = calc_edge_vector(next_halfedge_handle(hehon));
-		Vec3f op = -calc_edge_vector(prev_halfedge_handle(hehon));
-		Vec3f v_inner = on + lerp(op, onn, 1.0f);
+		Vec3f o_to_n = calc_edge_vector(heh_locus_to_next);
+		Vec3f o_to_p = -calc_edge_vector(prev_halfedge_handle(heh_locus_to_next));
+		Vec3f v_inner = o_to_n + o_to_p;
 
-		switch (vertexIndexOnFace) {
-		case 1: { addLocalSurface(zero, op, on, v_inner, po); break; }
-		case 2: { addLocalSurface(on, zero, v_inner, op, po); break; }
-		case 3: { addLocalSurface(op, v_inner, zero, on, po); break; }
-		case 4: { addLocalSurface(v_inner, on, op, zero, po); break; }
+		switch (locusIndexOnFace) {
+			case 1: { addLocalSurface(zero, o_to_p, o_to_n, v_inner, offset); break; }
+			case 2: { addLocalSurface(o_to_n, zero, v_inner, o_to_p, offset); break; }
+			case 3: { addLocalSurface(o_to_p, v_inner, zero, o_to_n, offset); break; }
+			case 4: { addLocalSurface(v_inner, o_to_n, o_to_p, zero, offset); break; }
 		}
 
-		property(LatticeProperties::LocusLocalSurfaceIdx, vho) = m_localSurfaces.size() - 1;
+		property(LatticeProperties::LocusLocalSurfaceIdx, locus) = m_localSurfaces.size() - 1;
+		property(LatticeProperties::FaceMappings, locus).insert({face_handle(heh_locus_to_next), BoundaryInfo(0.0f, 1.0f, 0.0f, 1.0f)});
 	}
 
 	void Lattice::addLocalSurfaceOnEdgeLocus(
-		OpenMesh::VertexHandle vho, OpenMesh::VertexHandle vhn, 
-		OpenMesh::VertexHandle vhp, int vertexIndexOnFace)
+		OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
+		OpenMesh::VertexHandle prev_locus, int locusIndexOnFace)
 	{
-		Vec3f center = point(vho);
+		Vec3f center = point(locus);
 		Vec3f zero(0.0f, 0.0f, 0.0f);
 
-		auto hehon = find_halfedge(vho, vhn);
+		auto heh_next = find_halfedge(locus, next_locus);
 
-		Vec3f on = calc_edge_vector(hehon);
+		BoundaryInfo boundaryFace(0.0f, 1.0f, 0.0f, 1.0f);
+		BoundaryInfo boundaryAdjFace(0.0f, 1.0f, 0.0f, 1.0f);
 
-		if (is_boundary(edge_handle(hehon))) {
-			auto hehp = find_halfedge(vho, vhp);
-			auto n = calc_edge_vector(hehon);
-			auto no = -calc_edge_vector(prev_halfedge_handle(hehp));
-			auto nop = -calc_edge_vector(next_halfedge_handle(next_halfedge_handle(hehp)));
-			auto p = calc_edge_vector(hehp);
-			auto np = calc_edge_vector(next_halfedge_handle(hehon));
+		if (is_boundary(edge_handle(heh_next))) {
+			auto heh_prev = find_halfedge(locus, prev_locus);
+			Vec3f n = calc_edge_vector(heh_next); // vector from locus to next_locus
+			Vec3f no = -calc_edge_vector(prev_halfedge_handle(heh_prev)); // vector from locus to the locus on the adjacent face
+			Vec3f nop = -calc_edge_vector(next_halfedge_handle(next_halfedge_handle(heh_prev)));
+			Vec3f p = calc_edge_vector(heh_prev);
+			Vec3f np = calc_edge_vector(next_halfedge_handle(heh_next));
 
-			auto p_2 = p * 0.5f;
-			auto pnop = lerp(p, nop, 1.0f);
-			auto pnop_2 = pnop * 0.5f;
-			auto pnp = lerp(p, np, 1.0f);
-			auto pnp_2 = pnp * 0.5f;
+			Vec3f p_2 = p * 0.5f;
+			Vec3f pnop = lerp(p, nop, 1.0f);
+			Vec3f pnop_2 = pnop * 0.5f;
+			Vec3f pnp = lerp(p, np, 1.0f);
+			Vec3f pnp_2 = pnp * 0.5f;
 
-			switch (vertexIndexOnFace) {
-			case 1: { addLocalSurface(no, no + pnop_2, no + pnop, zero, p_2, p, n, n + pnp_2, n + pnp, center); break; }
-			case 2: { addLocalSurface(n, zero, no, n + pnp_2, p_2, no + pnop_2, n + pnp, p, no + pnop, center); break; }
-			case 3: { addLocalSurface(no + pnop, p, n + pnp, no + pnop_2, p_2, n + pnp_2, no, zero, n, center); break; }
-			case 4: { addLocalSurface(n + pnp, n + pnp_2, n, p, p_2, zero, no + pnop, no + pnop_2, no, center); break; }
+			float halfwayPoint = (n - no).length() / no.length();
+
+			switch (locusIndexOnFace) {
+				case 1: { 
+					addLocalSurface(no, no + pnop_2, no + pnop, zero, p_2, p, n, n + pnp_2, n + pnp, center); 
+					boundaryFace.vs = halfwayPoint;
+					boundaryAdjFace.ve = halfwayPoint;
+					break; 
+				}
+				case 2: { 
+					addLocalSurface(n, zero, no, n + pnp_2, p_2, no + pnop_2, n + pnp, p, no + pnop, center); 
+					boundaryFace.ue = halfwayPoint;
+					boundaryAdjFace.us = halfwayPoint;
+					break; 
+				}
+				case 3: { 
+					addLocalSurface(no + pnop, p, n + pnp, no + pnop_2, p_2, n + pnp_2, no, zero, n, center); 
+					boundaryFace.us = halfwayPoint;
+					boundaryAdjFace.ue = halfwayPoint;
+					break; 
+				}
+				case 4: { 
+					addLocalSurface(n + pnp, n + pnp_2, n, p, p_2, zero, no + pnop, no + pnop_2, no, center); 
+					boundaryFace.ve = halfwayPoint;
+					boundaryAdjFace.vs = halfwayPoint;
+					break; 
+				}
 			}
+
+			property(LatticeProperties::FaceMappings, locus).insert({ face_handle(heh_next),
+				boundaryFace });
+			property(LatticeProperties::FaceMappings, locus).insert({ face_handle(heh_prev),
+				boundaryAdjFace });
 		}
 		else {
-			auto hehp = find_halfedge(vhp, vho);
-			auto p = -calc_edge_vector(hehp);
-			auto po = calc_edge_vector(next_halfedge_handle(opposite_halfedge_handle(hehon)));
-			auto pon = calc_edge_vector(next_halfedge_handle(next_halfedge_handle(opposite_halfedge_handle(hehon))));
-			auto n = calc_edge_vector(hehon);
-			auto pn = -calc_edge_vector(prev_halfedge_handle(hehp));
+			auto heh_prev = find_halfedge(prev_locus, locus);
+			Vec3f p = -calc_edge_vector(heh_prev);
+			Vec3f po = calc_edge_vector(next_halfedge_handle(opposite_halfedge_handle(heh_next)));
+			Vec3f pon = calc_edge_vector(next_halfedge_handle(next_halfedge_handle(opposite_halfedge_handle(heh_next))));
+			Vec3f n = calc_edge_vector(heh_next);
+			Vec3f pn = -calc_edge_vector(prev_halfedge_handle(heh_prev));
 
-			auto n_2 = n * 0.5f;
-			auto npn = lerp(n, pn, 1.0f);
-			auto npn_2 = npn * 0.5f;
-			auto npon = lerp(n, pon, 1.0f);
-			auto npon_2 = npon * 0.5f;
+			Vec3f n_2 = n * 0.5f;
+			Vec3f npn = lerp(n, pn, 1.0f);
+			Vec3f npn_2 = npn * 0.5f;
+			Vec3f npon = lerp(n, pon, 1.0f);
+			Vec3f npon_2 = npon * 0.5f;
 
-			switch (vertexIndexOnFace) {
-			case 1: { addLocalSurface(po, zero, p, po + npon_2, n_2, p + npn_2, po + npon, n, p + npn, center); break; }
-			case 2: { addLocalSurface(po + npon, po + npon_2, po, n, n_2, zero, p + npn, p + npn_2, p, center); break; }
-			case 3: { addLocalSurface(p, p + npn_2, p + npn, zero, n_2, n, po, po + npon_2, po + npon, center); break; }
-			case 4: { addLocalSurface(p + npn, n, po + npon, p + npn_2, n_2, po + npon_2, p, zero, po, center); break; }
+			float halfwayPoint = (p - po).length() / p.length();
+
+			switch (locusIndexOnFace) {
+				case 1: { 
+					addLocalSurface(po, zero, p, po + npon_2, n_2, p + npn_2, po + npon, n, p + npn, center);
+					boundaryFace.us = halfwayPoint;
+					boundaryAdjFace.ue = halfwayPoint;
+					break; 
+				}
+				case 2: { 
+					addLocalSurface(po + npon, po + npon_2, po, n, n_2, zero, p + npn, p + npn_2, p, center); 
+					boundaryFace.vs = halfwayPoint;
+					boundaryAdjFace.ve = halfwayPoint;
+					break; 
+				}
+				case 3: { 
+					addLocalSurface(p, p + npn_2, p + npn, zero, n_2, n, po, po + npon_2, po + npon, center); 
+					boundaryFace.ve = halfwayPoint;
+					boundaryAdjFace.vs = halfwayPoint;
+					break; 
+				}
+				case 4: { 
+					addLocalSurface(p + npn, n, po + npon, p + npn_2, n_2, po + npon_2, p, zero, po, center); 
+					boundaryFace.ue = halfwayPoint;
+					boundaryAdjFace.us = halfwayPoint;
+					break; 
+				}
 			}
+
+			property(LatticeProperties::FaceMappings, locus).insert({ face_handle(heh_next),
+				boundaryFace });
+			property(LatticeProperties::FaceMappings, locus).insert({ face_handle(opposite_halfedge_handle(heh_next)),
+				boundaryAdjFace });
 		}
 
-		property(LatticeProperties::LocusLocalSurfaceIdx, vho) = m_localSurfaces.size() - 1;
+		property(LatticeProperties::LocusLocalSurfaceIdx, locus) = m_localSurfaces.size() - 1;
 	}
 
 	void Lattice::addLocalSurfaceOnInnerLocus(
-		OpenMesh::VertexHandle vho, OpenMesh::VertexHandle vhn,
-		OpenMesh::VertexHandle vhp, int vertexIndexOnFace)
+		OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
+		OpenMesh::VertexHandle prev_locus, int locusIndexOnFace)
 	{
-		Vec3f po = point(vho);
+		Vec3f po = point(locus);
 		Vec3f zero(0.0f, 0.0f, 0.0f);
 
-		auto hehf1 = find_halfedge(vho, vhn);
+		auto hehf1 = find_halfedge(locus, next_locus);
 		auto hehf2 = opposite_halfedge_handle(hehf1);
 		auto hehf3 = prev_halfedge_handle(opposite_halfedge_handle(prev_halfedge_handle(hehf1)));
 		auto hehf4 = next_halfedge_handle(opposite_halfedge_handle(next_halfedge_handle(hehf2)));
+
+		BoundaryInfo boundaryF1, boundaryF2, boundaryF3, boundaryF4;
 
 		auto u1 = calc_edge_vector(next_halfedge_handle(hehf4));
 		auto u2 = -calc_edge_vector(prev_halfedge_handle(hehf3));
@@ -554,20 +647,75 @@ namespace OML
 		auto u46 = lerp(u4, u6, 1.0f);
 		auto u35 = lerp(u3, u5, 1.0f);
 
-		switch (vertexIndexOnFace) {
-		case 1: addLocalSurface(u31 + v1, v1, u42 + v1, u3, zero, u4, u35 + v2, v2, u46 + v2, po); break;
-		case 2: addLocalSurface(u35 + v2, u3, u31 + v1, v2, zero, v1, u46 + v2, u4, u42 + v1, po); break;
-		case 3: addLocalSurface(u42 + v1, u4, u46 + v2, v1, zero, v2, u31 + v1, u3, u35 + v2, po); break;
-		case 4: addLocalSurface(u46 + v2, v2, u35 + v2, u4, zero, u3, u42 + v1, v1, u31 + v1, po); break;
+		float halfwayPointU = (u3 - u4).length() / u3.length();
+		float halfwayPointV = (v1 - v2).length() / v2.length();
+
+		switch (locusIndexOnFace) {
+			case 1: { 
+				addLocalSurface(u31 + v1, v1, u42 + v1, u3, zero, u4, u35 + v2, v2, u46 + v2, po);
+				boundaryF1.us = halfwayPointU;
+				boundaryF1.vs = halfwayPointV;
+				boundaryF2.ue = halfwayPointU;
+				boundaryF2.vs = halfwayPointV;
+				boundaryF3.us = halfwayPointU;
+				boundaryF3.ve = halfwayPointV;
+				boundaryF4.ue = halfwayPointU;
+				boundaryF4.ve = halfwayPointV;
+				break; 
+			}
+			case 2: { 
+				addLocalSurface(u35 + v2, u3, u31 + v1, v2, zero, v1, u46 + v2, u4, u42 + v1, po);
+				boundaryF1.ue = halfwayPointU;
+				boundaryF1.vs = halfwayPointV;
+				boundaryF2.ue = halfwayPointU;
+				boundaryF2.ve = halfwayPointV;
+				boundaryF3.us = halfwayPointU;
+				boundaryF3.vs = halfwayPointV;
+				boundaryF4.us = halfwayPointU;
+				boundaryF4.ve = halfwayPointV;
+				break;
+			}
+			case 3: {
+				addLocalSurface(u42 + v1, u4, u46 + v2, v1, zero, v2, u31 + v1, u3, u35 + v2, po);
+				boundaryF1.us = halfwayPointU;
+				boundaryF1.ve = halfwayPointV;
+				boundaryF2.us = halfwayPointU;
+				boundaryF2.vs = halfwayPointV;
+				boundaryF3.ue = halfwayPointU;
+				boundaryF3.ve = halfwayPointV;
+				boundaryF4.ue = halfwayPointU;
+				boundaryF4.vs = halfwayPointV;
+				break;
+			}
+			case 4: {
+				addLocalSurface(u46 + v2, v2, u35 + v2, u4, zero, u3, u42 + v1, v1, u31 + v1, po);
+				boundaryF1.ue = halfwayPointU;
+				boundaryF1.ve = halfwayPointV;
+				boundaryF2.us = halfwayPointU;
+				boundaryF2.ve = halfwayPointV;
+				boundaryF3.ue = halfwayPointU;
+				boundaryF3.vs = halfwayPointV;
+				boundaryF4.us = halfwayPointU;
+				boundaryF4.vs = halfwayPointV;
+				break;
+			}
 		}
 
-		property(LatticeProperties::LocusLocalSurfaceIdx, vho) = m_localSurfaces.size() - 1;
+		property(LatticeProperties::FaceMappings, locus).insert({ face_handle(hehf1), boundaryF1 });
+		property(LatticeProperties::FaceMappings, locus).insert({ face_handle(hehf2), boundaryF2 });
+		property(LatticeProperties::FaceMappings, locus).insert({ face_handle(hehf3), boundaryF3 });
+		property(LatticeProperties::FaceMappings, locus).insert({ face_handle(hehf4), boundaryF4 });
+
+		property(LatticeProperties::LocusLocalSurfaceIdx, locus) = m_localSurfaces.size() - 1;
 	}
 
 	void Lattice::addLocalSurface(
 		Vec3f topLeft, Vec3f topRight,
 		Vec3f bottomLeft, Vec3f bottomRight, Vec3f offset)
 	{
+		m_localSurfaces.push_back(
+			LocalSurface(topLeft, topRight, bottomLeft, bottomRight, offset, Vec2f(0.5, 0.5))
+		);
 	}
 
 	void Lattice::addLocalSurface(
@@ -575,7 +723,15 @@ namespace OML
 		Vec3f middleLeft, Vec3f middle, Vec3f middleRight,
 		Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight, Vec3f offset)
 	{
+		m_localSurfaces.push_back(
+			LocalSurface(
+				topLeft, topMiddle, topRight,
+				middleLeft, middle, middleRight,
+				bottomLeft, bottomMiddle, bottomRight, offset,
+				Vec2f((topLeft - topMiddle).length() / (topLeft - topRight).length(), (topLeft - middleLeft).length() / (topLeft - bottomLeft).length()))
+		);
 	}
+
 	void Lattice::createDeviceLocalBuffer(
 		VkBuffer& buffer, VkDeviceMemory& memory, void* data,
 		uint32_t bufferSize, VkBufferUsageFlagBits usage)
@@ -684,6 +840,17 @@ namespace OML
 		createDeviceLocalBuffer(m_linesBuffer.buffer, m_linesBuffer.memory,
 			static_cast<void*>(gridLines.data()), gridLineVertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		m_linesBuffer.count = gridLines.size();
+
+		// Local surfaces
+		m_localSurfaceBuffer.count = m_localSurfaces.size();
+		std::vector<Bezier3x3Vertex> localSurfaceVertices(m_localSurfaceBuffer.count);
+		for (size_t i = 0; i < m_localSurfaceBuffer.count; i++)
+		{
+			localSurfaceVertices[i] = m_localSurfaces[i].vertex();
+		}
+		uint32_t localSurfaceVertexBufferSize = m_localSurfaceBuffer.count * sizeof(Bezier3x3Vertex);
+		createDeviceLocalBuffer(m_localSurfaceBuffer.buffer, m_localSurfaceBuffer.memory,
+			static_cast<void*>(localSurfaceVertices.data()), localSurfaceVertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 	}
 
 	void Lattice::prepareUniformBuffers()
@@ -848,12 +1015,12 @@ namespace OML
 		pipelineCreateInfo.pInputAssemblyState = &pointInputAssemblyState;
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_pointsPipeline));
 
-		/*
+		
 		pipelineCreateInfo.pInputAssemblyState = &patchInputAssemblyState;
 
-		// Attribute descriptions
-		std::vector<VkVertexInputBindingDescription> localVertexBindings = lattice.getLocalSurfaceVertexBindingDescriptions();
-		std::vector<VkVertexInputAttributeDescription> localInputAttributes = lattice.getLocalSurfaceVertexAttributeDescrptions();
+		// Local Surface Pipelines
+		std::vector<VkVertexInputBindingDescription> localVertexBindings = Bezier3x3Vertex::GetBindingDescription();
+		std::vector<VkVertexInputAttributeDescription> localInputAttributes = Bezier3x3Vertex::GetAttributeDescriptions();
 		VkPipelineVertexInputStateCreateInfo localInputState = vks::initializers::pipelineVertexInputStateCreateInfo();
 		localInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(localVertexBindings.size());
 		localInputState.pVertexBindingDescriptions = localVertexBindings.data();
@@ -869,7 +1036,7 @@ namespace OML
 		struct SpecializationData {
 			int numLocalSurfaces;
 		} specializationData;
-		specializationData.numLocalSurfaces = lattice.localSurfaceVertexCount();
+		specializationData.numLocalSurfaces = m_localSurfaces.size();
 		std::array<VkSpecializationMapEntry, 1> specializationMapEntries;
 		specializationMapEntries[0].constantID = 0;
 		specializationMapEntries[0].size = sizeof(specializationData.numLocalSurfaces);
@@ -889,11 +1056,12 @@ namespace OML
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(localShaderStages.size());
 		pipelineCreateInfo.pStages = localShaderStages.data();
 
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &localSurfacePipeline));
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_localSurfacePipeline));
 
 		rasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &localSurfaceWireframePipeline));
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_localSurfaceWireframePipeline));
 
+		/*
 		// Blending surfaces
 		VkPipelineTessellationStateCreateInfo bsTessState =
 			vks::initializers::pipelineTessellationStateCreateInfo(numLocalSurfacesPerDir * numLocalSurfacesPerDir);
