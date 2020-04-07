@@ -8,6 +8,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <map>
+
 // Sascha willems
 #include "../vulkan/VulkanDevice.hpp"
 #include "../vulkan/VulkanBuffer.hpp"
@@ -19,6 +21,35 @@ namespace OML {
 	using Vec2f = OpenMesh::Vec2f;
 	using Vec3f = OpenMesh::Vec3f;
 	using Col3 = OpenMesh::Vec3uc;
+
+	// TODO: Maybe move?
+	struct LocalSurface
+	{
+
+	};
+
+	struct BoundaryInfo
+	{
+		float us, ue, vs, ve;
+	};
+
+	struct Locus
+	{
+		LocalSurface* localSurface;
+		OpenMesh::VertexHandle vh;
+		std::map<OpenMesh::FaceHandle, BoundaryInfo> faceMappings;
+	};
+
+	struct Patch
+	{
+		std::array<size_t, 4> lociIndices;
+		OpenMesh::FaceHandle fh;
+	};
+
+	// End TODO
+
+
+
 
 	// Custom traits
 	struct LatticeTraits : public OpenMesh::DefaultTraits
@@ -81,8 +112,6 @@ namespace OML {
 		}
 	};
 
-	struct LocalSurface	{};
-
 	class Lattice : public OpenMesh::PolyMesh_ArrayKernelT<LatticeTraits>
 	{
 	public:
@@ -116,6 +145,7 @@ namespace OML {
 		bool onUpdateUIOverlay(vks::UIOverlay* overlay);
 
 		// Setters
+		void setName(std::string name) { m_name = name; }
 		void setDraw(bool draw) { m_draw = draw; }
 		void setDrawLatticeGrid(bool drawLatticeGrid) { m_drawLatticeGrid = drawLatticeGrid; }
 		void setDrawLocalSurfaces(bool drawLocalSurfaces) { m_drawLocalSurfaces = drawLocalSurfaces; }

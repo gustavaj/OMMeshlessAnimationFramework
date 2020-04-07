@@ -141,7 +141,7 @@ namespace OML
 				float x0 = std::cos(long0) * radius;
 				float z0 = std::sin(long0) * radius;
 
-				points[slice][segment] = Vec3f(x0 * yr0, y0, z0 * yr0);
+				points[slice][segment] = Vec3f(x0 * yr0, y0, z0 * yr0) + center;
 			}
 
 			points[slice][segments] = points[slice][0];
