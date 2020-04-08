@@ -285,6 +285,8 @@ public:
 	virtual void render() {
 		if (!prepared)
 			return;
+		for (auto& lat : lattices)
+			lat.update(frameTimer);
 		draw();
 	}
 

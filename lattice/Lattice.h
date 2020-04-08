@@ -15,7 +15,7 @@
 #include "../vulkan/VulkanBuffer.hpp"
 #include "../vulkan/VulkanUIOverlay.h"
 
-#include "LocalSurface.h"
+//#include "LocalSurface.h"
 
 
 namespace OML {
@@ -35,17 +35,60 @@ namespace OML {
 		float us, ue, vs, ve;
 	};
 
+	enum class LocalSurfaceType
+	{
+		Bezier3x3 = 0
+	};
+
 	struct Locus
 	{
-		LocalSurface* localSurface;
+		Locus() : controlPointIndex(0), controlPointCount(0), matrixIndex(0) {}
+
+		uint32_t controlPointIndex;
+		uint32_t controlPointCount;
+		uint32_t matrixIndex;
 		OpenMesh::VertexHandle vh;
-		std::map<OpenMesh::FaceHandle, BoundaryInfo> faceMappings;
+		std::unordered_map<OpenMesh::FaceHandle, BoundaryInfo> faceMappings;
 	};
 
 	struct Patch
 	{
-		std::array<size_t, 4> lociIndices;
+		std::array<Locus*, 4> loci;
 		OpenMesh::FaceHandle fh;
+	};
+
+	// Holds the information for one local surface that is sent to the vertex shader
+	struct LocalSurfaceVertex
+	{
+		LocalSurfaceVertex() : LocalSurfaceVertex(0, 0, 0, 0) {}
+		LocalSurfaceVertex(
+			uint32_t controlPointIndex, uint32_t controlPointCount,
+			uint32_t matrixIndex, uint32_t boundaryIndex)
+			: controlPointIndex(controlPointIndex), controlPointCount(controlPointCount),
+			matrixIndex(matrixIndex), boundaryIndex(boundaryIndex) {}
+		uint32_t controlPointIndex, controlPointCount, matrixIndex, boundaryIndex;
+
+		static std::vector<VkVertexInputBindingDescription> GetBindingDescriptions()
+		{
+			std::vector<VkVertexInputBindingDescription> bindings;
+			bindings.resize(1);
+			bindings[0].binding = 0;
+			bindings[0].stride = sizeof(LocalSurfaceVertex);
+			bindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+			return bindings;
+		}
+
+		static std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptions()
+		{
+			std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {};
+			attributeDescriptions.resize(1);
+			attributeDescriptions[0].binding = 0;
+			attributeDescriptions[0].location = 0;
+			attributeDescriptions[0].format = VK_FORMAT_R32G32B32A32_UINT;
+			attributeDescriptions[0].offset = offsetof(LocalSurfaceVertex, controlPointIndex);
+
+			return attributeDescriptions;
+		}
 	};
 
 	// End TODO
@@ -68,9 +111,8 @@ namespace OML {
 	};
 
 	namespace LatticeProperties {
-		static OpenMesh::VPropHandleT<size_t> LocusValence;
-		static OpenMesh::VPropHandleT<uint32_t> LocusLocalSurfaceIdx;
-		static OpenMesh::VPropHandleT<std::unordered_map<OpenMesh::FaceHandle, BoundaryInfo>> FaceMappings;
+		static OpenMesh::VPropHandleT<size_t> VertexValence;
+		static OpenMesh::VPropHandleT<uint32_t> LocusIndex;
 	};
 
 	const Col3 BOUNDARY_EDGE_COLOR = Col3(0, 0, 0);
@@ -118,48 +160,72 @@ namespace OML {
 	class Lattice : public OpenMesh::PolyMesh_ArrayKernelT<LatticeTraits>
 	{
 	public:
+		// Framework
 		Lattice();
 		Lattice(std::string name);
 		~Lattice();
 
-		// Framework
 		// Functions for creating patches
+		/* Add patch in space */
 		void addPatch(Vec3f topLeft, Vec3f topRight, Vec3f bottomLeft, Vec3f bottomRight);
+		/* Add patch in xy-plane */
 		void addPatch(Vec2f topLeft, Vec2f topRight, Vec2f bottomLeft, Vec2f bottomRight);
+		/* Add patch in xy-plane */
 		void addPatch(Vec2f topLeft, float width, float height);
+		/* Add patch in space */
 		void addPatch(Vec3f topLeft, float width, float height, float depth);
+		/* Add grid in xy-plane */
 		void addGrid(Vec2f topLeft, float width, float height, int rows, int cols);
+		/* Add donut in xy-plane */
 		void addDonut(Vec2f topLeft, float outerRadius, float innerRadius);
+		/* Add cylinder in space */
 		void addCylinder(Vec3f center, float radius, float height, int rows, int cols);
+		/* Add sphere in space */
 		void addSphere(Vec3f center, float radius, int segments, int slices);
 
+		/* Finalize lattice creation */
 		void induceLattice();
 
+		/* Create buffers and pipelines and stuff for Vulkan */
 		void initVulkanStuff(
 			VkDevice* device, vks::VulkanDevice* vulkanDevice, 
 			VkQueue* queue, VkCommandPool* commandPool,
 			VkDescriptorPool* descriptorPool, VkRenderPass* renderPass,
 			VkAllocationCallbacks* allocator);
+		/* Clean up vulkan stuff */
 		void destroyVulkanStuff();
+		/* Add drawing commands to a command buffer */
 		void addToCommandbuffer(VkCommandBuffer& commandBuffer);
+		/* Update projection and view matrices */
 		void onViewChanged(glm::mat4 projection, glm::mat4 view);
 
-		// ImGui
+		/* Update */
+		void update(double dt);
+
+		/* Update UIOverlay with information about the lattice */
 		bool onUpdateUIOverlay(vks::UIOverlay* overlay);
 
-		// Setters
+		/* Set the name of the lattice */
 		void setName(std::string name) { m_name = name; }
+		/* Sets wheter the lattice is displayed */
 		void setDraw(bool draw) { m_draw = draw; }
+		/* Sets wheter the lattice should be animated */
+		void setAnimate(bool animate) { m_animate = animate; }
+		/* Sets wheter the grid is displayed */
 		void setDrawLatticeGrid(bool drawLatticeGrid) { m_drawLatticeGrid = drawLatticeGrid; }
+		/* Sets wheter local surfaces are displayed */
 		void setDrawLocalSurfaces(bool drawLocalSurfaces) { m_drawLocalSurfaces = drawLocalSurfaces; }
+		/* Sets wheter the Blending surface is displayed */
 		void setDrawSurface(bool drawSurface) { m_drawSurface = drawSurface; }
+		/* Sets wheter normals are displayed */
 		bool setDrawNormals(bool drawNormals) { m_drawNormals = drawNormals; }
+		/* Sets wireframe mode */
 		void setWireframe(bool wireframe) { m_wireframe = wireframe; }
+		/* Sets wheter the surface is drawn pixel-accurate */
 		void setDrawPixelAccurate(bool drawPixelAccurate) { m_drawPixelAccurate = drawPixelAccurate; }
 
-		int numPatches() { return n_faces(); }
-
 	private:
+		// Helper functions for setting up the lattice stuff
 		void setupEdgeColor();
 		void setupLociValenceAndPointColor();
 		void handleTLoci();
@@ -167,38 +233,28 @@ namespace OML {
 
 		void addLatticeProperties();
 
-		void addLocalSurfaceOnLocus(
-			OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
-			OpenMesh::VertexHandle prev_locus, int locusIndexOnFace);
-		void addLocalSurfaceOnCornerLocus(
-			OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
-			OpenMesh::VertexHandle prev_locus, int locusIndexOnFace);
-		void addLocalSurfaceOnEdgeLocus(
-			OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
-			OpenMesh::VertexHandle prev_locus, int locusIndexOnFace);
-		void addLocalSurfaceOnInnerLocus(
-			OpenMesh::VertexHandle locus, OpenMesh::VertexHandle next_locus,
-			OpenMesh::VertexHandle prev_locus, int locusIndexOnFace);
+		void addLocusOnVertex(
+			OpenMesh::VertexHandle vertex, OpenMesh::VertexHandle next_vertex,
+			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace);
+		void addLocusOnCornerVertex(
+			OpenMesh::VertexHandle vertex, OpenMesh::VertexHandle next_vertex,
+			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace);
+		void addLocusOnBoundaryVertex(
+			OpenMesh::VertexHandle vertex, OpenMesh::VertexHandle next_vertex,
+			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace);
+		void addLocusOnInnerVertex(
+			OpenMesh::VertexHandle vertex, OpenMesh::VertexHandle next_vertex,
+			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace);
 
-		void addLocalSurface(
-			Vec3f topLeft, Vec3f topRight, Vec3f bottomLeft, Vec3f bottomRight, Vec3f offset);
-		void addLocalSurface(
+		void addLocus(OpenMesh::VertexHandle vertex, std::vector<Vec3f>& controlPoints,
+			std::unordered_map<OpenMesh::FaceHandle, BoundaryInfo>& faceMappings, Vec3f offset);
+
+		std::vector<Vec3f> createLocalSurfaceControlPoints(
+			Vec3f topLeft, Vec3f topRight, Vec3f bottomLeft, Vec3f bottomRight);
+		std::vector<Vec3f> createLocalSurfaceControlPoints(
 			Vec3f topLeft, Vec3f topMiddle, Vec3f topRight,
 			Vec3f middleLeft, Vec3f middle, Vec3f middleRight,
-			Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight, Vec3f offset);
-
-		inline Vec3f lerp(Vec3f a, Vec3f b, float t) {
-			if (t < 1e-5) return a;
-			else if ((1.0f - t) < 1e-5) return b;
-			else return a + t * (b - a);
-		}
-
-		// TODO: Change this into its own class?
-		struct {
-			VkBuffer buffer = VK_NULL_HANDLE;
-			VkDeviceMemory memory = VK_NULL_HANDLE;
-			int count;
-		} m_pointsBuffer, m_linesBuffer, m_localSurfaceBuffer;
+			Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight);
 
 		// Vulkan functions
 		void createDeviceLocalBuffer(
@@ -211,18 +267,41 @@ namespace OML {
 		void preparePipelines();
 		void setupDescriptorPool();
 		void setupDescriptorSets();
-		void updateUniformBuffer();
+		void updateLatticeUniformBuffer();
+		void updateMatrixUniformBuffer();
+		void updatePatchUniformBuffer();
 
 
+
+		// Buffers
+		struct {
+			VkBuffer buffer = VK_NULL_HANDLE;
+			VkDeviceMemory memory = VK_NULL_HANDLE;
+			int count;
+		} m_pointsBuffer, m_linesBuffer, m_localSurfaceVertexBuffer, m_patchVertexBuffer;
+
+		// Uniform buffer stuff
 		struct {
 			int tessInner = 5;
 			int tessOuter = 5;
 			int bFunctionIndex = 0;
 			alignas(16) glm::mat4 projection = glm::mat4(1.0f);
 			alignas(16) glm::mat4 modelview = glm::mat4(1.0f);
-		} m_ubo;
-		vks::Buffer m_uniformBuffer;
+		} m_latticeUniforms;
+		vks::Buffer m_latticeUniformBuffer;
 
+		struct {
+			alignas(16) std::vector<glm::mat4> matrices;
+		} m_matrixUniforms;
+		vks::Buffer m_matrixUniformBuffer;
+		
+		struct {
+			std::vector<glm::vec4> controlPoints;
+			std::vector<BoundaryInfo> boundaries;
+		} m_patchUniforms;
+		vks::Buffer m_patchUniformBuffer;
+
+		// Pipelines and descriptor set stuff
 		VkPipeline m_pointsPipeline;
 		VkPipeline m_linesPipeline;
 		VkPipeline m_localSurfacePipeline;
@@ -232,24 +311,7 @@ namespace OML {
 		VkDescriptorSetLayout m_descriptorSetLayout;
 		VkDescriptorSet m_descriptorSet;
 
-
-		std::string m_name;
-		bool m_draw = true;
-		bool m_drawLatticeGrid = true;
-		bool m_drawLocalSurfaces = false;
-		bool m_drawSurface = true;
-		bool m_drawNormals = false;
-		bool m_wireframe = false;
-		bool m_drawPixelAccurate = false;
-
-
-		std::vector<LocalSurface> m_localSurfaces;
-		std::vector<Locus> m_loci;
-		std::vector<Patch> m_patches;
-
-
-
-		// Vulkan stuff
+		// Stuff passed from class creating the lattice, used for creating vulkan stuff
 		VkDevice* m_device;
 		vks::VulkanDevice* m_vulkanDevice;
 		VkCommandPool* m_commandPool;
@@ -257,6 +319,32 @@ namespace OML {
 		VkRenderPass* m_renderPass;
 		VkQueue* m_queue;
 		VkAllocationCallbacks* m_allocator;
+
+
+
+
+
+		// Lattice stuff
+		std::string m_name;
+
+		bool m_draw = true;
+		bool m_animate = false;
+		bool m_drawLatticeGrid = true;
+		bool m_drawLocalSurfaces = false;
+		bool m_drawSurface = true;
+		bool m_drawNormals = false;
+		bool m_wireframe = false;
+		bool m_drawPixelAccurate = false;
+
+		uint32_t m_numControlPoints;
+		uint32_t m_numLoci;
+		uint32_t m_numPatches;
+
+		std::vector<Locus> m_loci;
+		std::vector<Patch> m_patches;
+
+		std::vector<LocalSurfaceVertex> m_localSurfaceVertices;
+		std::vector<LocalSurfaceVertex> m_patchVertices;
 	};
 
 }
