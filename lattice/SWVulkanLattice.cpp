@@ -9,8 +9,8 @@ namespace SWVL
 
 	SWVulkanLattice::SWVulkanLattice(std::string name)
 		: OML::Lattice(name), m_pointsPipeline(VK_NULL_HANDLE), m_linesPipeline(VK_NULL_HANDLE), m_localSurfacePipeline(VK_NULL_HANDLE),
-		  m_localSurfaceWireframePipeline(VK_NULL_HANDLE), m_patchPipeline(VK_NULL_HANDLE), m_normalPipeline(VK_NULL_HANDLE),
-		  m_pipelineLayout(VK_NULL_HANDLE), m_descriptorSetLayout(VK_NULL_HANDLE), m_descriptorSet(VK_NULL_HANDLE),
+		  m_localSurfaceWireframePipeline(VK_NULL_HANDLE), m_patchPipeline(VK_NULL_HANDLE), m_patchWireframePipeline(VK_NULL_HANDLE),
+		  m_normalPipeline(VK_NULL_HANDLE), m_pipelineLayout(VK_NULL_HANDLE), m_descriptorSetLayout(VK_NULL_HANDLE), m_descriptorSet(VK_NULL_HANDLE),
 		  m_device(nullptr), m_vulkanDevice(nullptr), m_descriptorPool(nullptr), m_renderPass(nullptr),
 		  m_queue(nullptr), m_commandPool(nullptr), m_allocator(nullptr), m_selectedSurface(0)
 	{
@@ -18,6 +18,9 @@ namespace SWVL
 
 	SWVulkanLattice::~SWVulkanLattice()
 	{
+		if (!m_destroyed) {
+			destroyVulkanStuff();
+		}
 	}
 
 	void SWVulkanLattice::initVulkanStuff(VkDevice* device, vks::VulkanDevice* vulkanDevice, VkQueue* queue, VkCommandPool* commandPool, VkDescriptorPool* descriptorPool, VkRenderPass* renderPass, VkAllocationCallbacks* allocator)
@@ -30,6 +33,7 @@ namespace SWVL
 		m_renderPass = renderPass;
 		m_allocator = allocator;
 
+		setupQueryResultBuffer();
 		createBuffers();
 		prepareUniformBuffers();
 		setupDescriptorSetLayouts();
@@ -50,32 +54,57 @@ namespace SWVL
 
 	void SWVulkanLattice::destroyVulkanStuff()
 	{
-		vkDestroyPipeline(*m_device, m_pointsPipeline, m_allocator);
-		vkDestroyPipeline(*m_device, m_linesPipeline, m_allocator);
-		vkDestroyPipeline(*m_device, m_localSurfacePipeline, m_allocator);
-		vkDestroyPipeline(*m_device, m_localSurfaceWireframePipeline, m_allocator);
-		vkDestroyPipeline(*m_device, m_patchPipeline, m_allocator);
-		vkDestroyPipeline(*m_device, m_patchWireframePipeline, m_allocator);
-		vkDestroyPipeline(*m_device, m_normalPipeline, m_allocator);
+		if (m_pointsPipeline) {
+			vkDestroyPipeline(*m_device, m_pointsPipeline, m_allocator);
+			vkDestroyPipeline(*m_device, m_linesPipeline, m_allocator);
+			vkDestroyPipeline(*m_device, m_localSurfacePipeline, m_allocator);
+			vkDestroyPipeline(*m_device, m_localSurfaceWireframePipeline, m_allocator);
+			vkDestroyPipeline(*m_device, m_patchPipeline, m_allocator);
+			vkDestroyPipeline(*m_device, m_patchWireframePipeline, m_allocator);
+			vkDestroyPipeline(*m_device, m_normalPipeline, m_allocator);
 
-		vkDestroyPipelineLayout(*m_device, m_pipelineLayout, m_allocator);
-		vkDestroyDescriptorSetLayout(*m_device, m_descriptorSetLayout, m_allocator);
+			vkDestroyPipelineLayout(*m_device, m_pipelineLayout, m_allocator);
+			vkDestroyDescriptorSetLayout(*m_device, m_descriptorSetLayout, m_allocator);
+		}
 
-		if (m_pointsBuffer.buffer != VK_NULL_HANDLE) {
+		if (m_pointsBuffer.buffer) {
 			vkDestroyBuffer(*m_device, m_pointsBuffer.buffer, m_allocator);
 			vkFreeMemory(*m_device, m_pointsBuffer.memory, m_allocator);
 		}
-		if (m_linesBuffer.buffer != VK_NULL_HANDLE) {
+		if (m_linesBuffer.buffer) {
 			vkDestroyBuffer(*m_device, m_linesBuffer.buffer, m_allocator);
 			vkFreeMemory(*m_device, m_linesBuffer.memory, m_allocator);
 		}
-		if (m_localSurfaceVertexBuffer.buffer != VK_NULL_HANDLE) {
+		if (m_localSurfaceVertexBuffer.buffer) {
 			vkDestroyBuffer(*m_device, m_localSurfaceVertexBuffer.buffer, m_allocator);
 			vkFreeMemory(*m_device, m_localSurfaceVertexBuffer.memory, m_allocator);
 		}
-		if (m_patchVertexBuffer.buffer != VK_NULL_HANDLE) {
+		if (m_patchVertexBuffer.buffer) {
 			vkDestroyBuffer(*m_device, m_patchVertexBuffer.buffer, m_allocator);
 			vkFreeMemory(*m_device, m_patchVertexBuffer.memory, m_allocator);
+		}
+
+		if (m_queryPool) {
+			vkDestroyQueryPool(*m_device, m_queryPool, m_allocator);
+			vkDestroyBuffer(*m_device, m_queryResult.buffer, m_allocator);
+			vkFreeMemory(*m_device, m_queryResult.memory, m_allocator);
+		}
+		if (m_timingPool) {
+			vkDestroyQueryPool(*m_device, m_timingPool, m_allocator);
+			vkDestroyBuffer(*m_device, m_timingResult.buffer, m_allocator);
+			vkFreeMemory(*m_device, m_timingResult.memory, m_allocator);
+		}
+
+		m_destroyed = true;
+	}
+
+	void SWVulkanLattice::addToCommandbufferPreRenderpass(VkCommandBuffer& commandBuffer)
+	{
+		if (m_doPipelineQueries) {
+			vkCmdResetQueryPool(commandBuffer, m_queryPool, 0, m_queryResult.count);
+		}
+		if (m_doPipelineTimings) {
+			vkCmdResetQueryPool(commandBuffer, m_timingPool, 0, m_timingResult.count);
 		}
 	}
 
@@ -84,6 +113,13 @@ namespace SWVL
 		if (!m_draw) return;
 
 		VkDeviceSize offsets[1] = { 0 };
+
+		if (m_doPipelineQueries) {
+			vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
+		}
+		if (m_doPipelineTimings) {
+			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_timingPool, 0);
+		}
 
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, NULL);
 
@@ -127,6 +163,13 @@ namespace SWVL
 			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_pointsBuffer.buffer, offsets);
 			vkCmdDraw(commandBuffer, m_pointsBuffer.count, 1, 0, 0);
 		}
+
+		if (m_doPipelineQueries) {
+			vkCmdEndQuery(commandBuffer, m_queryPool, 0);
+		}
+		if (m_doPipelineTimings) {
+			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_timingPool, 1);
+		}
 	}
 
 	void SWVulkanLattice::onViewChanged(glm::mat4 projection, glm::mat4 view)
@@ -143,6 +186,8 @@ namespace SWVL
 				mat = glm::rotate(mat, glm::radians(60.0f) * (float)dt, glm::vec3(0.0f, 0.0f, 1.0f));
 			updateMatrixUniformBuffer();
 		}
+
+		getQueryResults();
 	}
 
 	bool SWVulkanLattice::onUpdateUIOverlay(vks::UIOverlay* overlay)
@@ -171,6 +216,34 @@ namespace SWVL
 				}
 				if (overlay->comboBox("B-Function", &m_uniforms.bFunctionIndex, BFunctionNames)) updateLatticeUniformBuffer();
 				overlay->checkBox("Animate", &m_animate);
+			}
+
+			// Pipeline stats
+			if (overlay->header("Statistics", false))
+			{
+				if (overlay->checkBox("Stats", &m_doPipelineQueries)) rebuildCmd = true;
+				if (m_doPipelineQueries) {
+					overlay->text("Input Assembler Vertices: %d", m_pipelineStats[0]);
+					overlay->text("Input Assembler Primitives: %d", m_pipelineStats[1]);
+					overlay->text("Vert invocations: %d", m_pipelineStats[2]);
+					overlay->text("TCS patches: %d", m_pipelineStats[8]);
+					overlay->text("TES invocations: %d", m_pipelineStats[9]);
+					overlay->text("Geom invocations: %d", m_pipelineStats[3]);
+					overlay->text("Geom primitives: %d", m_pipelineStats[4]);
+					overlay->text("Clipping invocations: %d", m_pipelineStats[5]);
+					overlay->text("Clipping primitives: %d", m_pipelineStats[6]);
+					overlay->text("Frag invocations: %d", m_pipelineStats[7]);
+
+					ImGui::Separator();
+				}
+
+				if (overlay->checkBox("Timings", &m_doPipelineTimings)) rebuildCmd = true;
+				if (m_doPipelineTimings) {
+					const uint64_t diff = m_pipelineTimings[1] - m_pipelineTimings[0];
+					double micros = diff * m_timestampPeriod / 1000000;
+					if (micros > 10000000.0f) micros = 0.0f;
+					overlay->text("Rendering time: %.4f ms", micros);
+				}
 			}
 
 			// For editing local surfaces
@@ -257,7 +330,7 @@ namespace SWVL
 				ImGui::Text("x");
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("-##sx", ImVec2(button_size, button_size))) {
-					mat = glm::scale(mat, glm::vec3(0.1, 1.0, 1.0));
+					mat = glm::scale(mat, glm::vec3(0.9, 1.0, 1.0));
 					update = true;
 				}
 				ImGui::SameLine(0, itemInnerSpacingX);
@@ -809,5 +882,98 @@ namespace SWVL
 			patchUniforms.push_back(glm::vec4(boundary.us, boundary.ue, boundary.vs, boundary.ve));
 		memcpy(m_patchUniformBuffer.mapped, &patchUniforms[0],
 			sizeof(glm::vec4) * m_numControlPoints + sizeof(OML::BoundaryInfo) * m_numPatches * 4);
+	}
+
+	void SWVulkanLattice::setupQueryResultBuffer()
+	{
+		m_queryResult.count = 10;
+		m_timingResult.count = 2;
+
+		uint32_t bufSize = m_queryResult.count * sizeof(uint64_t);
+
+		VkMemoryRequirements memReqs;
+		VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
+		VkBufferCreateInfo bufferCreateInfo =
+			vks::initializers::bufferCreateInfo(
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				bufSize);
+
+		// Results are saved in a host visible buffer for easy access by the application
+		VK_CHECK_RESULT(vkCreateBuffer(*m_device, &bufferCreateInfo, nullptr, &m_queryResult.buffer));
+		vkGetBufferMemoryRequirements(*m_device, m_queryResult.buffer, &memReqs);
+		memAlloc.allocationSize = memReqs.size;
+		memAlloc.memoryTypeIndex = m_vulkanDevice->getMemoryType(memReqs.memoryTypeBits, 
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		VK_CHECK_RESULT(vkAllocateMemory(*m_device, &memAlloc, nullptr, &m_queryResult.memory));
+		VK_CHECK_RESULT(vkBindBufferMemory(*m_device, m_queryResult.buffer, m_queryResult.memory, 0));
+
+		uint32_t timeBufSize = m_timingResult.count * sizeof(uint64_t);
+		VkMemoryRequirements timeMemReqs;
+		VkMemoryAllocateInfo timeMemAlloc = vks::initializers::memoryAllocateInfo();
+		VkBufferCreateInfo timeBufferCreateInfo =
+			vks::initializers::bufferCreateInfo(
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				timeBufSize
+			);
+		VK_CHECK_RESULT(vkCreateBuffer(*m_device, &timeBufferCreateInfo, nullptr, &m_timingResult.buffer));
+		vkGetBufferMemoryRequirements(*m_device, m_timingResult.buffer, &timeMemReqs);
+		timeMemAlloc.allocationSize = timeMemReqs.size;
+		timeMemAlloc.memoryTypeIndex = m_vulkanDevice->getMemoryType(timeMemReqs.memoryTypeBits, 
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		VK_CHECK_RESULT(vkAllocateMemory(*m_device, &timeMemAlloc, nullptr, &m_timingResult.memory));
+		VK_CHECK_RESULT(vkBindBufferMemory(*m_device, m_timingResult.buffer, m_timingResult.memory, 0));
+		m_timestampPeriod = m_vulkanDevice->properties.limits.timestampPeriod;
+
+		VkQueryPoolCreateInfo queryPoolInfo = {};
+		queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+		queryPoolInfo.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
+		queryPoolInfo.pipelineStatistics =
+			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT;
+
+		queryPoolInfo.queryCount = m_queryResult.count;
+		VK_CHECK_RESULT(vkCreateQueryPool(*m_device, &queryPoolInfo, NULL, &m_queryPool));
+
+		VkQueryPoolCreateInfo timingPoolInfo = {};
+		timingPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+		timingPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+		timingPoolInfo.queryCount = m_timingResult.count;
+		VK_CHECK_RESULT(vkCreateQueryPool(*m_device, &timingPoolInfo, NULL, &m_timingPool));
+	}
+
+	void SWVulkanLattice::getQueryResults()
+	{
+		if (m_doPipelineQueries) {
+			vkGetQueryPoolResults(
+				*m_device,
+				m_queryPool,
+				0,
+				1,
+				sizeof(m_pipelineStats),
+				m_pipelineStats,
+				sizeof(uint64_t),
+				VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
+		}
+
+		if (m_doPipelineTimings) {
+			vkGetQueryPoolResults(
+				*m_device,
+				m_timingPool,
+				0,
+				m_timingResult.count,
+				sizeof(m_pipelineTimings),
+				m_pipelineTimings,
+				sizeof(uint64_t),
+				VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT
+			);
+		}
 	}
 }

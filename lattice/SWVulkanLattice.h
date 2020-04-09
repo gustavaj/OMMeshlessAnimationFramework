@@ -9,6 +9,14 @@
 
 namespace SWVL
 {
+	struct Buffer {
+		Buffer() : buffer(VK_NULL_HANDLE), memory(VK_NULL_HANDLE), count(0) {}
+
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+		int count = 0;
+	};
+
 	// Holds the information for one local surface that is sent to the vertex shader
 	struct LocalSurfaceVertex
 	{
@@ -95,6 +103,8 @@ namespace SWVL
 			VkAllocationCallbacks* allocator);
 		/* Clean up vulkan stuff */
 		void destroyVulkanStuff();
+		/* Add commands before renderpass has started, like e.g. resetting query pools */
+		void addToCommandbufferPreRenderpass(VkCommandBuffer& commandBuffer);
 		/* Add drawing commands to a command buffer */
 		void addToCommandbuffer(VkCommandBuffer& commandBuffer);
 		/* Update projection and view matrices */
@@ -125,13 +135,24 @@ namespace SWVL
 		void updateLatticeUniformBuffer();
 		void updateMatrixUniformBuffer();
 		void updatePatchUniformBuffer();
+		void setupQueryResultBuffer();
+		void getQueryResults();
 
 		// Buffers
-		struct {
-			VkBuffer buffer = VK_NULL_HANDLE;
-			VkDeviceMemory memory = VK_NULL_HANDLE;
-			int count = 0;
-		} m_pointsBuffer, m_linesBuffer, m_localSurfaceVertexBuffer, m_patchVertexBuffer;
+		Buffer m_pointsBuffer;
+		Buffer m_linesBuffer;
+		Buffer m_localSurfaceVertexBuffer;
+		Buffer m_patchVertexBuffer;
+		Buffer m_queryResult;
+		Buffer m_timingResult;
+
+		VkQueryPool m_queryPool = VK_NULL_HANDLE;
+		VkQueryPool m_timingPool = VK_NULL_HANDLE;
+		bool m_doPipelineTimings = false;
+		bool m_doPipelineQueries = false;
+		uint64_t m_pipelineStats[10] = { 0 };
+		uint64_t m_pipelineTimings[2] = { 0 };
+		double m_timestampPeriod = 1.0;
 
 		// Uniform buffers
 		vks::Buffer m_latticeUniformBuffer;
@@ -165,5 +186,7 @@ namespace SWVL
 
 		std::vector<std::string> m_listItems;
 		int m_selectedSurface;
+
+		bool m_destroyed = false;
 	};
 }
