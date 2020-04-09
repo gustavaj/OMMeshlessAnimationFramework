@@ -110,15 +110,13 @@ namespace SWVL
 		/* Update projection and view matrices */
 		void onViewChanged(glm::mat4 projection, glm::mat4 view);
 
-		/* Animate and stuff */
-		void update(double dt);
-
 		/* Update UIOverlay with information about the lattice */
 		bool onUpdateUIOverlay(vks::UIOverlay* overlay);
 
 	protected:
 		virtual void setupLocalSurfaceVertex(OML::Locus& locus) override;
 		virtual void setupPatchVertices(OML::Patch& patch) override;
+		virtual void localUpdate(double dt) override;
 
 	private:
 		// Vulkan functions

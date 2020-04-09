@@ -14,6 +14,31 @@ namespace OML {
 	using Vec3f = OpenMesh::Vec3f;
 	using Col3 = OpenMesh::Vec3uc;
 
+	class NormalSinSimulator {
+	public:
+		NormalSinSimulator() : NormalSinSimulator(0.0, 0.0, 0.0, Vec3f(0.0f)) {}
+		NormalSinSimulator(double t, double max, double speed, Vec3f normal)
+			: m_t(t), m_max(max), m_speed(speed), m_normal(normal), m_lastOffset(0.0f) {}
+		~NormalSinSimulator() {}
+
+		void simulate(double dt, glm::mat4& mat) {
+			m_t += dt;
+
+			double f = std::sin(m_t * m_speed);
+			Vec3f offset = m_normal * f * m_max;
+			glm::vec3 trans(offset[0] - m_lastOffset[0], offset[1] - m_lastOffset[1], offset[2] - m_lastOffset[2]);
+			m_lastOffset = offset;
+
+			mat = glm::translate(mat, trans);
+		}
+	private:
+		double m_t;
+		double m_max;
+		double m_speed;
+		Vec3f m_normal;
+		Vec3f m_lastOffset;
+	};
+
 	struct BoundaryInfo
 	{
 		BoundaryInfo()
@@ -37,6 +62,7 @@ namespace OML {
 		uint32_t controlPointCount;
 		uint32_t matrixIndex;
 		OpenMesh::VertexHandle vh;
+		Vec3f normal;
 		std::unordered_map<OpenMesh::FaceHandle, BoundaryInfo> faceMappings;
 	};
 
@@ -101,6 +127,12 @@ namespace OML {
 		/* Add sphere in space */
 		void addSphere(Vec3f center, float radius, int segments, int slices);
 
+		/* Add a simulator to the patches */
+		void addNormalSinSimulation();
+		void removeNormalSinSimulation();
+		/* Update */
+		void update(double dt);
+
 		/* Finalize lattice creation */
 		void induceLattice();
 
@@ -132,6 +164,9 @@ namespace OML {
 	protected:
 		virtual void setupLocalSurfaceVertex(Locus& locus) = 0;
 		virtual void setupPatchVertices(Patch& patch) = 0;
+		virtual void localUpdate(double dt) = 0;
+
+		void resetMatrices();
 
 		// Lattice stuff
 		std::string m_name;
@@ -154,6 +189,7 @@ namespace OML {
 
 		std::vector<glm::vec4> m_controlPoints;
 		std::vector<BoundaryInfo> m_boundaries;
+		std::vector<glm::mat4> m_initialMatrices;
 		std::vector<glm::mat4> m_matrices;
 
 		struct {
@@ -163,6 +199,13 @@ namespace OML {
 			alignas(16) glm::mat4 projection = glm::mat4(1.0f);
 			alignas(16) glm::mat4 modelview = glm::mat4(1.0f);
 		} m_uniforms;
+
+		int m_simulatorIndex = 0;
+		std::vector<NormalSinSimulator> m_simulators;
+		float m_minAmp = 1.0;
+		float m_maxAmp = 10.0;
+		float m_minSpeed = 1.0;
+		float m_maxSpeed = 5.0;
 
 	private:
 		// Helper functions for setting up the lattice stuff

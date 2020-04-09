@@ -1,5 +1,7 @@
 #include "Lattice.h"
 
+#include <random>
+
 namespace OML
 {
 	Lattice::Lattice()
@@ -154,6 +156,50 @@ namespace OML
 		}
 	}
 
+	void Lattice::removeNormalSinSimulation()
+	{
+		m_simulators.resize(0);
+		resetMatrices();
+	}
+
+	void Lattice::addNormalSinSimulation()
+	{
+		resetMatrices();
+
+		m_simulators.resize(0);
+		for (auto& locus : m_loci)
+		{
+			double t = static_cast<double>(rand() % 100);
+			double amp, speed;
+			if (m_maxAmp > m_minAmp) {
+				amp = m_minAmp + static_cast<double>(rand() % (int)(m_maxAmp - m_minAmp));
+			}
+			else {
+				amp = static_cast<double>(rand() % (int)m_maxAmp);
+			}
+			if (m_maxSpeed > m_minSpeed) {
+				speed = m_minSpeed + static_cast<double>(rand() % (int)(m_maxSpeed - m_minSpeed));
+			}
+			else {
+				speed = static_cast<double>(rand() % (int)m_maxSpeed);
+			}
+			m_simulators.push_back(NormalSinSimulator(t, amp, speed, locus.normal));
+		}
+	}
+
+	void Lattice::update(double dt)
+	{
+		if (m_animate) 
+		{
+			for (size_t i = 0; i < m_simulators.size(); i++)
+			{
+				m_simulators[i].simulate(dt, m_matrices[i]);
+			}
+
+			localUpdate(dt);
+		}
+	}
+
 	void Lattice::induceLattice()
 	{
 		// Set the edge color of gridlines depending on if the edge is on the boundary or not
@@ -167,6 +213,15 @@ namespace OML
 
 		// Add regular local surfaces for each loci, and setup patches
 		setupLocalSurfacesAndPatches();
+	}
+
+	void Lattice::resetMatrices()
+	{
+		m_matrices.resize(0);
+		for (auto mat : m_initialMatrices)
+		{
+			m_matrices.push_back(mat);
+		}
 	}
 
 	void Lattice::setupEdgeColor()
@@ -364,6 +419,7 @@ namespace OML
 		locus.vh = vertex;
 		locus.faceMappings = faceMappings;
 		locus.matrixIndex = m_numLoci;
+		locus.normal = Vec3f(0, 0, 1);
 
 		property(LatticeProperties::LocusIndex, vertex) = m_numLoci;
 
@@ -377,6 +433,8 @@ namespace OML
 		m_numControlPoints += controlPoints.size();
 
 		m_matrices.push_back(
+			glm::translate(glm::mat4(1.0f), glm::vec3(offset[0], offset[1], offset[2])));
+		m_initialMatrices.push_back(
 			glm::translate(glm::mat4(1.0f), glm::vec3(offset[0], offset[1], offset[2])));
 
 		setupLocalSurfaceVertex(locus);

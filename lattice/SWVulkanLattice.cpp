@@ -2,6 +2,8 @@
 
 namespace SWVL
 {
+	std::vector<std::string> SIMULATORS = { "None", "NormalSinSim" };
+
 	SWVulkanLattice::SWVulkanLattice()
 		: SWVulkanLattice("")
 	{
@@ -115,7 +117,7 @@ namespace SWVL
 		VkDeviceSize offsets[1] = { 0 };
 
 		if (m_doPipelineQueries) {
-			vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
+vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 		}
 		if (m_doPipelineTimings) {
 			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_timingPool, 0);
@@ -179,11 +181,11 @@ namespace SWVL
 		updateLatticeUniformBuffer();
 	}
 
-	void SWVulkanLattice::update(double dt)
+	void SWVulkanLattice::localUpdate(double dt)
 	{
 		if (m_animate) {
-			for (auto& mat : m_matrices)
-				mat = glm::rotate(mat, glm::radians(60.0f) * (float)dt, glm::vec3(0.0f, 0.0f, 1.0f));
+			/*for (auto& mat : m_matrices)
+				mat = glm::rotate(mat, glm::radians(60.0f) * (float)dt, glm::vec3(0.0f, 0.0f, 1.0f));*/
 			updateMatrixUniformBuffer();
 		}
 
@@ -216,6 +218,13 @@ namespace SWVL
 				}
 				if (overlay->comboBox("B-Function", &m_uniforms.bFunctionIndex, BFunctionNames)) updateLatticeUniformBuffer();
 				overlay->checkBox("Animate", &m_animate);
+				if (m_animate) {
+					if (overlay->sliderFloat("Min amp", &m_minAmp, 0.0, 20.0));
+					if (overlay->sliderFloat("Max amp", &m_maxAmp, 0.0, 20.0));
+					if (overlay->sliderFloat("Min speed", &m_minSpeed, 0.0, 50.0));
+					if (overlay->sliderFloat("Max speed", &m_maxSpeed, 0.0, 50.0));
+					if (overlay->button("Update sim")) addNormalSinSimulation();
+				}
 			}
 
 			// Pipeline stats
