@@ -7,5 +7,5 @@ layout(location = 0) out vec4 FragColor;
 
 void main()
 {
-    FragColor = vec4(teColor, 1.0);
+    FragColor = vec4(teColor, 0.4);
 }

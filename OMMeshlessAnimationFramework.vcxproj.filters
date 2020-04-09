@@ -56,6 +56,9 @@
     </ClCompile>
     <ClCompile Include="LatticeExample.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="lattice\SWVulkanLattice.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lattice\Lattice.h">
@@ -123,6 +126,9 @@
     </ClInclude>
     <ClInclude Include="vulkan\VulkanUIOverlay.h">
       <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="lattice\SWVulkanLattice.h">
+      <Filter>lattice</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

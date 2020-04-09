@@ -53,7 +53,7 @@ namespace OML {
 
 	struct Patch
 	{
-		std::array<Locus*, 4> loci;
+		std::array<size_t, 4> lociIndices;
 		OpenMesh::FaceHandle fh;
 	};
 
@@ -306,6 +306,9 @@ namespace OML {
 		VkPipeline m_linesPipeline;
 		VkPipeline m_localSurfacePipeline;
 		VkPipeline m_localSurfaceWireframePipeline;
+		VkPipeline m_patchPipeline;
+		VkPipeline m_patchWireframePipeline;
+		VkPipeline m_normalPipeline;
 
 		VkPipelineLayout m_pipelineLayout;
 		VkDescriptorSetLayout m_descriptorSetLayout;

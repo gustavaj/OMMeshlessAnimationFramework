@@ -195,9 +195,31 @@ namespace OML
 	{
 		vkDestroyPipeline(*m_device, m_pointsPipeline, m_allocator);
 		vkDestroyPipeline(*m_device, m_linesPipeline, m_allocator);
+		vkDestroyPipeline(*m_device, m_localSurfacePipeline, m_allocator);
+		vkDestroyPipeline(*m_device, m_localSurfaceWireframePipeline, m_allocator);
+		vkDestroyPipeline(*m_device, m_patchPipeline, m_allocator);
+		vkDestroyPipeline(*m_device, m_patchWireframePipeline, m_allocator);
+		vkDestroyPipeline(*m_device, m_normalPipeline, m_allocator);
 
 		vkDestroyPipelineLayout(*m_device, m_pipelineLayout, m_allocator);
 		vkDestroyDescriptorSetLayout(*m_device, m_descriptorSetLayout, m_allocator);
+
+		if (m_pointsBuffer.buffer != VK_NULL_HANDLE) {
+			vkDestroyBuffer(*m_device, m_pointsBuffer.buffer, m_allocator);
+			vkFreeMemory(*m_device, m_pointsBuffer.memory, m_allocator);
+		}
+		if (m_linesBuffer.buffer != VK_NULL_HANDLE) {
+			vkDestroyBuffer(*m_device, m_linesBuffer.buffer, m_allocator);
+			vkFreeMemory(*m_device, m_linesBuffer.memory, m_allocator);
+		}
+		if (m_localSurfaceVertexBuffer.buffer != VK_NULL_HANDLE) {
+			vkDestroyBuffer(*m_device, m_localSurfaceVertexBuffer.buffer, m_allocator);
+			vkFreeMemory(*m_device, m_localSurfaceVertexBuffer.memory, m_allocator);
+		}
+		if (m_patchVertexBuffer.buffer != VK_NULL_HANDLE) {
+			vkDestroyBuffer(*m_device, m_patchVertexBuffer.buffer, m_allocator);
+			vkFreeMemory(*m_device, m_patchVertexBuffer.memory, m_allocator);
+		}
 	}
 
 	void Lattice::addToCommandbuffer(VkCommandBuffer& commandBuffer)
@@ -207,6 +229,22 @@ namespace OML
 		VkDeviceSize offsets[1] = { 0 };
 
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, NULL);
+
+		if (m_drawSurface)
+		{
+			if (m_wireframe)
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_patchWireframePipeline);
+			else
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_patchPipeline);
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_patchVertexBuffer.buffer, offsets);
+			vkCmdDraw(commandBuffer, m_patchVertexBuffer.count, 1, 0, 0);
+			
+			if (m_drawNormals)
+			{
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_normalPipeline);
+				vkCmdDraw(commandBuffer, m_patchVertexBuffer.count, 1, 0, 0);
+			}
+		}
 
 		// Draw local surfaces
 		if (m_drawLocalSurfaces)
@@ -272,6 +310,34 @@ namespace OML
 					if (overlay->sliderInt("TessOuter", &m_latticeUniforms.tessOuter, 0, 64)) updateLatticeUniformBuffer();
 				}
 				if (overlay->comboBox("B-Function", &m_latticeUniforms.bFunctionIndex, BFunctionNames)) updateLatticeUniformBuffer();
+			}
+
+			if (overlay->header("Surfaces", false))
+			{
+				for (size_t i = 0; i < m_patches.size(); i++)
+				{
+					auto& patch = m_patches[i];
+					std::string patchTitle = "Patch " + std::to_string(i);
+					if (overlay->header(patchTitle.c_str(), false))
+					{
+						for (size_t j = 0; j < 4; j++)
+						{
+							std::string lociTitle = "Local " + std::to_string(j);
+							if (overlay->header(lociTitle.c_str(), false))
+							{
+								auto idx = m_loci[patch.lociIndices[j]].matrixIndex;
+								auto& mat = m_matrixUniforms.matrices[idx];
+								float* x = &mat[3][0];
+								//auto* trans = &mat[3];
+								//auto* x = &trans[0];
+								if (overlay->inputVec3("Trans", x, 1.0f, 1))
+								{
+									updateMatrixUniformBuffer();
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 
@@ -447,25 +513,58 @@ namespace OML
 			if (property(LatticeProperties::LocusIndex, vh4) == -1)
 				addLocusOnVertex(vh4, vh2, vh3, 4);
 
+			auto& loci00 = m_loci[property(LatticeProperties::LocusIndex, vh1)];
+			auto& loci10 = m_loci[property(LatticeProperties::LocusIndex, vh2)];
+			auto& loci01 = m_loci[property(LatticeProperties::LocusIndex, vh3)];
+			auto& loci11 = m_loci[property(LatticeProperties::LocusIndex, vh4)];
+
 			// Setup patch vertices for face.
 			Patch patch;
-			patch.loci = {
-				&m_loci[property(LatticeProperties::LocusIndex, vh1)],
-				&m_loci[property(LatticeProperties::LocusIndex, vh2)],
-				&m_loci[property(LatticeProperties::LocusIndex, vh3)],
-				&m_loci[property(LatticeProperties::LocusIndex, vh4)]
+			patch.lociIndices = {
+				property(LatticeProperties::LocusIndex, vh1),
+				property(LatticeProperties::LocusIndex, vh2),
+				property(LatticeProperties::LocusIndex, vh3),
+				property(LatticeProperties::LocusIndex, vh4)
 			};
 			patch.fh = fh;
+			m_patches.push_back(std::move(patch));
+
+			LocalSurfaceVertex localVert00;
+			localVert00.controlPointIndex = loci00.controlPointIndex;
+			localVert00.controlPointCount = loci00.controlPointCount;
+			localVert00.matrixIndex = loci00.matrixIndex;
+			localVert00.boundaryIndex = m_patchUniforms.boundaries.size();
+			m_patchUniforms.boundaries.push_back(loci00.faceMappings[fh]);
+			m_patchVertices.push_back(localVert00);
+
+			LocalSurfaceVertex localVert10;
+			localVert10.controlPointIndex = loci10.controlPointIndex;
+			localVert10.controlPointCount = loci10.controlPointCount;
+			localVert10.matrixIndex = loci10.matrixIndex;
+			localVert10.boundaryIndex = m_patchUniforms.boundaries.size();
+			m_patchUniforms.boundaries.push_back(loci10.faceMappings[fh]);
+			m_patchVertices.push_back(localVert10);
+
+			LocalSurfaceVertex localVert01;
+			localVert01.controlPointIndex = loci01.controlPointIndex;
+			localVert01.controlPointCount = loci01.controlPointCount;
+			localVert01.matrixIndex = loci01.matrixIndex;
+			localVert01.boundaryIndex = m_patchUniforms.boundaries.size();
+			m_patchUniforms.boundaries.push_back(loci01.faceMappings[fh]);
+			m_patchVertices.push_back(localVert01);
+
+			LocalSurfaceVertex localVert11;
+			localVert11.controlPointIndex = loci11.controlPointIndex;
+			localVert11.controlPointCount = loci11.controlPointCount;
+			localVert11.matrixIndex = loci11.matrixIndex;
+			localVert11.boundaryIndex = m_patchUniforms.boundaries.size();
+			m_patchUniforms.boundaries.push_back(loci11.faceMappings[fh]);
+			m_patchVertices.push_back(localVert11);
+
+			m_numPatches++;
 		}
 
-		std::cout << "Finished inducing lattice" << std::endl;
-
-		m_numPatches = n_faces();
-
-		for (size_t i = 0; i < 9 * 4; i++)
-		{
-			m_patchUniforms.boundaries.push_back(BoundaryInfo(0.0f, 1.0f, 0.0f, 1.0f));
-		}
+		std::cout << "Done" << std::endl;
 	}
 
 	void Lattice::addLatticeProperties()
@@ -613,7 +712,7 @@ namespace OML
 			Vec3f npon = pon;
 			Vec3f npon_2 = npon * 0.5f;
 
-			float halfwayPoint = (p - po).length() / p.length();
+			float halfwayPoint = p.length() / (p - po).length();
 
 			switch (vertexIndexOnFace) {
 				case 1: { 
@@ -884,6 +983,12 @@ namespace OML
 		createDeviceLocalBuffer(m_localSurfaceVertexBuffer.buffer, m_localSurfaceVertexBuffer.memory,
 			static_cast<void*>(m_localSurfaceVertices.data()), localSurfaceVertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		m_localSurfaceVertexBuffer.count = m_localSurfaceVertices.size();
+
+		// Patch vertices
+		uint32_t patchVertexBufferSize = m_patchVertices.size() * sizeof(LocalSurfaceVertex);
+		createDeviceLocalBuffer(m_patchVertexBuffer.buffer, m_patchVertexBuffer.memory,
+			static_cast<void*>(m_patchVertices.data()), patchVertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		m_patchVertexBuffer.count = m_patchVertices.size();
 	}
 
 	void Lattice::prepareUniformBuffers()
@@ -929,7 +1034,8 @@ namespace OML
 		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
 			vks::initializers::descriptorSetLayoutBinding(
 				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | 
+				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_GEOMETRY_BIT,
 				0), 
 			vks::initializers::descriptorSetLayoutBinding(
 				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -993,8 +1099,14 @@ namespace OML
 
 		VkPipelineColorBlendAttachmentState blendAttachmentState =
 			vks::initializers::pipelineColorBlendAttachmentState(
-				0xf,
-				VK_FALSE);
+				VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+				VK_TRUE);
+		blendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		blendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		blendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+		blendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		blendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		blendAttachmentState.alphaBlendOp = VK_BLEND_OP_SUBTRACT;
 
 		VkPipelineColorBlendStateCreateInfo colorBlendState =
 			vks::initializers::pipelineColorBlendStateCreateInfo(
@@ -1125,59 +1237,37 @@ namespace OML
 		rasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_localSurfaceWireframePipeline));
 
-		/*
-		// Blending surfaces
+		// Patch pipelines
 		VkPipelineTessellationStateCreateInfo bsTessState =
-			vks::initializers::pipelineTessellationStateCreateInfo(numLocalSurfacesPerDir * numLocalSurfacesPerDir);
+			vks::initializers::pipelineTessellationStateCreateInfo(4);
 		pipelineCreateInfo.pTessellationState = &bsTessState;
 
 		std::array<VkPipelineShaderStageCreateInfo, 4> bsShaderStages;
-		struct BSSpecData {
-			int numLocalSurfacesPerDir;
-			int totalPatches;
-		} bsSpecData;
-		bsSpecData.numLocalSurfacesPerDir = numLocalSurfacesPerDir;
-		bsSpecData.totalPatches = lattice.numPatches();
-		std::array<VkSpecializationMapEntry, 2> bsSpecMapEntries;
-		bsSpecMapEntries[0].constantID = 0;
-		bsSpecMapEntries[0].size = sizeof(bsSpecData.numLocalSurfacesPerDir);
-		bsSpecMapEntries[0].offset = offsetof(BSSpecData, numLocalSurfacesPerDir);
-		bsSpecMapEntries[1].constantID = 1;
-		bsSpecMapEntries[1].size = sizeof(bsSpecData.totalPatches);
-		bsSpecMapEntries[1].offset = offsetof(BSSpecData, totalPatches);
-
-		VkSpecializationInfo bsSpecInfo = {};
-		bsSpecInfo.dataSize = sizeof(bsSpecData);
-		bsSpecInfo.mapEntryCount = static_cast<uint32_t>(bsSpecMapEntries.size());
-		bsSpecInfo.pMapEntries = bsSpecMapEntries.data();
-		bsSpecInfo.pData = &bsSpecData;
-
-		bsShaderStages[0] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/OMLattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		bsShaderStages[1] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/OMLattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		bsShaderStages[2] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/OMLattice/lattice.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		bsShaderStages[2].pSpecializationInfo = &bsSpecInfo;
-		bsShaderStages[3] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/OMLattice/lattice.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		bsShaderStages[0] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		bsShaderStages[1] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		bsShaderStages[2] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		bsShaderStages[2].pSpecializationInfo = &specializationInfo;
+		bsShaderStages[3] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(bsShaderStages.size());
 		pipelineCreateInfo.pStages = bsShaderStages.data();
 
 		rasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &blendingSurfaceWireframePipeline));
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, nullptr, &m_patchWireframePipeline));
 
 		rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &blendingSurfacePipeline));
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, nullptr, &m_patchPipeline));
 
 		std::array<VkPipelineShaderStageCreateInfo, 5> normalShaderStages;
-		normalShaderStages[0] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/OMLattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		normalShaderStages[1] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/OMLattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		normalShaderStages[2] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/OMLattice/lattice.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		normalShaderStages[2].pSpecializationInfo = &bsSpecInfo;
-		normalShaderStages[3] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/OMLattice/normals.geom.spv", VK_SHADER_STAGE_GEOMETRY_BIT);
-		normalShaderStages[4] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/OMLattice/normals.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		normalShaderStages[0] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		normalShaderStages[1] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		normalShaderStages[2] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		normalShaderStages[2].pSpecializationInfo = &specializationInfo;
+		normalShaderStages[3] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/normals.geom.spv", VK_SHADER_STAGE_GEOMETRY_BIT);
+		normalShaderStages[4] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/normals.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(normalShaderStages.size());
 		pipelineCreateInfo.pStages = normalShaderStages.data();
 
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &normalPipeline));
-		*/
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_normalPipeline));
 	}
 
 	void Lattice::setupDescriptorPool()

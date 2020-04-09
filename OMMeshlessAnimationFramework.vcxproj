@@ -160,6 +160,7 @@
     <ClCompile Include="lattice\Lattice.cpp" />
     <ClCompile Include="lattice\LocalSurface.cpp" />
     <ClCompile Include="lattice\Patch.cpp" />
+    <ClCompile Include="lattice\SWVulkanLattice.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="vulkan\imgui.cpp" />
     <ClCompile Include="vulkan\imgui_demo.cpp" />
@@ -175,6 +176,7 @@
     <ClInclude Include="lattice\Lattice.h" />
     <ClInclude Include="lattice\LocalSurface.h" />
     <ClInclude Include="lattice\Patch.h" />
+    <ClInclude Include="lattice\SWVulkanLattice.h" />
     <ClInclude Include="vulkan\benchmark.hpp" />
     <ClInclude Include="vulkan\camera.hpp" />
     <ClInclude Include="vulkan\frustum.hpp" />
