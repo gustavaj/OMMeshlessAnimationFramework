@@ -37,12 +37,14 @@ namespace SWVL
 		setupDescriptorPool();
 		setupDescriptorSets();
 
+		m_listItems.resize(0);
 		for (size_t i = 0; i < m_numPatches; i++)
 		{
-			m_listItems.push_back("Patch " + std::to_string(i) + " - p00");
-			m_listItems.push_back("Patch " + std::to_string(i) + " - p10");
-			m_listItems.push_back("Patch " + std::to_string(i) + " - p01");
-			m_listItems.push_back("Patch " + std::to_string(i) + " - p11");
+			auto idx = std::to_string(i);
+			m_listItems.push_back("Patch " + idx + " - p00");
+			m_listItems.push_back("Patch " + idx + " - p10");
+			m_listItems.push_back("Patch " + idx + " - p01");
+			m_listItems.push_back("Patch " + idx + " - p11");
 		}
 	}
 
@@ -147,60 +149,157 @@ namespace SWVL
 	{
 		bool rebuildCmd = false;
 
+		ImGui::Separator();
+
 		if (overlay->header(m_name.c_str(), false))
 		{
-			if (overlay->checkBox("Render", &m_draw)) rebuildCmd = true;
 			if (overlay->header("Settings", false))
 			{
+				if (overlay->checkBox("Render", &m_draw)) rebuildCmd = true;
+				ImGui::Separator();
 				if (overlay->checkBox("Draw Surface", &m_drawSurface)) rebuildCmd = true;
 				if (overlay->checkBox("Draw Local", &m_drawLocalSurfaces)) rebuildCmd = true;
 				if (overlay->checkBox("Draw Grid", &m_drawLatticeGrid)) rebuildCmd = true;
 				if (overlay->checkBox("Draw Wireframe", &m_wireframe)) rebuildCmd = true;
 				if (overlay->checkBox("Draw Normals", &m_drawNormals)) rebuildCmd = true;
+				ImGui::Separator();
 				if (overlay->checkBox("Pixel-Accurate", &m_drawPixelAccurate)) rebuildCmd = true;
-				overlay->checkBox("Animate", &m_animate);
 				if (!m_drawPixelAccurate)
 				{
 					if (overlay->sliderInt("TessInner", &m_uniforms.tessInner, 0, 64)) updateLatticeUniformBuffer();
 					if (overlay->sliderInt("TessOuter", &m_uniforms.tessOuter, 0, 64)) updateLatticeUniformBuffer();
 				}
 				if (overlay->comboBox("B-Function", &m_uniforms.bFunctionIndex, BFunctionNames)) updateLatticeUniformBuffer();
+				overlay->checkBox("Animate", &m_animate);
 			}
 
-			// TODO: Make this nice
+			// For editing local surfaces
 			if (overlay->header("Surfaces", false))
 			{
-				for (size_t i = 0; i < m_patches.size(); i++)
-				{
-					auto& patch = m_patches[i];
-					std::string patchTitle = "Patch " + std::to_string(i);
-					if (overlay->header(patchTitle.c_str(), false))
-					{
-						for (size_t j = 0; j < 4; j++)
-						{
-							std::string lociTitle = "Local " + std::to_string(j);
-							if (overlay->header(lociTitle.c_str(), false))
-							{
-								auto idx = m_loci[patch.lociIndices[j]].matrixIndex;
-								auto& mat = m_matrices[idx];
-								float* x = &mat[3][0];
-								//auto* trans = &mat[3];
-								//auto* x = &trans[0];
-								if (overlay->inputVec3("Trans", x, 1.0f, 1))
-								{
-									updateMatrixUniformBuffer();
-								}
-							}
-						}
-					}
-				}
-			}
+				std::vector<const char*> items(m_listItems.size());
+				for (size_t i = 0; i < m_listItems.size(); i++) items[i] = m_listItems[i].c_str();
+				ImGui::ListBox("", &m_selectedSurface, items.data(), items.size(), 9);
+				int matIdx = m_loci[m_patches[m_selectedSurface / 4].lociIndices[m_selectedSurface % 4]].matrixIndex;
+				auto& mat = m_matrices[matIdx];
 
-			/*if (overlay->header("Surfaces2", true))
-			{
-				overlay->listSurfaces(m_listItems, &m_selectedSurface);
-			}*/
+				bool update = false;
+
+				ImGui::SameLine();
+				ImGui::BeginGroup();
+
+				ImGui::Text(m_listItems[m_selectedSurface].c_str());
+				ImGui::Separator();
+
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5.0f, 1.0f));
+
+				// Translation
+				ImGui::BeginGroup();
+
+				ImGui::Text("Translate");
+				if (ImGui::InputFloat("x", &mat[3][0], 0.5f, 1.0f, "%.1f")) update = true;
+				if (ImGui::InputFloat("y", &mat[3][1], 0.5f, 1.0f, "%.1f")) update = true;
+				if (ImGui::InputFloat("z", &mat[3][2], 0.5f, 1.0f, "%.1f")) update = true;
+
+				ImGui::EndGroup();
+
+				const float button_size = ImGui::GetFrameHeight();
+
+				// Rotation
+				ImGui::BeginGroup();
+
+				float itemInnerSpacingX = ImGui::GetStyle().ItemInnerSpacing.x;
+
+				ImGui::Text("Rot");
+				ImGui::Text("x");
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("-##rx", ImVec2(button_size, button_size))) {
+					mat = glm::rotate(mat, glm::radians(-10.0f), glm::vec3(1, 0, 0)); 
+					update = true; 
+				}
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("+##rx", ImVec2(button_size, button_size))) {
+					mat = glm::rotate(mat, glm::radians(10.0f), glm::vec3(1, 0, 0));
+					update = true;
+				}
+				ImGui::Text("y");
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("-##ry", ImVec2(button_size, button_size))) {
+					mat = glm::rotate(mat, glm::radians(-10.0f), glm::vec3(0, 1, 0)); 
+					update = true; 
+				}
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("+##ry", ImVec2(button_size, button_size))) {
+					mat = glm::rotate(mat, glm::radians(10.0f), glm::vec3(0, 1, 0));
+					update = true;
+				}
+				ImGui::Text("z");
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("-##rz", ImVec2(button_size, button_size))) {
+					mat = glm::rotate(mat, glm::radians(-10.0f), glm::vec3(0, 0, 1)); 
+					update = true; 
+				}
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("+##rz", ImVec2(button_size, button_size))) {
+					mat = glm::rotate(mat, glm::radians(10.0f), glm::vec3(0, 0, 1));
+					update = true;
+				}
+
+				ImGui::EndGroup();
+
+				ImGui::SameLine();
+				ImGui::Spacing();
+				ImGui::SameLine();
+
+				// Scaling
+				ImGui::BeginGroup();
+
+				ImGui::Text("Scale");
+				ImGui::Text("x");
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("-##sx", ImVec2(button_size, button_size))) {
+					mat = glm::scale(mat, glm::vec3(0.1, 1.0, 1.0));
+					update = true;
+				}
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("+##sx", ImVec2(button_size, button_size))) {
+					mat = glm::scale(mat, glm::vec3(1.1, 1.0, 1.0));
+					update = true;
+				}
+				ImGui::Text("y");
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("-##sy", ImVec2(button_size, button_size))) {
+					mat = glm::scale(mat, glm::vec3(1.0, 0.9, 1.0));
+					update = true;
+				}
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("+##sy", ImVec2(button_size, button_size))) {
+					mat = glm::scale(mat, glm::vec3(1.0, 1.1, 1.0));
+					update = true;
+				}
+				ImGui::Text("z");
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("-##sz", ImVec2(button_size, button_size))) {
+					mat = glm::scale(mat, glm::vec3(1.0, 1.0, 0.9));
+					update = true;
+				}
+				ImGui::SameLine(0, itemInnerSpacingX);
+				if (ImGui::Button("+##sz", ImVec2(button_size, button_size))) {
+					mat = glm::scale(mat, glm::vec3(1.0, 1.0, 1.1));
+					update = true;
+				}
+
+				ImGui::EndGroup();
+
+				ImGui::PopStyleVar(1);
+
+				ImGui::EndGroup();
+
+				if (update) 
+					updateMatrixUniformBuffer();
+			}
 		}
+
+		//ImGui::ShowStyleEditor();
 
 		return rebuildCmd;
 	}

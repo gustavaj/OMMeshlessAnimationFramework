@@ -606,7 +606,7 @@ void VulkanExampleBase::updateOverlay()
 	ImGui::TextUnformatted(title.c_str());
 	ImGui::TextUnformatted(deviceProperties.deviceName);
 	ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / lastFPS), lastFPS);
-	ImGui::PlotHistogram("Fps", frameTimerHistory.data(), frameTimerHistory.size());
+	//ImGui::PlotHistogram("Fps", frameTimerHistory.data(), frameTimerHistory.size());
 
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 5.0f * UIOverlay.scale));

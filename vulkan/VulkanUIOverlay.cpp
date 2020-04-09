@@ -29,6 +29,8 @@ namespace vks
 		ImGui::CreateContext();
 		// Color scheme
 		ImGuiStyle& style = ImGui::GetStyle();
+		style.FrameRounding = 4;
+		style.FrameBorderSize = 1.0f;
 		style.Colors[ImGuiCol_TitleBg] = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
 		style.Colors[ImGuiCol_TitleBgActive] = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
 		style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(1.0f, 0.0f, 0.0f, 0.1f);
@@ -520,10 +522,9 @@ namespace vks
 		return ImGui::InputFloat3(caption, value, precision);
 	}
 
-	void UIOverlay::listSurfaces(std::vector<std::string> items, int* currItem)
+	void UIOverlay::listSurfaces(std::vector<const char*>& items, int* currItem)
 	{
-		const char* items2[] = { "test", "s", "asdqweqwe", "Patch 0 - p00" };
-		ImGui::ListBox(std::string("Local Surfaces").c_str(), currItem, 
-			items2, static_cast<int>(items.size()), 4);
+		ImGui::ListBox("", currItem, 
+			items.data(), items.size(), 8);
 	}
 }
