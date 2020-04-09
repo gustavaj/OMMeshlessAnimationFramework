@@ -519,4 +519,11 @@ namespace vks
 		//return res;
 		return ImGui::InputFloat3(caption, value, precision);
 	}
+
+	void UIOverlay::listSurfaces(std::vector<std::string> items, int* currItem)
+	{
+		const char* items2[] = { "test", "s", "asdqweqwe", "Patch 0 - p00" };
+		ImGui::ListBox(std::string("Local Surfaces").c_str(), currItem, 
+			items2, static_cast<int>(items.size()), 4);
+	}
 }

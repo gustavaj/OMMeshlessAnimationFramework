@@ -18,13 +18,13 @@
 #include "vulkan/VulkanBuffer.hpp"
 #include "vulkan/VulkanModel.hpp"
 
-#include "lattice/Lattice.h"
+#include "lattice/SWVulkanLattice.h"
 
 class LatticeExample : public VulkanExampleBase
 {
 public:
 
-	std::vector<OML::Lattice> lattices;
+	std::vector<SWVL::SWVulkanLattice> lattices;
 
 	struct {
 		VkBuffer buffer;
@@ -185,7 +185,7 @@ public:
 
 	virtual void createLatticeGeometry()
 	{
-		lattices.push_back(OML::Lattice("Test Lattice"));
+		lattices.push_back(SWVL::SWVulkanLattice("Test Lattice"));
 		lattices.back().addPatch(OML::Vec2f(-5.0f, -5.0f), 10.0f, 10.0f);
 	}
 
@@ -342,7 +342,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(OML::Lattice("Grid Lattice"));
+		lattices.push_back(SWVL::SWVulkanLattice("Grid Lattice"));
 		lattices.back().addGrid(OML::Vec2f(-m_width / 2, -m_height / 2), m_width, m_height, m_rows, m_cols);
 	}
 };
@@ -360,7 +360,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(OML::Lattice("Cylinder Lattice"));
+		lattices.push_back(SWVL::SWVulkanLattice("Cylinder Lattice"));
 		lattices.back().addCylinder(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_height, m_rows, m_cols);
 	}
 };
@@ -378,7 +378,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(OML::Lattice("Sphere Lattice"));
+		lattices.push_back(SWVL::SWVulkanLattice("Sphere Lattice"));
 		lattices.back().addSphere(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_segments, m_slices);
 	}
 };
@@ -393,7 +393,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(OML::Lattice("Non uniform Lattice"));
+		lattices.push_back(SWVL::SWVulkanLattice("Non uniform Lattice"));
 		OML::Vec3f p00(-30, -20, 0), p10(0, -20, 0), p20(10, -20, 0), p30(20, -20, 0);
 		OML::Vec3f p01(-30, 0, 0),	p11(0, 0, 0),	p21(10, 0, 0), p31(20, 0, 0);
 		OML::Vec3f p02(-30, 10, 0),	p12(0, 10, 0),	p22(10, 10, 0), p32(20, 10, 0);
@@ -420,7 +420,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(OML::Lattice("Non-rectangular Lattice"));
+		lattices.push_back(SWVL::SWVulkanLattice("Non-rectangular Lattice"));
 		// Grid where quads have angles != 90
 		lattices[0].addPatch(OML::Vec2f(-6,-15), OML::Vec2f(0,-10), OML::Vec2f(-15,-5), OML::Vec2f(0,0));
 		lattices[0].addPatch(OML::Vec2f(0,-10), OML::Vec2f(5,-6), OML::Vec2f(0,0), OML::Vec2f(10,0));
@@ -444,7 +444,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(OML::Lattice("T-locus Lattice"));
+		lattices.push_back(SWVL::SWVulkanLattice("T-locus Lattice"));
 
 		lattices[0].addPatch(OML::Vec2f(-20.0f, -20.0f), 10.0f, 10.0f);
 		lattices[0].addPatch(OML::Vec2f(-10.0f, -20.0f), 10.0f, 10.0f);
@@ -479,17 +479,17 @@ public:
 	virtual void createLatticeGeometry() override
 	{
 
-		lattices.push_back(OML::Lattice("Grid Lattice"));
+		lattices.push_back(SWVL::SWVulkanLattice("Grid Lattice"));
 		lattices[0].addGrid(OML::Vec2f(-25.0f, -25.0f), 20.0f, 20.0f, 3, 3);
 		lattices[0].induceLattice();
 		lattices[0].initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 
-		lattices.push_back(OML::Lattice("Cylinder Lattice"));
+		lattices.push_back(SWVL::SWVulkanLattice("Cylinder Lattice"));
 		lattices[1].addCylinder(OML::Vec3f(20.0f, 0.0f, -30.0f), 10.0f, 30.0f, 4, 8);
 		lattices[1].induceLattice();
 		lattices[1].initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 
-		lattices.push_back(OML::Lattice("Sphere Lattice"));
+		lattices.push_back(SWVL::SWVulkanLattice("Sphere Lattice"));
 		lattices[2].addSphere(OML::Vec3f(0.0f, -20.0f, 20.0f), 8.0f, 6, 6);
 		lattices[2].induceLattice();
 		lattices[2].initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);

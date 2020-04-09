@@ -91,5 +91,7 @@ namespace vks
 		void text(const char* formatstr, ...);
 		void frameTimeGraph(float frameTime);
 		bool inputVec3(const char* caption, float value[3], float step, uint32_t precision, std::string num = "");
+
+		void listSurfaces(std::vector<std::string> items, int* currItem);
 	};
 }
