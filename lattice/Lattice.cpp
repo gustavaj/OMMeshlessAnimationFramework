@@ -25,10 +25,10 @@ namespace OML
 		for (auto it = vertices_begin(); it != vertices_end(); it++)
 		{
 			auto p = point(*it);
-			if (p == topLeft) tl = *it;
-			if (p == topRight) tr = *it;
-			if (p == bottomLeft) bl = *it;
-			if (p == bottomRight) br = *it;
+			if ((p - topLeft).length() < 1e-5) tl = *it;
+			if ((p - topRight).length() < 1e-5) tr = *it;
+			if ((p - bottomLeft).length() < 1e-5) bl = *it;
+			if ((p - bottomRight).length() < 1e-5) br = *it;
 		}
 
 		if (!tl.is_valid()) tl = add_vertex(topLeft);
@@ -104,18 +104,17 @@ namespace OML
 		std::vector<std::vector<Vec3f>> coords(rows + 1);
 
 		for (size_t i = 0; i < rows + 1; i++) {
-			coords[i] = std::vector<Vec3f>(cols);
+			coords[i] = std::vector<Vec3f>(cols + 1);
 			for (size_t j = 0; j < cols; j++) {
 				float theta = j * d_angle;
 				coords[i][j] = Vec3f(radius * std::cos(theta), dh * i, radius * std::sin(theta)) + center;
 			}
+			coords[i][cols] = coords[i][0];
 		}
 
 		for (size_t i = 0; i < rows; i++) {
-			for (size_t j = 0; j < cols - 1; j++) {
+			for (size_t j = 0; j < cols; j++) {
 				addPatch(coords[i + 1][j], coords[i + 1][j + 1], coords[i][j], coords[i][j + 1]);
-				if (j == (cols - 2))
-					addPatch(coords[i + 1][j + 1], coords[i + 1][0], coords[i][j + 1], coords[i][0]);
 			}
 		}
 	}
@@ -183,7 +182,7 @@ namespace OML
 			else {
 				speed = static_cast<double>(rand() % (int)m_maxSpeed);
 			}
-			m_simulators.push_back(NormalSinSimulator(t, amp, speed, locus.normal));
+			m_simulators.push_back(NormalSinSimulator(0.0, amp, speed, locus.normal));
 		}
 	}
 
@@ -244,6 +243,16 @@ namespace OML
 			valenceProp = valence(vh);
 
 			property(LatticeProperties::VertexValence, vh) = valenceProp;
+
+			LocusType type = LocusType::Unresolved;
+			switch (valenceProp)
+			{
+			case 2: type = LocusType::Corner; break;
+			case 3: type = LocusType::Boundary; break;
+			case 4: type = LocusType::Inner; break;
+			}
+			property(LatticeProperties::Type, vh) = type;
+
 			set_color(vh, LOCUS_VALENCE_COLOR[valenceProp]);
 
 			// Initialize local surface idx to -1
@@ -407,6 +416,7 @@ namespace OML
 	{
 		add_property(LatticeProperties::VertexValence);
 		add_property(LatticeProperties::LocusIndex);
+		add_property(LatticeProperties::Type);
 	}
 
 	void Lattice::addLocus(
@@ -419,7 +429,24 @@ namespace OML
 		locus.vh = vertex;
 		locus.faceMappings = faceMappings;
 		locus.matrixIndex = m_numLoci;
-		locus.normal = Vec3f(0, 0, 1);
+
+		// Find the average normal vector over all the patches for the locus
+		Vec3f p = point(vertex);
+		Vec3f normal = Vec3f(0, 0, 0);
+		auto first_adj_vertex = vv_iter(vertex);
+		auto type = property(LatticeProperties::Type, vertex);
+		bool loopAround = !(type == LocusType::Corner || type == LocusType::Boundary);
+		//Vec3f first_adj_point = point(*first_adj_vertex);
+		for (auto adj_vertex = first_adj_vertex; adj_vertex.is_valid(); ) {
+			Vec3f v1 = (point(*adj_vertex) - p);
+			adj_vertex++;
+			if (!adj_vertex.is_valid() && !loopAround)
+				break;
+			Vec3f next_adj_vertex = adj_vertex.is_valid() ? point(*adj_vertex) : point(*first_adj_vertex);
+			Vec3f v2 = (next_adj_vertex - p);
+			normal += v1 % v2;
+		}
+		locus.normal = normal.normalize();
 
 		property(LatticeProperties::LocusIndex, vertex) = m_numLoci;
 
@@ -506,7 +533,8 @@ namespace OML
 			Vec3f pnp = np;
 			Vec3f pnp_2 = pnp * 0.5f;
 
-			float halfwayPoint = 0.5f + (n.length() / (n - no).length() - 0.5f) / 2;
+			//float halfwayPoint = 0.5f + (n.length() / (n - no).length() - 0.5f) / 2;
+			float halfwayPoint = 0.5f;
 			switch (vertexIndexOnFace) {
 				case 1: { 
 					controlPoints = createLocalSurfaceControlPoints(no, no + pnop_2, no + pnop, zero, p_2, p, n, n + pnp_2, n + pnp);
@@ -551,7 +579,8 @@ namespace OML
 			Vec3f npon = pon;
 			Vec3f npon_2 = npon * 0.5f;
 
-			float halfwayPoint = 0.5f + (p.length() / (p - po).length() - 0.5f) / 2;
+			//float halfwayPoint = 0.5f + (p.length() / (p - po).length() - 0.5f) / 2;
+			float halfwayPoint = 0.5f;
 
 			switch (vertexIndexOnFace) {
 				case 1: { 
@@ -615,9 +644,10 @@ namespace OML
 		auto u46 = u6;
 		auto u35 = u5;
 
-		float halfwayPointU = 0.5f + (u4.length() / (u3 - u4).length() - 0.5f) / 2;
-		float halfwayPointV = 0.5f + (v2.length() / (v1 - v2).length() - 0.5f) / 2;
-
+		//float halfwayPointU = 0.5f + (u4.length() / (u3 - u4).length() - 0.5f) / 2;
+		//float halfwayPointV = 0.5f + (v2.length() / (v1 - v2).length() - 0.5f) / 2;
+		float halfwayPointU = 0.5f;
+		float halfwayPointV = 0.5f;
 		std::vector<Vec3f> controlPoints;
 
 		switch (vertexIndexOnFace) {

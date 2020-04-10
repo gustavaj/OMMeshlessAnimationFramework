@@ -39,9 +39,10 @@ layout(set = 0, binding = 0) uniform LatticeUBO
 	mat4 modelview;
 } latticeUbo;
 
-layout(constant_id = 0) const int numLocalSurfaceControlPoints = 144;
-layout(constant_id = 1) const int numLocalSurfaces = 16;
-layout(constant_id = 2) const int numPatches = 9;
+layout(constant_id = 0) const int numLocalSurfaceControlPoints = 7200;
+layout(constant_id = 1) const int numLocalSurfaces = 800;
+layout(constant_id = 2) const int numPatches = 200;
+const int NUM_CONTROL_POINTS = numLocalSurfaceControlPoints;
 
 layout(set = 0, binding = 1) uniform MatrixUBO
 {
@@ -50,7 +51,7 @@ layout(set = 0, binding = 1) uniform MatrixUBO
 
 layout(set = 0, binding = 2) uniform LocalSurfaceUBO
 {
-	vec3 controlPoints[numLocalSurfaceControlPoints];
+	vec3 controlPoints[NUM_CONTROL_POINTS];
 	BoundaryInfo boundaries[numPatches * 4];
 } localUbo;
 

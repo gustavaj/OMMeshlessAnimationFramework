@@ -569,11 +569,13 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 
 		VK_CHECK_RESULT(m_matrixUniformBuffer.map());
 
+		uint32_t patchUniformBufferSize = sizeof(glm::vec4) * m_numControlPoints + sizeof(OML::BoundaryInfo) * m_numPatches * 4;
+		std::cout << "Patch uniform buffer size: " << patchUniformBufferSize << " bytes" << std::endl;
 		VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			&m_patchUniformBuffer,
-			sizeof(glm::vec4) * m_numControlPoints + sizeof(OML::BoundaryInfo) * m_numPatches * 4
+			patchUniformBufferSize
 		));
 
 		VK_CHECK_RESULT(m_patchUniformBuffer.map());
@@ -885,7 +887,7 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 
 	void SWVulkanLattice::updatePatchUniformBuffer()
 	{
-		std::vector<glm::vec4> patchUniforms;
+		std::vector<glm::vec4> patchUniforms(0);
 		patchUniforms.insert(patchUniforms.end(), m_controlPoints.begin(), m_controlPoints.end());
 		for (auto& boundary : m_boundaries)
 			patchUniforms.push_back(glm::vec4(boundary.us, boundary.ue, boundary.vs, boundary.ve));

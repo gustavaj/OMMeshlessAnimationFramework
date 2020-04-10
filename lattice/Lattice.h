@@ -90,9 +90,14 @@ namespace OML {
 		FaceAttributes(OpenMesh::Attributes::Status); // Use for deleting faces
 	};
 
+	enum class LocusType {
+		Unresolved = 0, Corner, Boundary, Inner, T, T_Terminal
+	};
+
 	namespace LatticeProperties {
 		static OpenMesh::VPropHandleT<size_t> VertexValence;
 		static OpenMesh::VPropHandleT<uint32_t> LocusIndex;
+		static OpenMesh::VPropHandleT<LocusType> Type;
 	};
 
 	const Col3 BOUNDARY_EDGE_COLOR = Col3(0, 0, 0);
