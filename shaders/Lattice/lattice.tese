@@ -39,21 +39,24 @@ layout(set = 0, binding = 0) uniform LatticeUBO
 	mat4 modelview;
 } latticeUbo;
 
-layout(constant_id = 0) const int numLocalSurfaceControlPoints = 7200;
-layout(constant_id = 1) const int numLocalSurfaces = 800;
-layout(constant_id = 2) const int numPatches = 200;
-const int NUM_CONTROL_POINTS = numLocalSurfaceControlPoints;
+layout(constant_id = 0) const int numLocalSurfaceControlPoints = 36000;
+layout(constant_id = 1) const int numLocalSurfaces = 1000;
+layout(constant_id = 2) const int numPatches = 1000;
 
 layout(set = 0, binding = 1) uniform MatrixUBO
 {
 	mat4 matrices[numLocalSurfaces];
 } matrixUbo;
 
-layout(set = 0, binding = 2) uniform LocalSurfaceUBO
+layout(set = 0, binding = 2) buffer ControlPointBuffer
 {
-	vec3 controlPoints[NUM_CONTROL_POINTS];
+	vec3 controlPoints[numLocalSurfaceControlPoints];
+} controlPointBuffer;
+
+layout(set = 0, binding = 3) buffer BoundaryBuffer
+{
 	BoundaryInfo boundaries[numPatches * 4];
-} localUbo;
+} boundaryBuffer;
 
 float bFunction(float w)
 {
@@ -91,7 +94,7 @@ vec3 bezBasisDer(float t) {
 
 Sampler evaluateBiquadraticBezier(LocalSurfaceInfo lsInfo, float u, float v)
 {	
-	BoundaryInfo bi = localUbo.boundaries[lsInfo.boundaryIndex];
+	BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];
 	float local_u = mix(bi.us, bi.ue, u);
 	float local_v = mix(bi.vs, bi.ve, v);
 
@@ -100,9 +103,9 @@ Sampler evaluateBiquadraticBezier(LocalSurfaceInfo lsInfo, float u, float v)
 	vec3 bv = bezBasis(local_v);
 	vec3 bvd = bezBasisDer(local_v);
 	
-	vec3 p00 = localUbo.controlPoints[lsInfo.controlPointIndex + 0], p10 = localUbo.controlPoints[lsInfo.controlPointIndex + 1], p20 = localUbo.controlPoints[lsInfo.controlPointIndex + 2];
-	vec3 p01 = localUbo.controlPoints[lsInfo.controlPointIndex + 3], p11 = localUbo.controlPoints[lsInfo.controlPointIndex + 4], p21 = localUbo.controlPoints[lsInfo.controlPointIndex + 5];
-	vec3 p02 = localUbo.controlPoints[lsInfo.controlPointIndex + 6], p12 = localUbo.controlPoints[lsInfo.controlPointIndex + 7], p22 = localUbo.controlPoints[lsInfo.controlPointIndex + 8];
+	vec3 p00 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 0], p10 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 1], p20 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 2];
+	vec3 p01 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 3], p11 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 4], p21 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 5];
+	vec3 p02 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 6], p12 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 7], p22 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 8];
 	
 	vec3 pos = 
 		p00 * bu[0] * bv[0] + p01 * bu[0] * bv[1] + p02 * bu[0] * bv[2] +
@@ -171,4 +174,6 @@ void main()
 		fac = (fac - 0.5f) * 2.0f;
 		teColor = vec3(1.0f - fac, 1.0f - fac, fac);
 	}
+	
+	teColor = vec3(0.5, 0.0, 0.8);
 }

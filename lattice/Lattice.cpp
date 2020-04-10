@@ -454,7 +454,7 @@ namespace OML
 		m_numLoci++;
 
 		for (auto& p : controlPoints) {
-			m_controlPoints.push_back(glm::vec4(p[0], p[1], p[2], 0.0f));
+			m_controlPoints.push_back(glm::vec4(p[0], p[1], p[2], 1.0f));
 		}
 		//m_patchUniforms.controlPoints.insert(m_patchUniforms.controlPoints.end(), controlPoints.begin(), controlPoints.end());
 		m_numControlPoints += controlPoints.size();

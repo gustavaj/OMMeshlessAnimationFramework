@@ -569,20 +569,27 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 
 		VK_CHECK_RESULT(m_matrixUniformBuffer.map());
 
-		uint32_t patchUniformBufferSize = sizeof(glm::vec4) * m_numControlPoints + sizeof(OML::BoundaryInfo) * m_numPatches * 4;
-		std::cout << "Patch uniform buffer size: " << patchUniformBufferSize << " bytes" << std::endl;
 		VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			&m_patchUniformBuffer,
-			patchUniformBufferSize
+			&m_controlPointBuffer,
+			sizeof(glm::vec4) * m_numControlPoints
 		));
 
-		VK_CHECK_RESULT(m_patchUniformBuffer.map());
+		VK_CHECK_RESULT(m_controlPointBuffer.map());
+
+		VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			&m_boundariesBuffer,
+			sizeof(OML::BoundaryInfo) * m_numPatches * 4
+		));
+
+		VK_CHECK_RESULT(m_boundariesBuffer.map());
 
 		updateLatticeUniformBuffer();
 		updateMatrixUniformBuffer();
-		updatePatchUniformBuffer();
+		uploadStorageBuffers();
 	}
 
 	void SWVulkanLattice::setupDescriptorSetLayouts()
@@ -601,9 +608,13 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
 				1),
 			vks::initializers::descriptorSetLayoutBinding(
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
-				2)
+				2),
+			vks::initializers::descriptorSetLayoutBinding(
+				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+				3)
 		};
 
 		VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(
@@ -833,14 +844,15 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 	{
 		std::vector<VkDescriptorPoolSize> poolSizes =
 		{
-			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3)
+			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2),
+			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2)
 		};
 
 		VkDescriptorPoolCreateInfo descriptorPoolInfo =
 			vks::initializers::descriptorPoolCreateInfo(
 				static_cast<uint32_t>(poolSizes.size()),
 				poolSizes.data(),
-				3);
+				1);
 
 		VK_CHECK_RESULT(vkCreateDescriptorPool(*m_device, &descriptorPoolInfo, nullptr, m_descriptorPool));
 	}
@@ -867,9 +879,14 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 				&m_matrixUniformBuffer.descriptor),
 			vks::initializers::writeDescriptorSet(
 				m_descriptorSet,
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 				2,
-				&m_patchUniformBuffer.descriptor),
+				&m_controlPointBuffer.descriptor),
+			vks::initializers::writeDescriptorSet(
+				m_descriptorSet,
+				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				3,
+				&m_boundariesBuffer.descriptor)
 		};
 
 		vkUpdateDescriptorSets(*m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
@@ -885,14 +902,13 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 		memcpy(m_matrixUniformBuffer.mapped, &m_matrices[0][0], sizeof(glm::mat4) * m_numLoci);
 	}
 
-	void SWVulkanLattice::updatePatchUniformBuffer()
+	void SWVulkanLattice::uploadStorageBuffers()
 	{
-		std::vector<glm::vec4> patchUniforms(0);
-		patchUniforms.insert(patchUniforms.end(), m_controlPoints.begin(), m_controlPoints.end());
-		for (auto& boundary : m_boundaries)
-			patchUniforms.push_back(glm::vec4(boundary.us, boundary.ue, boundary.vs, boundary.ve));
-		memcpy(m_patchUniformBuffer.mapped, &patchUniforms[0],
-			sizeof(glm::vec4) * m_numControlPoints + sizeof(OML::BoundaryInfo) * m_numPatches * 4);
+		memcpy(m_controlPointBuffer.mapped, &m_controlPoints[0],
+			sizeof(glm::vec4) * m_numControlPoints);
+
+		memcpy(m_boundariesBuffer.mapped, &m_boundaries[0].us,
+			sizeof(OML::BoundaryInfo) * m_numPatches * 4);
 	}
 
 	void SWVulkanLattice::setupQueryResultBuffer()

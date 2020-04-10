@@ -132,7 +132,7 @@ namespace SWVL
 		void setupDescriptorSets();
 		void updateLatticeUniformBuffer();
 		void updateMatrixUniformBuffer();
-		void updatePatchUniformBuffer();
+		void uploadStorageBuffers();
 		void setupQueryResultBuffer();
 		void getQueryResults();
 
@@ -155,7 +155,8 @@ namespace SWVL
 		// Uniform buffers
 		vks::Buffer m_latticeUniformBuffer;
 		vks::Buffer m_matrixUniformBuffer;
-		vks::Buffer m_patchUniformBuffer;
+		vks::Buffer m_controlPointBuffer;
+		vks::Buffer m_boundariesBuffer;
 
 		// Pipelines and descriptor set stuff
 		VkPipeline m_pointsPipeline;

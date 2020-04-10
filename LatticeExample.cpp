@@ -50,11 +50,13 @@ public:
 	virtual void getEnabledFeatures() {
 		// Tessellation shader support is required for this example
 		if (deviceFeatures.tessellationShader && deviceFeatures.geometryShader &&
-			deviceFeatures.fillModeNonSolid && deviceFeatures.pipelineStatisticsQuery) {
+			deviceFeatures.fillModeNonSolid && deviceFeatures.pipelineStatisticsQuery &&
+			deviceFeatures.vertexPipelineStoresAndAtomics) {
 			enabledFeatures.tessellationShader = VK_TRUE;
 			enabledFeatures.geometryShader = VK_TRUE;
 			enabledFeatures.fillModeNonSolid = VK_TRUE;
 			enabledFeatures.pipelineStatisticsQuery = VK_TRUE;
+			enabledFeatures.vertexPipelineStoresAndAtomics = VK_TRUE;
 		}
 		else {
 			vks::tools::exitFatal("Selected GPU does not support tessellation shaders!", VK_ERROR_FEATURE_NOT_PRESENT);
