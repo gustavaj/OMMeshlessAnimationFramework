@@ -27,6 +27,7 @@ namespace SWVL
 			: controlPointIndex(controlPointIndex), controlPointCount(controlPointCount),
 			matrixIndex(matrixIndex), boundaryIndex(boundaryIndex) {}
 		uint32_t controlPointIndex, controlPointCount, matrixIndex, boundaryIndex;
+		glm::vec3 color;
 
 		static std::vector<VkVertexInputBindingDescription> GetBindingDescriptions()
 		{
@@ -41,11 +42,15 @@ namespace SWVL
 		static std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptions()
 		{
 			std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {};
-			attributeDescriptions.resize(1);
+			attributeDescriptions.resize(2);
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
 			attributeDescriptions[0].format = VK_FORMAT_R32G32B32A32_UINT;
 			attributeDescriptions[0].offset = offsetof(LocalSurfaceVertex, controlPointIndex);
+			attributeDescriptions[1].binding = 0;
+			attributeDescriptions[1].location = 1;
+			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[1].offset = offsetof(LocalSurfaceVertex, color);
 
 			return attributeDescriptions;
 		}

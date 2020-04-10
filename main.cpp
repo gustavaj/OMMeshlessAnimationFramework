@@ -18,7 +18,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow)
 {
-	std::cerr << "qwe" << std::endl;
+	std::cerr << "asd" << std::endl;
 	for (size_t i = 0; i < __argc; i++) { LatticeExample::args.push_back(__argv[i]); };
 	
 	// Base example
@@ -28,7 +28,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	example = new GridLatticeExample(true, 100.0f, 100.0f, 10, 10);
 	
 	// Cylinder Example
-	//example = new CylinderLatticeExample(true, 20.0f, 50.0f, 4, 8);
+	//example = new CylinderLatticeExample(true, 20.0f, 50.0f, 8, 12);
 	
 	// Sphere Example
 	//example = new SphereLatticeExample(true, 20.0f, 8, 8);

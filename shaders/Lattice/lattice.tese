@@ -25,6 +25,7 @@ const int B2Poly = 1;
 const int Lerbs = 2;
 
 layout(location = 0) in LocalSurfaceInfo tcLSInfo[];
+layout(location = 4) in vec3[] tcColor;
 
 layout(location = 0) out vec3 teColor;
 layout(location = 1) out vec3 teNormal;
@@ -165,15 +166,15 @@ void main()
 	tePosition = vec3(latticeUbo.modelview * vec4(pos, 1.0f));
 	teNormal = normalize(cross(dpdu, dpdv));
 	
-	float fac = gl_PrimitiveID / float(numPatches);
-	if(fac < 0.5f) {
-		fac = fac * 2.0f;
-		teColor = vec3(1.0f - fac, fac, 0.0f);
-	}
-	else if (fac < 1.0f){
-		fac = (fac - 0.5f) * 2.0f;
-		teColor = vec3(1.0f - fac, 1.0f - fac, fac);
-	}
+	// float fac = gl_PrimitiveID / float(numPatches);
+	// if(fac < 0.5f) {
+		// fac = fac * 2.0f;
+		// teColor = vec3(1.0f - fac, fac, 0.0f);
+	// }
+	// else if (fac < 1.0f){
+		// fac = (fac - 0.5f) * 2.0f;
+		// teColor = vec3(1.0f - fac, 1.0f - fac, fac);
+	// }
 	
-	teColor = vec3(0.5, 0.0, 0.8);
+	teColor = tcColor[0];
 }

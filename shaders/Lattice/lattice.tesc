@@ -11,8 +11,10 @@ struct LocalSurfaceInfo
 layout(vertices = 4) out;
 
 layout(location = 0) in LocalSurfaceInfo[] vLSInfo;
+layout(location = 4) in vec3[] vColor;
 
 layout(location = 0) out LocalSurfaceInfo[] tcLSInfo;
+layout(location = 4) out vec3[] tcColor;
 
 layout(set = 0, binding = 0) uniform LatticeUBO
 {
@@ -26,6 +28,7 @@ layout(set = 0, binding = 0) uniform LatticeUBO
 void main()
 {
     tcLSInfo[gl_InvocationID] = vLSInfo[gl_InvocationID];
+	tcColor[gl_InvocationID] = vColor[gl_InvocationID];
 
 	if(gl_InvocationID == 0) {
 		gl_TessLevelInner[0] = latticeUbo.tessInnerLevel;

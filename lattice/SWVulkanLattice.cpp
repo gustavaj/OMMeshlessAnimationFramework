@@ -20,9 +20,6 @@ namespace SWVL
 
 	SWVulkanLattice::~SWVulkanLattice()
 	{
-		if (!m_destroyed) {
-			destroyVulkanStuff();
-		}
 	}
 
 	void SWVulkanLattice::initVulkanStuff(VkDevice* device, vks::VulkanDevice* vulkanDevice, VkQueue* queue, VkCommandPool* commandPool, VkDescriptorPool* descriptorPool, VkRenderPass* renderPass, VkAllocationCallbacks* allocator)
@@ -44,6 +41,7 @@ namespace SWVL
 		setupDescriptorSets();
 
 		m_listItems.resize(0);
+		m_listItems.push_back(m_name);
 		for (size_t i = 0; i < m_numPatches; i++)
 		{
 			auto idx = std::to_string(i);
@@ -182,7 +180,7 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 	void SWVulkanLattice::onViewChanged(glm::mat4 projection, glm::mat4 view)
 	{
 		m_uniforms.projection = projection;
-		m_uniforms.modelview = view;
+		m_view = view;
 		updateLatticeUniformBuffer();
 	}
 
@@ -221,14 +219,23 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 					if (overlay->sliderInt("TessInner", &m_uniforms.tessInner, 0, 64)) updateLatticeUniformBuffer();
 					if (overlay->sliderInt("TessOuter", &m_uniforms.tessOuter, 0, 64)) updateLatticeUniformBuffer();
 				}
+				ImGui::Separator();
 				if (overlay->comboBox("B-Function", &m_uniforms.bFunctionIndex, BFunctionNames)) updateLatticeUniformBuffer();
+				ImGui::Separator();
 				overlay->checkBox("Animate", &m_animate);
 				if (m_animate) {
-					if (overlay->sliderFloat("Min amp", &m_minAmp, 0.0, 20.0));
-					if (overlay->sliderFloat("Max amp", &m_maxAmp, 0.0, 20.0));
-					if (overlay->sliderFloat("Min speed", &m_minSpeed, 0.0, 50.0));
-					if (overlay->sliderFloat("Max speed", &m_maxSpeed, 0.0, 50.0));
-					if (overlay->button("Update sim")) addNormalSinSimulation();
+					overlay->comboBox("Simulator", &m_simulatorIndex, OML::SIMULATOR_NAMES);
+					if (m_simulatorIndex != 0) {
+						if (overlay->sliderFloat("Min amp", &m_minAmp, 0.0, 20.0));
+						if (overlay->sliderFloat("Max amp", &m_maxAmp, 0.0, 20.0));
+						if (overlay->sliderFloat("Min speed", &m_minSpeed, 0.0, 50.0));
+						if (overlay->sliderFloat("Max speed", &m_maxSpeed, 0.0, 50.0));
+					}
+					if (overlay->button("Update")) {
+						if (m_simulatorIndex == 0) removeSimulator();
+						else if (m_simulatorIndex == 1) addNormalSinSimulation();
+					}
+					ImGui::Separator();
 				}
 			}
 
@@ -266,8 +273,14 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 				std::vector<const char*> items(m_listItems.size());
 				for (size_t i = 0; i < m_listItems.size(); i++) items[i] = m_listItems[i].c_str();
 				ImGui::ListBox("", &m_selectedSurface, items.data(), items.size(), 9);
-				int matIdx = m_loci[m_patches[m_selectedSurface / 4].lociIndices[m_selectedSurface % 4]].matrixIndex;
-				auto& mat = m_matrices[matIdx];
+				glm::mat4* mat;
+				if (m_selectedSurface == 0) {
+					mat = &m_matrix;
+				}
+				else {
+					int matIdx = m_loci[m_patches[(m_selectedSurface - 1) / 4].lociIndices[(m_selectedSurface - 1) % 4]].matrixIndex;
+					mat = &m_matrices[matIdx];
+				}
 
 				bool update = false;
 
@@ -283,9 +296,9 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 				ImGui::BeginGroup();
 
 				ImGui::Text("Translate");
-				if (ImGui::InputFloat("x", &mat[3][0], 0.5f, 1.0f, "%.1f")) update = true;
-				if (ImGui::InputFloat("y", &mat[3][1], 0.5f, 1.0f, "%.1f")) update = true;
-				if (ImGui::InputFloat("z", &mat[3][2], 0.5f, 1.0f, "%.1f")) update = true;
+				if (ImGui::InputFloat("x", &(*mat)[3][0], 0.5f, 1.0f, "%.1f")) update = true;
+				if (ImGui::InputFloat("y", &(*mat)[3][1], 0.5f, 1.0f, "%.1f")) update = true;
+				if (ImGui::InputFloat("z", &(*mat)[3][2], 0.5f, 1.0f, "%.1f")) update = true;
 
 				ImGui::EndGroup();
 
@@ -300,34 +313,34 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 				ImGui::Text("x");
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("-##rx", ImVec2(button_size, button_size))) {
-					mat = glm::rotate(mat, glm::radians(-10.0f), glm::vec3(1, 0, 0)); 
+					(*mat) = glm::rotate((*mat), glm::radians(-10.0f), glm::vec3(1, 0, 0));
 					update = true; 
 				}
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("+##rx", ImVec2(button_size, button_size))) {
-					mat = glm::rotate(mat, glm::radians(10.0f), glm::vec3(1, 0, 0));
+					(*mat) = glm::rotate((*mat), glm::radians(10.0f), glm::vec3(1, 0, 0));
 					update = true;
 				}
 				ImGui::Text("y");
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("-##ry", ImVec2(button_size, button_size))) {
-					mat = glm::rotate(mat, glm::radians(-10.0f), glm::vec3(0, 1, 0)); 
+					(*mat) = glm::rotate((*mat), glm::radians(-10.0f), glm::vec3(0, 1, 0));
 					update = true; 
 				}
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("+##ry", ImVec2(button_size, button_size))) {
-					mat = glm::rotate(mat, glm::radians(10.0f), glm::vec3(0, 1, 0));
+					(*mat) = glm::rotate((*mat), glm::radians(10.0f), glm::vec3(0, 1, 0));
 					update = true;
 				}
 				ImGui::Text("z");
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("-##rz", ImVec2(button_size, button_size))) {
-					mat = glm::rotate(mat, glm::radians(-10.0f), glm::vec3(0, 0, 1)); 
+					(*mat) = glm::rotate((*mat), glm::radians(-10.0f), glm::vec3(0, 0, 1));
 					update = true; 
 				}
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("+##rz", ImVec2(button_size, button_size))) {
-					mat = glm::rotate(mat, glm::radians(10.0f), glm::vec3(0, 0, 1));
+					(*mat) = glm::rotate((*mat), glm::radians(10.0f), glm::vec3(0, 0, 1));
 					update = true;
 				}
 
@@ -344,34 +357,34 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 				ImGui::Text("x");
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("-##sx", ImVec2(button_size, button_size))) {
-					mat = glm::scale(mat, glm::vec3(0.9, 1.0, 1.0));
+					(*mat) = glm::scale((*mat), glm::vec3(0.9, 1.0, 1.0));
 					update = true;
 				}
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("+##sx", ImVec2(button_size, button_size))) {
-					mat = glm::scale(mat, glm::vec3(1.1, 1.0, 1.0));
+					(*mat) = glm::scale((*mat), glm::vec3(1.1, 1.0, 1.0));
 					update = true;
 				}
 				ImGui::Text("y");
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("-##sy", ImVec2(button_size, button_size))) {
-					mat = glm::scale(mat, glm::vec3(1.0, 0.9, 1.0));
+					(*mat) = glm::scale((*mat), glm::vec3(1.0, 0.9, 1.0));
 					update = true;
 				}
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("+##sy", ImVec2(button_size, button_size))) {
-					mat = glm::scale(mat, glm::vec3(1.0, 1.1, 1.0));
+					(*mat) = glm::scale((*mat), glm::vec3(1.0, 1.1, 1.0));
 					update = true;
 				}
 				ImGui::Text("z");
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("-##sz", ImVec2(button_size, button_size))) {
-					mat = glm::scale(mat, glm::vec3(1.0, 1.0, 0.9));
+					(*mat) = glm::scale((*mat), glm::vec3(1.0, 1.0, 0.9));
 					update = true;
 				}
 				ImGui::SameLine(0, itemInnerSpacingX);
 				if (ImGui::Button("+##sz", ImVec2(button_size, button_size))) {
-					mat = glm::scale(mat, glm::vec3(1.0, 1.0, 1.1));
+					(*mat) = glm::scale((*mat), glm::vec3(1.0, 1.0, 1.1));
 					update = true;
 				}
 
@@ -381,8 +394,10 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 
 				ImGui::EndGroup();
 
-				if (update) 
-					updateMatrixUniformBuffer();
+				if (update) {
+					if (m_selectedSurface == 0) updateLatticeUniformBuffer();
+					else updateMatrixUniformBuffer();
+				}
 			}
 		}
 
@@ -409,6 +424,7 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 		localVert00.controlPointCount = locus00.controlPointCount;
 		localVert00.matrixIndex = locus00.matrixIndex;
 		localVert00.boundaryIndex = m_boundaries.size() - 4;
+		localVert00.color = patch.color;
 		m_patchVertices.push_back(localVert00);
 
 		LocalSurfaceVertex localVert10;
@@ -416,6 +432,7 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 		localVert10.controlPointCount = locus10.controlPointCount;
 		localVert10.matrixIndex = locus10.matrixIndex;
 		localVert10.boundaryIndex = m_boundaries.size() - 3;
+		localVert10.color = patch.color;
 		m_patchVertices.push_back(localVert10);
 
 		LocalSurfaceVertex localVert01;
@@ -423,6 +440,7 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 		localVert01.controlPointCount = locus01.controlPointCount;
 		localVert01.matrixIndex = locus01.matrixIndex;
 		localVert01.boundaryIndex = m_boundaries.size() - 2;
+		localVert01.color = patch.color;
 		m_patchVertices.push_back(localVert01);
 
 		LocalSurfaceVertex localVert11;
@@ -430,6 +448,7 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 		localVert11.controlPointCount = locus11.controlPointCount;
 		localVert11.matrixIndex = locus11.matrixIndex;
 		localVert11.boundaryIndex = m_boundaries.size() - 1;
+		localVert11.color = patch.color;
 		m_patchVertices.push_back(localVert11);
 	}
 
@@ -895,6 +914,7 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 
 	void SWVulkanLattice::updateLatticeUniformBuffer()
 	{
+		m_uniforms.modelview = m_view * m_matrix;
 		memcpy(m_latticeUniformBuffer.mapped, &m_uniforms, sizeof(m_uniforms));
 	}
 

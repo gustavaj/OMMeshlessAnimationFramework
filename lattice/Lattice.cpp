@@ -10,7 +10,7 @@ namespace OML
 	}
 
 	Lattice::Lattice(std::string name)
-		: m_name(name)
+		: m_name(name), m_matrix(1.0f), m_color(0.8f, 0.2f, 0.4f)
 	{
 		addLatticeProperties();
 	}
@@ -155,7 +155,7 @@ namespace OML
 		}
 	}
 
-	void Lattice::removeNormalSinSimulation()
+	void Lattice::removeSimulator()
 	{
 		m_simulators.resize(0);
 		resetMatrices();
@@ -171,13 +171,13 @@ namespace OML
 			double t = static_cast<double>(rand() % 100);
 			double amp, speed;
 			if (m_maxAmp > m_minAmp) {
-				amp = m_minAmp + static_cast<double>(rand() % (int)(m_maxAmp - m_minAmp));
+				amp = m_minAmp + static_cast<double>(rand() % std::max(1, (int)(m_maxAmp - m_minAmp)));
 			}
 			else {
 				amp = static_cast<double>(rand() % (int)m_maxAmp);
 			}
 			if (m_maxSpeed > m_minSpeed) {
-				speed = m_minSpeed + static_cast<double>(rand() % (int)(m_maxSpeed - m_minSpeed));
+				speed = m_minSpeed + static_cast<double>(rand() % std::max(1, (int)(m_maxSpeed - m_minSpeed)));
 			}
 			else {
 				speed = static_cast<double>(rand() % (int)m_maxSpeed);
@@ -399,6 +399,20 @@ namespace OML
 				property(LatticeProperties::LocusIndex, vh4)
 			};
 			patch.fh = fh;
+			if (m_usePerPatchColors) {
+				float fac = (float)m_numPatches / (float)n_faces();
+				if (fac < 0.5f) {
+					fac *= 2.0f;
+					patch.color = glm::vec3(1.0f - fac, fac, 0.0f);
+				}
+				else {
+					fac = (fac - 0.5f) * 2.0f;
+					patch.color = glm::vec3(1.0f - fac, 1.0f - fac, fac);
+				}
+			}
+			else {
+				patch.color = m_color;
+			}
 			m_patches.push_back(std::move(patch));
 
 			m_boundaries.push_back(m_loci[patch.lociIndices[0]].faceMappings[fh]);

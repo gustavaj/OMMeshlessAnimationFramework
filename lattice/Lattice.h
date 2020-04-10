@@ -14,6 +14,13 @@ namespace OML {
 	using Vec3f = OpenMesh::Vec3f;
 	using Col3 = OpenMesh::Vec3uc;
 
+	enum class SimulatorTypes {
+		None = 0, NormalSin
+	};
+	const std::vector<std::string> SIMULATOR_NAMES = {
+		"None", "NormalSin"
+	};
+
 	class NormalSinSimulator {
 	public:
 		NormalSinSimulator() : NormalSinSimulator(0.0, 0.0, 0.0, Vec3f(0.0f)) {}
@@ -68,6 +75,7 @@ namespace OML {
 
 	struct Patch
 	{
+		glm::vec3 color;
 		std::array<size_t, 4> lociIndices;
 		OpenMesh::FaceHandle fh;
 	};
@@ -134,7 +142,7 @@ namespace OML {
 
 		/* Add a simulator to the patches */
 		void addNormalSinSimulation();
-		void removeNormalSinSimulation();
+		void removeSimulator();
 		/* Update */
 		void update(double dt);
 
@@ -165,6 +173,15 @@ namespace OML {
 		/* Set the b function to be used */
 		void setBFunction(BFunctionType bFunction) { 
 			m_uniforms.bFunctionIndex = static_cast<int>(bFunction); }
+		/* Set the matrix */
+		void setMatrix(glm::mat4 matrix) { m_matrix = matrix; }
+		/* Use different colors per patch */
+		void setPerPatchColors(bool usePerPatchColors) { m_usePerPatchColors = usePerPatchColors; }
+		/* Set color to be used for every patch, if perPatchColors = false */
+		void setPatchColor(glm::vec3 color) { m_color = color; }
+
+		// Getter
+		std::string name() { return m_name; }
 
 	protected:
 		virtual void setupLocalSurfaceVertex(Locus& locus) = 0;
@@ -175,6 +192,11 @@ namespace OML {
 
 		// Lattice stuff
 		std::string m_name;
+		glm::mat4 m_matrix;
+		glm::mat4 m_view;
+
+		glm::vec3 m_color;
+		bool m_usePerPatchColors = false;
 
 		bool m_draw = true;
 		bool m_animate = false;

@@ -20,11 +20,26 @@
 
 #include "lattice/SWVulkanLattice.h"
 
+const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere" };
+
+using Lattice = SWVL::SWVulkanLattice;
+
 class LatticeExample : public VulkanExampleBase
 {
 public:
 
-	std::vector<SWVL::SWVulkanLattice> lattices;
+	std::vector<Lattice> lattices;
+	int latticeCreateTypeIndex = 0;
+	int c_rows = 2, c_cols = 2;
+	float c_width = 10.0f, c_height = 10.0f;
+	glm::vec3 c_pos = glm::vec3(0.0f);
+	glm::vec3 c_rot = glm::vec3(0.0f);
+	glm::vec3 c_col = glm::vec3(0.8f, 0.2f, 0.5f);
+	int latticeIdx = 0;
+	int latticeDeleteIdx = 0;
+	std::vector<std::string> latticeNames;
+	char latticeName[64] = "Lattice";
+	bool perPatchColors = false;
 
 	LatticeExample(bool enableValidation)
 		: VulkanExampleBase(enableValidation)
@@ -79,8 +94,6 @@ public:
 
 	virtual void createLatticeGeometry()
 	{
-		lattices.push_back(SWVL::SWVulkanLattice("Test Lattice"));
-		lattices.back().addPatch(OML::Vec2f(-5.0f, -5.0f), 10.0f, 10.0f);
 	}
 
 	void reBuildCommangBuffers() {
@@ -181,7 +194,132 @@ public:
 		}
 	}
 
+	void addLattice(Lattice& lattice) 
+	{
+		lattice.setName(lattice.name() + "##" + std::to_string(latticeIdx));
+		lattice.induceLattice();
+		lattice.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		lattice.onViewChanged(camera.matrices.perspective, camera.matrices.view);
+		lattices.push_back(std::move(lattice));
+		latticeNames.push_back(lattice.name());
+		latticeIdx++;
+		reBuildCommangBuffers();
+	}
+
+	void removeLattice(std::string name)
+	{
+		vkQueueWaitIdle(queue);
+		for (auto lat_it = lattices.begin(); lat_it != lattices.end(); lat_it++)
+		{
+			if (lat_it->name() == name)
+			{
+				lat_it->destroyVulkanStuff();
+				lattices.erase(lat_it);
+				break;
+			}
+		}
+		for (auto lat_name_it = latticeNames.begin(); lat_name_it != latticeNames.end(); lat_name_it++)
+		{
+			if ((*lat_name_it) == name)
+			{
+				latticeNames.erase(lat_name_it);
+				break;
+			}
+		}
+	}
+
 	virtual void OnUpdateUIOverlay(vks::UIOverlay* overlay) {
+		// Lattice creation
+		if (overlay->header("Add/Delete", false))
+		{
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5.0f, 1.0f));
+
+
+			ImGui::BeginGroup();
+
+			overlay->comboBox("Type", &latticeCreateTypeIndex, LATTICE_TYPES);
+			ImGui::InputText("Name", latticeName, IM_ARRAYSIZE(latticeName));
+
+			if (latticeCreateTypeIndex == 0)
+			{
+				overlay->sliderFloat("width", &c_width, 10.0f, 100.0f);
+				overlay->sliderFloat("height", &c_height, 10.0f, 100.0f);
+				overlay->sliderInt("rows", &c_rows, 1, 31);
+				overlay->sliderInt("cols", &c_cols, 1, 31);
+			}
+			if (latticeCreateTypeIndex == 1)
+			{
+				overlay->sliderFloat("radius", &c_width, 10.0f, 100.0f);
+				overlay->sliderFloat("height", &c_height, 10.0f, 100.0f);
+				overlay->sliderInt("slices", &c_rows, 4, 30);
+				overlay->sliderInt("segments", &c_cols, 4, 30);
+			}
+			if (latticeCreateTypeIndex == 2)
+			{
+				overlay->sliderFloat("radius", &c_width, 10.0f, 100.0f);
+				overlay->sliderInt("slices", &c_rows, 4, 30);
+				overlay->sliderInt("segments", &c_cols, 4, 30);
+				ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
+			}
+
+			overlay->checkBox("Per patch colors", &perPatchColors);
+			if (!perPatchColors) {
+				ImGui::ColorEdit3("Color", &c_col[0]);
+			}
+
+			ImGui::EndGroup();
+			ImGui::SameLine();
+			ImGui::BeginGroup();
+
+			ImGui::Text("Translate");
+			ImGui::InputFloat("x##t", &c_pos[0], 0.5f, 1.0f, "%.1f");
+			ImGui::InputFloat("y##t", &c_pos[1], 0.5f, 1.0f, "%.1f");
+			ImGui::InputFloat("z##t", &c_pos[2], 0.5f, 1.0f, "%.1f");
+
+			ImGui::Text("Rotation");
+			ImGui::InputFloat("x##r", &c_rot[0], 1.0f, 1.0f, "%.1f");
+			ImGui::InputFloat("y##r", &c_rot[1], 1.0f, 1.0f, "%.1f");
+			ImGui::InputFloat("z##r", &c_rot[2], 1.0f, 1.0f, "%.1f");
+
+			ImGui::EndGroup();
+
+			if (overlay->button("Add"))
+			{
+				Lattice lat;
+				lat.setName(std::string(latticeName));
+				glm::mat4 mat = glm::translate(glm::mat4(1.0f), c_pos);
+				if (c_rot[2] != 0.0f) mat = glm::rotate(mat, c_rot[2], glm::vec3(0, 0, 1));
+				if (c_rot[1] != 0.0f) mat = glm::rotate(mat, c_rot[1], glm::vec3(0, 1, 0));
+				if (c_rot[0] != 0.0f) mat = glm::rotate(mat, c_rot[0], glm::vec3(1, 0, 0));
+				lat.setMatrix(mat);
+				lat.setPerPatchColors(perPatchColors);
+				lat.setPatchColor(c_col);
+				if (latticeCreateTypeIndex == 0) {
+					lat.addGrid(OML::Vec2f(-c_width / 2, -c_height / 2), c_width, c_height, c_rows, c_cols);
+				}
+				else if (latticeCreateTypeIndex == 1) {
+					lat.addCylinder(OML::Vec3f(0.0f), c_width, c_height, c_rows, c_cols);
+				}
+				else if (latticeCreateTypeIndex == 2) {
+					lat.addSphere(OML::Vec3f(0.0f), c_width, c_rows, c_cols);
+				}
+				addLattice(lat);
+			}
+
+			if (!latticeNames.empty())
+			{
+				ImGui::Separator();
+				overlay->comboBox("", &latticeDeleteIdx, latticeNames);
+				ImGui::SameLine();
+				if (overlay->button("Delete"))
+				{
+					removeLattice(latticeNames[latticeDeleteIdx]);
+				}
+			}
+
+			ImGui::PopStyleVar(1);
+		}
+		
 		for (auto& lat : lattices)
 		{
 			if (lat.onUpdateUIOverlay(overlay)) {
@@ -205,8 +343,10 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(SWVL::SWVulkanLattice("Grid Lattice"));
-		lattices.back().addGrid(OML::Vec2f(-m_width / 2, -m_height / 2), m_width, m_height, m_rows, m_cols);
+		Lattice lat("Grid Lattice");
+		lat.setPerPatchColors(true);
+		lat.addGrid(OML::Vec2f(-m_width / 2, -m_height / 2), m_width, m_height, m_rows, m_cols);
+		addLattice(lat);
 	}
 };
 
@@ -223,8 +363,10 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(SWVL::SWVulkanLattice("Cylinder Lattice"));
-		lattices.back().addCylinder(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_height, m_rows, m_cols);
+		Lattice lat("Cylinder Lattice");
+		lat.setPerPatchColors(true);
+		lat.addCylinder(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_height, m_rows, m_cols);
+		addLattice(lat);
 	}
 };
 
@@ -241,8 +383,10 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(SWVL::SWVulkanLattice("Sphere Lattice"));
-		lattices.back().addSphere(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_segments, m_slices);
+		Lattice lat("Sphere Lattice");
+		lat.setPerPatchColors(true);
+		lat.addSphere(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_segments, m_slices);
+		addLattice(lat);
 	}
 };
 
@@ -256,20 +400,22 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(SWVL::SWVulkanLattice("Non uniform Lattice"));
+		Lattice lat("Non uniform Lattice");
+		lat.setPerPatchColors(true);
 		OML::Vec3f p00(-30, -20, 0), p10(0, -20, 0), p20(10, -20, 0), p30(20, -20, 0);
 		OML::Vec3f p01(-30, 0, 0),	p11(0, 0, 0),	p21(10, 0, 0), p31(20, 0, 0);
 		OML::Vec3f p02(-30, 10, 0),	p12(0, 10, 0),	p22(10, 10, 0), p32(20, 10, 0);
 		OML::Vec3f p03(-30, 20, 0),	p13(0, 20, 0),	p23(10, 20, 0), p33(20, 20, 0);
-		lattices[0].addPatch(p00, p10, p01, p11);
-		lattices[0].addPatch(p10, p20, p11, p21);
-		lattices[0].addPatch(p20, p30, p21, p31);
-		lattices[0].addPatch(p01, p11, p02, p12);
-		lattices[0].addPatch(p11, p21, p12, p22);
-		lattices[0].addPatch(p21, p31, p22, p32);
-		lattices[0].addPatch(p02, p12, p03, p13);
-		lattices[0].addPatch(p12, p22, p13, p23);
-		lattices[0].addPatch(p22, p32, p23, p33);
+		lat.addPatch(p00, p10, p01, p11);
+		lat.addPatch(p10, p20, p11, p21);
+		lat.addPatch(p20, p30, p21, p31);
+		lat.addPatch(p01, p11, p02, p12);
+		lat.addPatch(p11, p21, p12, p22);
+		lat.addPatch(p21, p31, p22, p32);
+		lat.addPatch(p02, p12, p03, p13);
+		lat.addPatch(p12, p22, p13, p23);
+		lat.addPatch(p22, p32, p23, p33);
+		addLattice(lat);
 	}
 };
 
@@ -283,17 +429,19 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(SWVL::SWVulkanLattice("Non-rectangular Lattice"));
+		Lattice lat("Non-rectangular Lattice");
+		lat.setPerPatchColors(true);
 		// Grid where quads have angles != 90
-		lattices[0].addPatch(OML::Vec2f(-6,-15), OML::Vec2f(0,-10), OML::Vec2f(-15,-5), OML::Vec2f(0,0));
-		lattices[0].addPatch(OML::Vec2f(0,-10), OML::Vec2f(5,-6), OML::Vec2f(0,0), OML::Vec2f(10,0));
-		lattices[0].addPatch(OML::Vec2f(5, -6), OML::Vec2f(17,-5), OML::Vec2f(10,0), OML::Vec2f(14,-1));
-		lattices[0].addPatch(OML::Vec2f(-15,-5), OML::Vec2f(0,0), OML::Vec2f(-5,13), OML::Vec2f(2,10));
-		lattices[0].addPatch(OML::Vec2f(0,0), OML::Vec2f(10,0), OML::Vec2f(2,10), OML::Vec2f(10,10));
-		lattices[0].addPatch(OML::Vec2f(10, 0), OML::Vec2f(14, -1), OML::Vec2f(10, 10), OML::Vec2f(20, 10));
-		lattices[0].addPatch(OML::Vec2f(-5, 13), OML::Vec2f(2, 10), OML::Vec2f(-8, 20), OML::Vec2f(2, 20));
-		lattices[0].addPatch(OML::Vec2f(2, 10), OML::Vec2f(10, 10), OML::Vec2f(2, 20), OML::Vec2f(10, 15));
-		lattices[0].addPatch(OML::Vec2f(10, 10), OML::Vec2f(20, 10), OML::Vec2f(10, 15), OML::Vec2f(15, 18));
+		lat.addPatch(OML::Vec2f(-6,-15), OML::Vec2f(0,-10), OML::Vec2f(-15,-5), OML::Vec2f(0,0));
+		lat.addPatch(OML::Vec2f(0,-10), OML::Vec2f(5,-6), OML::Vec2f(0,0), OML::Vec2f(10,0));
+		lat.addPatch(OML::Vec2f(5, -6), OML::Vec2f(17,-5), OML::Vec2f(10,0), OML::Vec2f(14,-1));
+		lat.addPatch(OML::Vec2f(-15,-5), OML::Vec2f(0,0), OML::Vec2f(-5,13), OML::Vec2f(2,10));
+		lat.addPatch(OML::Vec2f(0,0), OML::Vec2f(10,0), OML::Vec2f(2,10), OML::Vec2f(10,10));
+		lat.addPatch(OML::Vec2f(10, 0), OML::Vec2f(14, -1), OML::Vec2f(10, 10), OML::Vec2f(20, 10));
+		lat.addPatch(OML::Vec2f(-5, 13), OML::Vec2f(2, 10), OML::Vec2f(-8, 20), OML::Vec2f(2, 20));
+		lat.addPatch(OML::Vec2f(2, 10), OML::Vec2f(10, 10), OML::Vec2f(2, 20), OML::Vec2f(10, 15));
+		lat.addPatch(OML::Vec2f(10, 10), OML::Vec2f(20, 10), OML::Vec2f(10, 15), OML::Vec2f(15, 18));
+		addLattice(lat);
 	}
 };
 
@@ -307,27 +455,28 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		lattices.push_back(SWVL::SWVulkanLattice("T-locus Lattice"));
+		Lattice lat("T-locus Lattice");
+		lat.setPerPatchColors(true);
 
-		lattices[0].addPatch(OML::Vec2f(-20.0f, -20.0f), 10.0f, 10.0f);
-		lattices[0].addPatch(OML::Vec2f(-10.0f, -20.0f), 10.0f, 10.0f);
-		lattices[0].addPatch(OML::Vec2f(0.0f, -20.0f), 10.0f, 10.0f);
-		lattices[0].addPatch(OML::Vec2f(10.0f, -20.0f), 10.0f, 10.0f);
-		lattices[0].addPatch(OML::Vec2f(-20.0f, -10.0f), 10.0f, 20.0f);
+		lat.addPatch(OML::Vec2f(-20.0f, -20.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(-10.0f, -20.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(0.0f, -20.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(10.0f, -20.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(-20.0f, -10.0f), 10.0f, 20.0f);
 
 		OML::Vec2f p1(-10.0f, -10.0f);
 		OML::Vec2f p2(0.0f, -10.0f);
 		OML::Vec2f p3(0.0f, 0.0f);
-		lattices[0].addPatch(p1, 10.0f, 20.0f);
-		lattices[0].addPatch(p2, 10.0f, 10.0f);
-		lattices[0].addPatch(p3, 10.0f, 10.0f);
+		lat.addPatch(p1, 10.0f, 20.0f);
+		lat.addPatch(p2, 10.0f, 10.0f);
+		lat.addPatch(p3, 10.0f, 10.0f);
 
-		lattices[0].addPatch(OML::Vec2f(10.0f, -10.0f), 10.0f, 10.0f);
-		lattices[0].addPatch(OML::Vec2f(10.0f, 0.0f), 10.0f, 10.0f);
-		lattices[0].addPatch(OML::Vec2f(-20.0f, 10.0f), 10.0f, 10.0f);
-		lattices[0].addPatch(OML::Vec2f(-10.0f, 10.0f), 10.0f, 10.0f);
-		lattices[0].addPatch(OML::Vec2f(0.0f, 10.0f), 10.0f, 10.0f);
-		lattices[0].addPatch(OML::Vec2f(10.0f, 10.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(10.0f, -10.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(10.0f, 0.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(-20.0f, 10.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(-10.0f, 10.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(0.0f, 10.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(10.0f, 10.0f), 10.0f, 10.0f);
 	}
 };
 
@@ -342,19 +491,25 @@ public:
 	virtual void createLatticeGeometry() override
 	{
 
-		lattices.push_back(SWVL::SWVulkanLattice("Grid Lattice"));
-		lattices[0].addGrid(OML::Vec2f(-25.0f, -25.0f), 20.0f, 20.0f, 3, 3);
-		lattices[0].induceLattice();
-		lattices[0].initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		Lattice lat("Grid Lattice");
+		lat.setPerPatchColors(true);
+		lat.addGrid(OML::Vec2f(-25.0f, -25.0f), 20.0f, 20.0f, 3, 3);
+		lat.induceLattice();
+		lat.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		addLattice(lat);
 
-		lattices.push_back(SWVL::SWVulkanLattice("Cylinder Lattice"));
-		lattices[1].addCylinder(OML::Vec3f(20.0f, 0.0f, -30.0f), 10.0f, 30.0f, 4, 8);
-		lattices[1].induceLattice();
-		lattices[1].initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		Lattice lat2("Cylinder Lattice");
+		lat2.setPerPatchColors(true);
+		lat2.addCylinder(OML::Vec3f(20.0f, 0.0f, -30.0f), 10.0f, 30.0f, 4, 8);
+		lat2.induceLattice();
+		lat2.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		addLattice(lat2);
 
-		lattices.push_back(SWVL::SWVulkanLattice("Sphere Lattice"));
-		lattices[2].addSphere(OML::Vec3f(0.0f, -20.0f, 20.0f), 8.0f, 6, 6);
-		lattices[2].induceLattice();
-		lattices[2].initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		Lattice lat3("Sphere Lattice");
+		lat3.setPerPatchColors(true);
+		lat3.addSphere(OML::Vec3f(0.0f, -20.0f, 20.0f), 8.0f, 6, 6);
+		lat3.induceLattice();
+		lat3.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		addLattice(lat3);
 	}
 };
