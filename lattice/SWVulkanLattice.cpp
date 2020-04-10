@@ -69,6 +69,11 @@ namespace SWVL
 			vkDestroyDescriptorSetLayout(*m_device, m_descriptorSetLayout, m_allocator);
 		}
 
+		m_latticeUniformBuffer.destroy();
+		m_matrixUniformBuffer.destroy();
+		m_controlPointBuffer.destroy();
+		m_boundariesBuffer.destroy();
+
 		if (m_pointsBuffer.buffer) {
 			vkDestroyBuffer(*m_device, m_pointsBuffer.buffer, m_allocator);
 			vkFreeMemory(*m_device, m_pointsBuffer.memory, m_allocator);
@@ -571,21 +576,17 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 
 		VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			&m_controlPointBuffer,
 			sizeof(glm::vec4) * m_numControlPoints
 		));
 
-		VK_CHECK_RESULT(m_controlPointBuffer.map());
-
 		VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			&m_boundariesBuffer,
-			sizeof(OML::BoundaryInfo) * m_numPatches * 4
+			sizeof(OML::BoundaryInfo) * m_boundaries.size()
 		));
-
-		VK_CHECK_RESULT(m_boundariesBuffer.map());
 
 		updateLatticeUniformBuffer();
 		updateMatrixUniformBuffer();
@@ -904,11 +905,12 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 
 	void SWVulkanLattice::uploadStorageBuffers()
 	{
-		memcpy(m_controlPointBuffer.mapped, &m_controlPoints[0],
-			sizeof(glm::vec4) * m_numControlPoints);
-
-		memcpy(m_boundariesBuffer.mapped, &m_boundaries[0].us,
-			sizeof(OML::BoundaryInfo) * m_numPatches * 4);
+		createDeviceLocalBuffer(m_controlPointBuffer.buffer, m_controlPointBuffer.memory,
+			m_controlPoints.data(), m_controlPointBuffer.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		m_controlPointBuffer.descriptor.buffer = m_controlPointBuffer.buffer;
+		createDeviceLocalBuffer(m_boundariesBuffer.buffer, m_boundariesBuffer.memory,
+			m_boundaries.data(), m_boundariesBuffer.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		m_boundariesBuffer.descriptor.buffer = m_boundariesBuffer.buffer;
 	}
 
 	void SWVulkanLattice::setupQueryResultBuffer()

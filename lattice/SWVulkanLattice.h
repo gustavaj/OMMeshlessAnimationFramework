@@ -125,6 +125,7 @@ namespace SWVL
 			uint32_t bufferSize, VkBufferUsageFlagBits usage);
 		void createBuffers();
 		void prepareUniformBuffers();
+		void uploadStorageBuffers();
 		void setupDescriptorSetLayouts();
 		VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage);
 		void preparePipelines();
@@ -132,7 +133,6 @@ namespace SWVL
 		void setupDescriptorSets();
 		void updateLatticeUniformBuffer();
 		void updateMatrixUniformBuffer();
-		void uploadStorageBuffers();
 		void setupQueryResultBuffer();
 		void getQueryResults();
 

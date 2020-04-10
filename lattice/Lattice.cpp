@@ -194,9 +194,9 @@ namespace OML
 			{
 				m_simulators[i].simulate(dt, m_matrices[i]);
 			}
-
-			localUpdate(dt);
 		}
+
+		localUpdate(dt);
 	}
 
 	void Lattice::induceLattice()
