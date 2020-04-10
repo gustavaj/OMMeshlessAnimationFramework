@@ -24,6 +24,8 @@ namespace SWVL
 
 	void SWVulkanLattice::initVulkanStuff(VkDevice* device, vks::VulkanDevice* vulkanDevice, VkQueue* queue, VkCommandPool* commandPool, VkDescriptorPool* descriptorPool, VkRenderPass* renderPass, VkAllocationCallbacks* allocator)
 	{
+		if (m_vulkanInitiated) return;
+
 		m_device = device;
 		m_vulkanDevice = vulkanDevice;
 		m_queue = queue;
@@ -32,6 +34,7 @@ namespace SWVL
 		m_renderPass = renderPass;
 		m_allocator = allocator;
 
+		setupVertices();
 		setupQueryResultBuffer();
 		createBuffers();
 		prepareUniformBuffers();
@@ -50,6 +53,8 @@ namespace SWVL
 			m_listItems.push_back("Patch " + idx + " - p01");
 			m_listItems.push_back("Patch " + idx + " - p11");
 		}
+
+		m_vulkanInitiated = true;
 	}
 
 	void SWVulkanLattice::destroyVulkanStuff()
@@ -117,10 +122,12 @@ namespace SWVL
 	{
 		if (!m_draw) return;
 
+		std::cout << "Add to command buffer" << std::endl;
+
 		VkDeviceSize offsets[1] = { 0 };
 
 		if (m_doPipelineQueries) {
-vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
+			vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 		}
 		if (m_doPipelineTimings) {
 			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_timingPool, 0);
@@ -406,52 +413,6 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 		return rebuildCmd;
 	}
 
-	void SWVulkanLattice::setupLocalSurfaceVertex(OML::Locus& locus)
-	{
-		m_localSurfaceVertices.push_back(LocalSurfaceVertex(
-			locus.controlPointIndex, locus.controlPointCount, locus.matrixIndex, 0));
-	}
-
-	void SWVulkanLattice::setupPatchVertices(OML::Patch& patch)
-	{
-		OML::Locus& locus00 = m_loci[patch.lociIndices[0]];
-		OML::Locus& locus10 = m_loci[patch.lociIndices[1]];
-		OML::Locus& locus01 = m_loci[patch.lociIndices[2]];
-		OML::Locus& locus11 = m_loci[patch.lociIndices[3]];
-
-		LocalSurfaceVertex localVert00;
-		localVert00.controlPointIndex = locus00.controlPointIndex;
-		localVert00.controlPointCount = locus00.controlPointCount;
-		localVert00.matrixIndex = locus00.matrixIndex;
-		localVert00.boundaryIndex = m_boundaries.size() - 4;
-		localVert00.color = patch.color;
-		m_patchVertices.push_back(localVert00);
-
-		LocalSurfaceVertex localVert10;
-		localVert10.controlPointIndex = locus10.controlPointIndex;
-		localVert10.controlPointCount = locus10.controlPointCount;
-		localVert10.matrixIndex = locus10.matrixIndex;
-		localVert10.boundaryIndex = m_boundaries.size() - 3;
-		localVert10.color = patch.color;
-		m_patchVertices.push_back(localVert10);
-
-		LocalSurfaceVertex localVert01;
-		localVert01.controlPointIndex = locus01.controlPointIndex;
-		localVert01.controlPointCount = locus01.controlPointCount;
-		localVert01.matrixIndex = locus01.matrixIndex;
-		localVert01.boundaryIndex = m_boundaries.size() - 2;
-		localVert01.color = patch.color;
-		m_patchVertices.push_back(localVert01);
-
-		LocalSurfaceVertex localVert11;
-		localVert11.controlPointIndex = locus11.controlPointIndex;
-		localVert11.controlPointCount = locus11.controlPointCount;
-		localVert11.matrixIndex = locus11.matrixIndex;
-		localVert11.boundaryIndex = m_boundaries.size() - 1;
-		localVert11.color = patch.color;
-		m_patchVertices.push_back(localVert11);
-	}
-
 	void SWVulkanLattice::createDeviceLocalBuffer(VkBuffer& buffer, VkDeviceMemory& memory, void* data, uint32_t bufferSize, VkBufferUsageFlagBits usage)
 	{
 		if (buffer != VK_NULL_HANDLE) {
@@ -518,6 +479,59 @@ vkCmdBeginQuery(commandBuffer, m_queryPool, 0, 0);
 
 		vkDestroyBuffer(*m_device, stagingBuffer.buffer, nullptr);
 		vkFreeMemory(*m_device, stagingBuffer.memory, nullptr);
+	}
+
+	void SWVulkanLattice::setupVertices()
+	{
+		// Set up local surface vertices
+		m_localSurfaceVertices.resize(0);
+		for (size_t i = 0; i < m_loci.size(); i++)
+		{
+			m_localSurfaceVertices.push_back(LocalSurfaceVertex(
+				m_loci[i].controlPointIndex, m_loci[i].controlPointCount, m_loci[i].matrixIndex, 0));
+		}
+
+		// Set up patch vertices
+		m_patchVertices.resize(0);
+		for (size_t i = 0; i < m_patches.size(); i++)
+		{
+			OML::Locus& locus00 = m_loci[m_patches[i].lociIndices[0]];
+			OML::Locus& locus10 = m_loci[m_patches[i].lociIndices[1]];
+			OML::Locus& locus01 = m_loci[m_patches[i].lociIndices[2]];
+			OML::Locus& locus11 = m_loci[m_patches[i].lociIndices[3]];
+
+			LocalSurfaceVertex localVert00;
+			localVert00.controlPointIndex = locus00.controlPointIndex;
+			localVert00.controlPointCount = locus00.controlPointCount;
+			localVert00.matrixIndex = locus00.matrixIndex;
+			localVert00.boundaryIndex = locus00.boundaryIndices[m_patches[i].fh];
+			localVert00.color = m_patches[i].color;
+			m_patchVertices.push_back(localVert00);
+
+			LocalSurfaceVertex localVert10;
+			localVert10.controlPointIndex = locus10.controlPointIndex;
+			localVert10.controlPointCount = locus10.controlPointCount;
+			localVert10.matrixIndex = locus10.matrixIndex;
+			localVert10.boundaryIndex = locus10.boundaryIndices[m_patches[i].fh];
+			localVert10.color = m_patches[i].color;
+			m_patchVertices.push_back(localVert10);
+
+			LocalSurfaceVertex localVert01;
+			localVert01.controlPointIndex = locus01.controlPointIndex;
+			localVert01.controlPointCount = locus01.controlPointCount;
+			localVert01.matrixIndex = locus01.matrixIndex;
+			localVert01.boundaryIndex = locus01.boundaryIndices[m_patches[i].fh];
+			localVert01.color = m_patches[i].color;
+			m_patchVertices.push_back(localVert01);
+
+			LocalSurfaceVertex localVert11;
+			localVert11.controlPointIndex = locus11.controlPointIndex;
+			localVert11.controlPointCount = locus11.controlPointCount;
+			localVert11.matrixIndex = locus11.matrixIndex;
+			localVert11.boundaryIndex = locus11.boundaryIndices[m_patches[i].fh];
+			localVert11.color = m_patches[i].color;
+			m_patchVertices.push_back(localVert11);
+		}
 	}
 
 	void SWVulkanLattice::createBuffers()

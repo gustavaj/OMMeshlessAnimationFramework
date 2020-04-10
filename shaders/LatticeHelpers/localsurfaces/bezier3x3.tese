@@ -44,7 +44,7 @@ layout(set = 0, binding = 1) uniform MatrixUBO
 
 layout(set = 0, binding = 2) buffer ControlPointBuffer
 {
-	vec3 controlPoints[numLocalSurfaceControlPoints];
+	vec4 controlPoints[numLocalSurfaceControlPoints];
 } controlPointBuffer;
 
 layout(set = 0, binding = 3) buffer BoundaryBuffer
@@ -70,9 +70,9 @@ Sampler evaluateBiquadraticBezier(LocalSurfaceInfo lsInfo, float u, float v)
 	float dbv1 = 2 - 4 * v;
 	float dbv2 = 2 * v;
 	
-	vec3 p00 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 0], p10 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 1], p20 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 2];
-	vec3 p01 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 3], p11 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 4], p21 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 5];
-	vec3 p02 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 6], p12 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 7], p22 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 8];
+	vec3 p00 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 0].xyz, p10 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 1].xyz, p20 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 2].xyz;
+	vec3 p01 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 3].xyz, p11 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 4].xyz, p21 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 5].xyz;
+	vec3 p02 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 6].xyz, p12 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 7].xyz, p22 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 8].xyz;
 	
 	vec3 pos = bv0 * (bu0 * p00 + bu1 * p10 + bu2 * p20)
 			 + bv1 * (bu0 * p01 + bu1 * p11 + bu2 * p21)

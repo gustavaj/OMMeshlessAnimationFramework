@@ -1,7 +1,5 @@
 #include "Lattice.h"
 
-#include <random>
-
 namespace OML
 {
 	Lattice::Lattice()
@@ -13,6 +11,10 @@ namespace OML
 		: m_name(name), m_matrix(1.0f), m_color(0.8f, 0.2f, 0.4f)
 	{
 		addLatticeProperties();
+
+		std::random_device rd;
+		m_mt = std::mt19937(rd());
+		m_randomDist = std::uniform_real_distribution<double>(0.0, 1.0);
 	}
 
 	Lattice::~Lattice()
@@ -168,21 +170,10 @@ namespace OML
 		m_simulators.resize(0);
 		for (auto& locus : m_loci)
 		{
-			double t = static_cast<double>(rand() % 100);
-			double amp, speed;
-			if (m_maxAmp > m_minAmp) {
-				amp = m_minAmp + static_cast<double>(rand() % std::max(1, (int)(m_maxAmp - m_minAmp)));
-			}
-			else {
-				amp = static_cast<double>(rand() % (int)m_maxAmp);
-			}
-			if (m_maxSpeed > m_minSpeed) {
-				speed = m_minSpeed + static_cast<double>(rand() % std::max(1, (int)(m_maxSpeed - m_minSpeed)));
-			}
-			else {
-				speed = static_cast<double>(rand() % (int)m_maxSpeed);
-			}
-			m_simulators.push_back(NormalSinSimulator(0.0, amp, speed, locus.normal));
+			double t = 0.0; //random(0.0, 100.0);
+			double amp = random(m_minAmp, m_maxAmp);
+			double speed = random(m_minSpeed, m_maxSpeed);
+			m_simulators.push_back(NormalSinSimulator(t, amp, speed, locus.normal));
 		}
 	}
 
@@ -399,8 +390,9 @@ namespace OML
 				property(LatticeProperties::LocusIndex, vh4)
 			};
 			patch.fh = fh;
-			if (m_usePerPatchColors) {
-				float fac = (float)m_numPatches / (float)n_faces();
+			if (m_useRandomPatchColors) {
+				patch.color = glm::vec3(random(0.0f, 1.0f), random(0.0f, 1.0f), random(0.0f, 1.0f));
+				/*float fac = (float)m_numPatches / (float)n_faces();
 				if (fac < 0.5f) {
 					fac *= 2.0f;
 					patch.color = glm::vec3(1.0f - fac, fac, 0.0f);
@@ -408,19 +400,12 @@ namespace OML
 				else {
 					fac = (fac - 0.5f) * 2.0f;
 					patch.color = glm::vec3(1.0f - fac, 1.0f - fac, fac);
-				}
+				}*/
 			}
 			else {
 				patch.color = m_color;
 			}
 			m_patches.push_back(std::move(patch));
-
-			m_boundaries.push_back(m_loci[patch.lociIndices[0]].faceMappings[fh]);
-			m_boundaries.push_back(m_loci[patch.lociIndices[1]].faceMappings[fh]);
-			m_boundaries.push_back(m_loci[patch.lociIndices[2]].faceMappings[fh]);
-			m_boundaries.push_back(m_loci[patch.lociIndices[3]].faceMappings[fh]);
-
-			setupPatchVertices(patch);
 
 			m_numPatches++;
 		}
@@ -435,13 +420,13 @@ namespace OML
 
 	void Lattice::addLocus(
 		OpenMesh::VertexHandle vertex, std::vector<Vec3f>& controlPoints,
-		std::unordered_map<OpenMesh::FaceHandle, BoundaryInfo>& faceMappings, Vec3f offset)
+		std::unordered_map<OpenMesh::FaceHandle, uint32_t>& boundaryIndices, Vec3f offset)
 	{
 		Locus locus;
 		locus.controlPointIndex = m_numControlPoints;
 		locus.controlPointCount = controlPoints.size();
 		locus.vh = vertex;
-		locus.faceMappings = faceMappings;
+		locus.boundaryIndices = boundaryIndices;
 		locus.matrixIndex = m_numLoci;
 
 		// Find the average normal vector over all the patches for the locus
@@ -477,8 +462,6 @@ namespace OML
 			glm::translate(glm::mat4(1.0f), glm::vec3(offset[0], offset[1], offset[2])));
 		m_initialMatrices.push_back(
 			glm::translate(glm::mat4(1.0f), glm::vec3(offset[0], offset[1], offset[2])));
-
-		setupLocalSurfaceVertex(locus);
 	}
 
 	void Lattice::addLocusOnVertex(
@@ -513,9 +496,10 @@ namespace OML
 			case 4: { controlPoints = createLocalSurfaceControlPoints(v_inner, o_to_n, o_to_p, zero); break; }
 		}
 
-		std::unordered_map<OpenMesh::FaceHandle, BoundaryInfo> faceMappings;
-		faceMappings.insert({ face_handle(heh_locus_to_next), BoundaryInfo(0.0f, 1.0f, 0.0f, 1.0f) });
-		addLocus(vertex, controlPoints, faceMappings, offset);
+		std::unordered_map<OpenMesh::FaceHandle, uint32_t> boundaryIndices;
+		m_boundaries.push_back(BoundaryInfo( 0.0f, 1.0f, 0.0f, 1.0f ));
+		boundaryIndices.insert({ face_handle(heh_locus_to_next), m_boundaries.size() - 1 });
+		addLocus(vertex, controlPoints, boundaryIndices, offset);
 	}
 
 	void Lattice::addLocusOnBoundaryVertex(
@@ -531,7 +515,7 @@ namespace OML
 		BoundaryInfo boundaryAdjFace(0.0f, 1.0f, 0.0f, 1.0f);
 
 		std::vector<Vec3f> controlPoints;
-		std::unordered_map<OpenMesh::FaceHandle, BoundaryInfo> faceMappings;
+		std::unordered_map<OpenMesh::FaceHandle, uint32_t> boundaryIndices;
 
 		if (is_boundary(edge_handle(heh_next))) {
 			auto heh_prev = find_halfedge(vertex, prev_vertex);
@@ -576,8 +560,10 @@ namespace OML
 				}
 			}
 
-			faceMappings.insert({ face_handle(heh_next), boundaryFace });
-			faceMappings.insert({ face_handle(heh_prev), boundaryAdjFace });
+			m_boundaries.push_back(boundaryFace);
+			m_boundaries.push_back(boundaryAdjFace);
+			boundaryIndices.insert({ face_handle(heh_next), m_boundaries.size() - 2 });
+			boundaryIndices.insert({ face_handle(heh_prev), m_boundaries.size() - 1 });
 		}
 		else {
 			auto heh_prev = find_halfedge(prev_vertex, vertex);
@@ -623,11 +609,13 @@ namespace OML
 				}
 			}
 
-			faceMappings.insert({ face_handle(heh_next), boundaryFace });
-			faceMappings.insert({ face_handle(opposite_halfedge_handle(heh_next)), boundaryAdjFace });
+			m_boundaries.push_back(boundaryFace);
+			m_boundaries.push_back(boundaryAdjFace);
+			boundaryIndices.insert({ face_handle(heh_next), m_boundaries.size() - 2 });
+			boundaryIndices.insert({ face_handle(opposite_halfedge_handle(heh_next)), m_boundaries.size() - 1 });
 		}
 
-		addLocus(vertex, controlPoints, faceMappings, offset);
+		addLocus(vertex, controlPoints, boundaryIndices, offset);
 	}
 
 	void Lattice::addLocusOnInnerVertex(
@@ -715,13 +703,17 @@ namespace OML
 			}
 		}
 
-		std::unordered_map<OpenMesh::FaceHandle, BoundaryInfo> faceMappings;
-		faceMappings.insert({ face_handle(hehf1), boundaryF1 });
-		faceMappings.insert({ face_handle(hehf2), boundaryF2 });
-		faceMappings.insert({ face_handle(hehf3), boundaryF3 });
-		faceMappings.insert({ face_handle(hehf4), boundaryF4 });
+		m_boundaries.push_back(boundaryF1);
+		m_boundaries.push_back(boundaryF2);
+		m_boundaries.push_back(boundaryF3);
+		m_boundaries.push_back(boundaryF4);
+		std::unordered_map<OpenMesh::FaceHandle, uint32_t> boundaryIndices;
+		boundaryIndices.insert({ face_handle(hehf1), m_boundaries.size() - 4 });
+		boundaryIndices.insert({ face_handle(hehf2), m_boundaries.size() - 3 });
+		boundaryIndices.insert({ face_handle(hehf3), m_boundaries.size() - 2 });
+		boundaryIndices.insert({ face_handle(hehf4), m_boundaries.size() - 1 });
 
-		addLocus(vertex, controlPoints, faceMappings, offset);
+		addLocus(vertex, controlPoints, boundaryIndices, offset);
 	}
 
 	std::vector<Vec3f> Lattice::createLocalSurfaceControlPoints(
@@ -750,5 +742,13 @@ namespace OML
 			middleLeft, middle, middleRight,
 			bottomLeft, bottomMiddle, bottomRight
 		};
+	}
+	double Lattice::random(double a, double b)
+	{
+		return m_randomDist(m_mt) * std::max(1.0, (b - a)) + a;
+	}
+	float Lattice::random(float a, float b)
+	{
+		return m_randomDist(m_mt) * std::max(1.0f, (b - a)) + a;
 	}
 }

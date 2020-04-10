@@ -119,15 +119,16 @@ namespace SWVL
 		bool onUpdateUIOverlay(vks::UIOverlay* overlay);
 
 	protected:
-		virtual void setupLocalSurfaceVertex(OML::Locus& locus) override;
-		virtual void setupPatchVertices(OML::Patch& patch) override;
 		virtual void localUpdate(double dt) override;
 
 	private:
+		bool m_vulkanInitiated = false;
+
 		// Vulkan functions
 		void createDeviceLocalBuffer(
 			VkBuffer& buffer, VkDeviceMemory& memory, void* data,
 			uint32_t bufferSize, VkBufferUsageFlagBits usage);
+		void setupVertices();
 		void createBuffers();
 		void prepareUniformBuffers();
 		void uploadStorageBuffers();

@@ -96,7 +96,7 @@ public:
 	{
 	}
 
-	void reBuildCommangBuffers() {
+	void reBuildCommandBuffers() {
 		if (!checkCommandBuffers())
 		{
 			destroyCommandBuffers();
@@ -121,8 +121,12 @@ public:
 		renderPassBeginInfo.clearValueCount = 2;
 		renderPassBeginInfo.pClearValues = clearValues;
 
+		std::cout << "Rebuild command buffer" << std::endl;
+
 		for (int32_t i = 0; i < drawCmdBuffers.size(); ++i)
 		{
+			std::cout << "Command buffer " << i << std::endl;
+
 			renderPassBeginInfo.framebuffer = frameBuffers[i];
 
 			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
@@ -174,7 +178,7 @@ public:
 		if (deviceFeatures.pipelineStatisticsQuery) {
 			setupQueryResultBuffer();
 		}
-		buildCommandBuffers();
+		reBuildCommandBuffers();
 		viewChanged();
 		prepared = true;
 	}
@@ -203,7 +207,7 @@ public:
 		lattices.push_back(std::move(lattice));
 		latticeNames.push_back(lattice.name());
 		latticeIdx++;
-		reBuildCommangBuffers();
+		reBuildCommandBuffers();
 	}
 
 	void removeLattice(std::string name)
@@ -262,7 +266,7 @@ public:
 				ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
 			}
 
-			overlay->checkBox("Per patch colors", &perPatchColors);
+			overlay->checkBox("Random colors", &perPatchColors);
 			if (!perPatchColors) {
 				ImGui::ColorEdit3("Color", &c_col[0]);
 			}
@@ -292,7 +296,7 @@ public:
 				if (c_rot[1] != 0.0f) mat = glm::rotate(mat, c_rot[1], glm::vec3(0, 1, 0));
 				if (c_rot[0] != 0.0f) mat = glm::rotate(mat, c_rot[0], glm::vec3(1, 0, 0));
 				lat.setMatrix(mat);
-				lat.setPerPatchColors(perPatchColors);
+				lat.setUseRandomPatchColors(perPatchColors);
 				lat.setPatchColor(c_col);
 				if (latticeCreateTypeIndex == 0) {
 					lat.addGrid(OML::Vec2f(-c_width / 2, -c_height / 2), c_width, c_height, c_rows, c_cols);
@@ -323,7 +327,7 @@ public:
 		for (auto& lat : lattices)
 		{
 			if (lat.onUpdateUIOverlay(overlay)) {
-				buildCommandBuffers();
+				reBuildCommandBuffers();
 			}
 		}		
 	}
@@ -344,7 +348,7 @@ public:
 	virtual void createLatticeGeometry() override
 	{
 		Lattice lat("Grid Lattice");
-		lat.setPerPatchColors(true);
+		lat.setUseRandomPatchColors(true);
 		lat.addGrid(OML::Vec2f(-m_width / 2, -m_height / 2), m_width, m_height, m_rows, m_cols);
 		addLattice(lat);
 	}
@@ -364,7 +368,7 @@ public:
 	virtual void createLatticeGeometry() override
 	{
 		Lattice lat("Cylinder Lattice");
-		lat.setPerPatchColors(true);
+		lat.setUseRandomPatchColors(true);
 		lat.addCylinder(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_height, m_rows, m_cols);
 		addLattice(lat);
 	}
@@ -384,7 +388,7 @@ public:
 	virtual void createLatticeGeometry() override
 	{
 		Lattice lat("Sphere Lattice");
-		lat.setPerPatchColors(true);
+		lat.setUseRandomPatchColors(true);
 		lat.addSphere(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_segments, m_slices);
 		addLattice(lat);
 	}
@@ -401,7 +405,7 @@ public:
 	virtual void createLatticeGeometry() override
 	{
 		Lattice lat("Non uniform Lattice");
-		lat.setPerPatchColors(true);
+		lat.setUseRandomPatchColors(true);
 		OML::Vec3f p00(-30, -20, 0), p10(0, -20, 0), p20(10, -20, 0), p30(20, -20, 0);
 		OML::Vec3f p01(-30, 0, 0),	p11(0, 0, 0),	p21(10, 0, 0), p31(20, 0, 0);
 		OML::Vec3f p02(-30, 10, 0),	p12(0, 10, 0),	p22(10, 10, 0), p32(20, 10, 0);
@@ -430,7 +434,7 @@ public:
 	virtual void createLatticeGeometry() override
 	{
 		Lattice lat("Non-rectangular Lattice");
-		lat.setPerPatchColors(true);
+		lat.setUseRandomPatchColors(true);
 		// Grid where quads have angles != 90
 		lat.addPatch(OML::Vec2f(-6,-15), OML::Vec2f(0,-10), OML::Vec2f(-15,-5), OML::Vec2f(0,0));
 		lat.addPatch(OML::Vec2f(0,-10), OML::Vec2f(5,-6), OML::Vec2f(0,0), OML::Vec2f(10,0));
@@ -456,7 +460,7 @@ public:
 	virtual void createLatticeGeometry() override
 	{
 		Lattice lat("T-locus Lattice");
-		lat.setPerPatchColors(true);
+		lat.setUseRandomPatchColors(true);
 
 		lat.addPatch(OML::Vec2f(-20.0f, -20.0f), 10.0f, 10.0f);
 		lat.addPatch(OML::Vec2f(-10.0f, -20.0f), 10.0f, 10.0f);
@@ -492,21 +496,21 @@ public:
 	{
 
 		Lattice lat("Grid Lattice");
-		lat.setPerPatchColors(true);
+		lat.setUseRandomPatchColors(true);
 		lat.addGrid(OML::Vec2f(-25.0f, -25.0f), 20.0f, 20.0f, 3, 3);
 		lat.induceLattice();
 		lat.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		addLattice(lat);
 
 		Lattice lat2("Cylinder Lattice");
-		lat2.setPerPatchColors(true);
+		lat2.setUseRandomPatchColors(true);
 		lat2.addCylinder(OML::Vec3f(20.0f, 0.0f, -30.0f), 10.0f, 30.0f, 4, 8);
 		lat2.induceLattice();
 		lat2.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		addLattice(lat2);
 
 		Lattice lat3("Sphere Lattice");
-		lat3.setPerPatchColors(true);
+		lat3.setUseRandomPatchColors(true);
 		lat3.addSphere(OML::Vec3f(0.0f, -20.0f, 20.0f), 8.0f, 6, 6);
 		lat3.induceLattice();
 		lat3.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);

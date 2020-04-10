@@ -8,6 +8,8 @@
 
 #include <unordered_map>
 
+#include <random>
+
 namespace OML {
 
 	using Vec2f = OpenMesh::Vec2f;
@@ -70,7 +72,7 @@ namespace OML {
 		uint32_t matrixIndex;
 		OpenMesh::VertexHandle vh;
 		Vec3f normal;
-		std::unordered_map<OpenMesh::FaceHandle, BoundaryInfo> faceMappings;
+		std::unordered_map<OpenMesh::FaceHandle, uint32_t> boundaryIndices;
 	};
 
 	struct Patch
@@ -176,7 +178,7 @@ namespace OML {
 		/* Set the matrix */
 		void setMatrix(glm::mat4 matrix) { m_matrix = matrix; }
 		/* Use different colors per patch */
-		void setPerPatchColors(bool usePerPatchColors) { m_usePerPatchColors = usePerPatchColors; }
+		void setUseRandomPatchColors(bool useRandomPatchColors) { m_useRandomPatchColors = useRandomPatchColors; }
 		/* Set color to be used for every patch, if perPatchColors = false */
 		void setPatchColor(glm::vec3 color) { m_color = color; }
 
@@ -184,8 +186,6 @@ namespace OML {
 		std::string name() { return m_name; }
 
 	protected:
-		virtual void setupLocalSurfaceVertex(Locus& locus) = 0;
-		virtual void setupPatchVertices(Patch& patch) = 0;
 		virtual void localUpdate(double dt) = 0;
 
 		void resetMatrices();
@@ -196,7 +196,7 @@ namespace OML {
 		glm::mat4 m_view;
 
 		glm::vec3 m_color;
-		bool m_usePerPatchColors = false;
+		bool m_useRandomPatchColors = false;
 
 		bool m_draw = true;
 		bool m_animate = false;
@@ -257,7 +257,7 @@ namespace OML {
 			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace);
 
 		void addLocus(OpenMesh::VertexHandle vertex, std::vector<Vec3f>& controlPoints,
-			std::unordered_map<OpenMesh::FaceHandle, BoundaryInfo>& faceMappings, Vec3f offset);
+			std::unordered_map<OpenMesh::FaceHandle, uint32_t>& boundaryIndices, Vec3f offset);
 
 		std::vector<Vec3f> createLocalSurfaceControlPoints(
 			Vec3f topLeft, Vec3f topRight, Vec3f bottomLeft, Vec3f bottomRight);
@@ -265,6 +265,12 @@ namespace OML {
 			Vec3f topLeft, Vec3f topMiddle, Vec3f topRight,
 			Vec3f middleLeft, Vec3f middle, Vec3f middleRight,
 			Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight);
+
+		// Something random..
+		std::mt19937 m_mt;
+		std::uniform_real_distribution<double> m_randomDist;
+		double random(double a, double b);
+		float random(float a, float b);
 	};
 
 }
