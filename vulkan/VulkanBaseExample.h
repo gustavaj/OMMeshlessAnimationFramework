@@ -75,6 +75,8 @@ protected:
 	uint32_t frameCounter = 0;
 	uint32_t lastFPS = 0;
 	std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp;
+	double timeSinceGuiUpdate = 0.0;
+	double guiUpdateFrequencyS = 0.05;
 	// Vulkan instance, stores all per-application states
 	VkInstance instance;
 	// Physical device (GPU) that Vulkan will ise
@@ -120,14 +122,15 @@ protected:
 	VkPipelineCache pipelineCache;
 	// Wraps the swap chain to present images (framebuffers) to the windowing system
 	VulkanSwapChain swapChain;
-	// Synchronization semaphores
-	struct {
-		// Swap chain image presentation
-		VkSemaphore presentComplete;
-		// Command buffer submission and execution
-		VkSemaphore renderComplete;
-	} semaphores;
-	std::vector<VkFence> waitFences;
+
+	// https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Rendering_and_presentation
+	std::vector<VkSemaphore> imageAvailableSemaphores;
+	std::vector<VkSemaphore> renderFinishedSemaphores;
+	std::vector<VkFence> inFlightFences;
+	std::vector<VkFence> imagesInFlight;
+	const int MAX_FRAMES_IN_FLIGHT = 2;
+	size_t currentFrame = 0;
+
 public:
 	bool prepared = false;
 	uint32_t width = 1280;
@@ -369,7 +372,6 @@ public:
 	// Called in case of an event where e.g. the framebuffer has to be rebuild and thus
 	// all command buffers that may reference this
 	virtual void buildCommandBuffers();
-
 	void createSynchronizationPrimitives();
 
 	// Creates a new (graphics) command pool object storing command buffers
@@ -421,7 +423,7 @@ public:
 	// Render one frame of a render loop on platforms that sync rendering
 	void renderFrame();
 
-	void updateOverlay();
+	void updateOverlay(double dt);
 	void drawUI(const VkCommandBuffer commandBuffer);
 
 	// Prepare the frame for workload submission

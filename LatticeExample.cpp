@@ -88,16 +88,15 @@ public:
 	{
 	}
 
-	void reBuildCommandBuffers() {
+	void buildCommandBuffers() {
+		vkDeviceWaitIdle(device);
+
 		if (!checkCommandBuffers())
 		{
 			destroyCommandBuffers();
 			createCommandBuffers();
 		}
-		buildCommandBuffers();
-	}
 
-	void buildCommandBuffers() {
 		VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
 
 		VkClearValue clearValues[2];
@@ -154,12 +153,8 @@ public:
 	void draw() {
 		VulkanExampleBase::prepareFrame();
 
-		// Command buffer to be sumitted to the queue
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &drawCmdBuffers[currentBuffer];
-
 		// Submit to queue
-		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
+		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, inFlightFences[currentFrame]));
 
 		VulkanExampleBase::submitFrame();
 	}
@@ -168,7 +163,7 @@ public:
 		VulkanExampleBase::prepare();
 		loadAssets();
 		if(!checkCommandBuffers())
-			reBuildCommandBuffers();
+			buildCommandBuffers();
 		viewChanged();
 		prepared = true;
 	}
@@ -197,7 +192,7 @@ public:
 		lattices.push_back(std::move(lattice));
 		latticeNames.push_back(lattice.name());
 		latticeIdx++;
-		reBuildCommandBuffers();
+		buildCommandBuffers();
 	}
 
 	void removeLattice(std::string name)
@@ -317,7 +312,7 @@ public:
 		for (auto& lat : lattices)
 		{
 			if (lat.onUpdateUIOverlay(overlay)) {
-				reBuildCommandBuffers();
+				buildCommandBuffers();
 			}
 		}		
 	}

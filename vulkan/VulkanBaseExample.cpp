@@ -272,8 +272,12 @@ void VulkanExampleBase::renderFrame()
 		frameCounter = 0;
 		lastTimestamp = tEnd;
 	}
-	// TODO: Cap UI overlay update rates
-	updateOverlay();
+
+	timeSinceGuiUpdate += frameTimer;
+	if (timeSinceGuiUpdate > guiUpdateFrequencyS) {
+		updateOverlay(timeSinceGuiUpdate);
+		timeSinceGuiUpdate = 0.0;
+	}
 }
 
 void VulkanExampleBase::renderLoop()
@@ -565,7 +569,7 @@ void VulkanExampleBase::renderLoop()
 	}
 }
 
-void VulkanExampleBase::updateOverlay()
+void VulkanExampleBase::updateOverlay(double dt)
 {
 	if (!settings.overlay)
 		return;
@@ -573,7 +577,7 @@ void VulkanExampleBase::updateOverlay()
 	ImGuiIO& io = ImGui::GetIO();
 
 	io.DisplaySize = ImVec2((float)width, (float)height);
-	io.DeltaTime = frameTimer;
+	io.DeltaTime = dt;
 
 	io.MousePos = ImVec2(mousePos.x, mousePos.y);
 	io.MouseDown[0] = mouseButtons.left;
@@ -648,8 +652,10 @@ void VulkanExampleBase::drawUI(const VkCommandBuffer commandBuffer)
 
 void VulkanExampleBase::prepareFrame()
 {
+	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+
 	// Acquire the next image from the swap chain
-	VkResult result = swapChain.acquireNextImage(semaphores.presentComplete, &currentBuffer);
+	VkResult result = swapChain.acquireNextImage(imageAvailableSemaphores[currentFrame], &currentBuffer);
 	// Recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
 	if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
 		windowResize();
@@ -657,11 +663,26 @@ void VulkanExampleBase::prepareFrame()
 	else {
 		VK_CHECK_RESULT(result);
 	}
+
+	// Check if a previous frame is using this image (i.e. there is its fence to wait on)
+	if (imagesInFlight[currentBuffer] != VK_NULL_HANDLE) {
+		vkWaitForFences(device, 1, &imagesInFlight[currentBuffer], VK_TRUE, UINT64_MAX);
+	}
+	// Mark the image as now being in use by this frame
+	imagesInFlight[currentBuffer] = inFlightFences[currentFrame];
+
+	submitInfo.pWaitSemaphores = &imageAvailableSemaphores[currentFrame];
+	submitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFrame];
+	// Command buffer to be sumitted to the queue
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &drawCmdBuffers[currentBuffer];
+
+	vkResetFences(device, 1, &inFlightFences[currentFrame]);
 }
 
 void VulkanExampleBase::submitFrame()
 {
-	VkResult result = swapChain.queuePresent(queue, currentBuffer, semaphores.renderComplete);
+	VkResult result = swapChain.queuePresent(queue, currentBuffer, renderFinishedSemaphores[currentFrame]);
 	if (!((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR))) {
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			// Swap chain is no longer compatible with the surface and needs to be recreated
@@ -672,7 +693,9 @@ void VulkanExampleBase::submitFrame()
 			VK_CHECK_RESULT(result);
 		}
 	}
-	VK_CHECK_RESULT(vkQueueWaitIdle(queue));
+
+	//VK_CHECK_RESULT(vkQueueWaitIdle(queue));
+	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 VulkanExampleBase::VulkanExampleBase(bool enableValidation)
@@ -812,10 +835,10 @@ VulkanExampleBase::~VulkanExampleBase()
 
 	vkDestroyCommandPool(device, cmdPool, nullptr);
 
-	vkDestroySemaphore(device, semaphores.presentComplete, nullptr);
-	vkDestroySemaphore(device, semaphores.renderComplete, nullptr);
-	for (auto& fence : waitFences) {
-		vkDestroyFence(device, fence, nullptr);
+	for (size_t i = 0; i < imageAvailableSemaphores.size(); i++) {
+		vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+		vkDestroyFence(device, inFlightFences[i], nullptr);
 	}
 
 	if (settings.overlay) {
@@ -979,23 +1002,22 @@ bool VulkanExampleBase::initVulkan()
 	swapChain.connect(instance, physicalDevice, device);
 
 	// Create synchronization objects
-	VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
+	//VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
 	// Create a semaphore used to synchronize image presentation
 	// Ensures that the image is displayed before we start submitting new commands to the queu
-	VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphores.presentComplete));
+	//VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphores.presentComplete));
 	// Create a semaphore used to synchronize command submission
 	// Ensures that the image is not presented until all commands have been sumbitted and executed
-	VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphores.renderComplete));
+	//VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphores.renderComplete));
 
 	// Set up submit info structure
 	// Semaphores will stay the same during application lifetime
 	// Command buffer submission info is set by each example
 	submitInfo = vks::initializers::submitInfo();
+
 	submitInfo.pWaitDstStageMask = &submitPipelineStages;
 	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &semaphores.presentComplete;
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &semaphores.renderComplete;
 
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
 	// Get Android device name and manufacturer (to display along GPU name)
@@ -2058,11 +2080,23 @@ void VulkanExampleBase::buildCommandBuffers() {}
 
 void VulkanExampleBase::createSynchronizationPrimitives()
 {
-	// Wait fences to sync command buffer access
-	VkFenceCreateInfo fenceCreateInfo = vks::initializers::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-	waitFences.resize(drawCmdBuffers.size());
-	for (auto& fence : waitFences) {
-		VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence));
+	// Semaphores
+	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+	imagesInFlight.resize(swapChain.imageCount, VK_NULL_HANDLE);
+	
+	VkSemaphoreCreateInfo semaphoreInfo = {};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	VkFenceCreateInfo fenceCreateInfo = {};
+	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]));
+		VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]));
+		VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &inFlightFences[i]));
 	}
 }
 
