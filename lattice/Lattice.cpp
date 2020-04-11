@@ -432,11 +432,6 @@ namespace OML
 			auto fh = *f_itr;
 			auto f = face(fh);
 
-			if (valence(fh) == 5) {
-				std::cout << "Face valence == 5" << std::endl;
-				//break;
-			}
-
 			// Halfedge/edge handles
 			auto topheh = halfedge_handle(fh);
 

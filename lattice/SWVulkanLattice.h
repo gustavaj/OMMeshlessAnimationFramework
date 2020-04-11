@@ -180,6 +180,8 @@ namespace SWVL
 		VkDescriptorSetLayout m_descriptorSetLayout;
 		VkDescriptorSet m_descriptorSet;
 
+		std::unordered_map<std::string, VkShaderModule> m_shaderModules;
+
 		// Stuff passed from class creating the lattice, used for creating vulkan stuff
 		VkDevice* m_device;
 		vks::VulkanDevice* m_vulkanDevice;

@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <string>
 #include <assert.h>
 #include <vector>
 #include <algorithm>
+#include <sstream>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -20,7 +21,7 @@
 
 #include "lattice/SWVulkanLattice.h"
 
-const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere" };
+const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "Patches" };
 
 using Lattice = SWVL::SWVulkanLattice;
 
@@ -42,6 +43,13 @@ public:
 	int latticeDeleteIdx = 0;
 	char latticeName[64] = "Lattice";
 	std::vector<std::string> latticeNames;
+
+	float patchTopLeftX = 0.0f, patchTopLeftY = 0.0f;
+	float patchWidth = 10.0f, patchHeight = 10.0f;
+	int patchInputIdx = 0;
+	std::vector<OML::Vec2f> patchInputs;
+	std::vector<std::string> patchInputStrings;
+	std::vector<const char*> patchInputChars;
 
 	LatticeExample(bool enableValidation)
 		: VulkanExampleBase(enableValidation)
@@ -112,12 +120,8 @@ public:
 		renderPassBeginInfo.clearValueCount = 2;
 		renderPassBeginInfo.pClearValues = clearValues;
 
-		std::cout << "Rebuild command buffer" << std::endl;
-
 		for (int32_t i = 0; i < drawCmdBuffers.size(); ++i)
 		{
-			std::cout << "Command buffer " << i << std::endl;
-
 			renderPassBeginInfo.framebuffer = frameBuffers[i];
 
 			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
@@ -221,8 +225,14 @@ public:
 		// Lattice creation
 		if (overlay->header("Add/Delete", false))
 		{
-			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5.0f, 1.0f));
+			if (latticeCreateTypeIndex == 3)
+			{
+				ImGui::PushItemWidth(260.0f * UIOverlay.scale);
+				ImGui::ListBox("", &patchInputIdx, patchInputChars.data(), patchInputChars.size(), 4);
+				ImGui::PushItemWidth(110.0f * UIOverlay.scale);
+			}
 
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5.0f, 1.0f));
 
 			ImGui::BeginGroup();
 
@@ -236,19 +246,46 @@ public:
 				overlay->sliderInt("rows", &c_rows, 1, 31);
 				overlay->sliderInt("cols", &c_cols, 1, 31);
 			}
-			if (latticeCreateTypeIndex == 1)
+			else if (latticeCreateTypeIndex == 1)
 			{
 				overlay->sliderFloat("radius", &c_width, 10.0f, 100.0f);
 				overlay->sliderFloat("height", &c_height, 10.0f, 100.0f);
 				overlay->sliderInt("slices", &c_rows, 4, 30);
 				overlay->sliderInt("segments", &c_cols, 4, 30);
 			}
-			if (latticeCreateTypeIndex == 2)
+			else if (latticeCreateTypeIndex == 2)
 			{
 				overlay->sliderFloat("radius", &c_width, 10.0f, 100.0f);
 				overlay->sliderInt("slices", &c_rows, 4, 30);
 				overlay->sliderInt("segments", &c_cols, 4, 30);
 				ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
+			}
+			else if (latticeCreateTypeIndex == 3)
+			{
+				overlay->inputFloat("x", &patchTopLeftX, 1.0f, 1);
+				overlay->inputFloat("y", &patchTopLeftY, 1.0f, 1);
+				overlay->inputFloat("Width", &patchWidth, 1.0f, 1);
+				overlay->inputFloat("Height", &patchHeight, 1.0f, 1);
+				if (overlay->button("Add patch")) {
+					patchInputs.push_back(OML::Vec2f(patchTopLeftX, patchTopLeftY));
+					patchInputs.push_back(OML::Vec2f(patchWidth, patchHeight));
+					std::stringstream out; out << std::setprecision(1) << std::fixed;
+					out << patchTopLeftX; std::string topLeftXStr = out.str(); out.str(""); out.clear();
+					out << patchTopLeftY; std::string topLeftYStr = out.str(); out.str(""); out.clear();
+					out << patchWidth; std::string widthStr = out.str(); out.str(""); out.clear();
+					out << patchHeight; std::string heightStr = out.str(); out.str(""); out.clear();
+					patchInputStrings.push_back("addPatch((" + topLeftXStr + ", " + topLeftYStr + "), " + 
+						widthStr + ", " + heightStr + ");");
+					patchInputChars.push_back(patchInputStrings.back().c_str());
+				}
+				ImGui::SameLine();
+				if (overlay->button("Delete patch")) {
+					if (!patchInputs.empty()) {
+						patchInputs.erase(patchInputs.begin() + patchInputIdx);
+						patchInputStrings.erase(patchInputStrings.begin() + patchInputIdx);
+						patchInputChars.erase(patchInputChars.begin() + patchInputIdx);
+					}
+				}
 			}
 
 			overlay->checkBox("Random colors", &perPatchColors);
@@ -291,6 +328,12 @@ public:
 				}
 				else if (latticeCreateTypeIndex == 2) {
 					lat.addSphere(OML::Vec3f(0.0f), c_width, c_rows, c_cols);
+				}
+				else if (latticeCreateTypeIndex == 3) {
+					for (size_t i = 0; i < patchInputs.size(); i += 2) {
+						lat.addPatch(patchInputs[i], patchInputs[i + 1][0], patchInputs[i + 1][1]);
+					}
+					patchInputs.resize(0); patchInputStrings.resize(0); patchInputChars.resize(0);
 				}
 				addLattice(lat);
 			}

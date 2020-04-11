@@ -59,6 +59,10 @@ namespace SWVL
 
 	void SWVulkanLattice::destroyVulkanStuff()
 	{
+		for (auto& shader : m_shaderModules) {
+			vkDestroyShaderModule(*m_device, shader.second, m_allocator);
+		}
+
 		if (m_pointsPipeline) {
 			vkDestroyPipeline(*m_device, m_pointsPipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_linesPipeline, m_allocator);
@@ -489,8 +493,8 @@ namespace SWVL
 
 		vkFreeCommandBuffers(*m_device, *m_commandPool, 1, &cmdBuffer);
 
-		vkDestroyBuffer(*m_device, stagingBuffer.buffer, nullptr);
-		vkFreeMemory(*m_device, stagingBuffer.memory, nullptr);
+		vkDestroyBuffer(*m_device, stagingBuffer.buffer, m_allocator);
+		vkFreeMemory(*m_device, stagingBuffer.memory, m_allocator);
 	}
 
 	void SWVulkanLattice::setupVertices()
@@ -666,7 +670,7 @@ namespace SWVL
 		VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(
 			setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
 		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(*m_device, &descriptorLayout,
-			nullptr, &m_descriptorSetLayout));
+			m_allocator, &m_descriptorSetLayout));
 		descriptorLayouts.push_back(m_descriptorSetLayout);
 
 		// Pipeline Layout
@@ -680,7 +684,11 @@ namespace SWVL
 	{
 		VkPipelineShaderStageCreateInfo shaderStage = {};
 		shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		shaderStage.stage = stage; shaderStage.module = vks::tools::loadShader(fileName.c_str(), *m_device);
+		shaderStage.stage = stage;
+		if (m_shaderModules.find(fileName) == m_shaderModules.end()) {
+			m_shaderModules.insert({ fileName, vks::tools::loadShader(fileName.c_str(), *m_device) });
+		}
+		shaderStage.module = m_shaderModules[fileName];
 		shaderStage.pName = "main";
 		assert(shaderStage.module != VK_NULL_HANDLE);
 		return shaderStage;
@@ -868,10 +876,10 @@ namespace SWVL
 		pipelineCreateInfo.pStages = bsShaderStages.data();
 
 		rasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, nullptr, &m_patchWireframePipeline));
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_patchWireframePipeline));
 
 		rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, nullptr, &m_patchPipeline));
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_patchPipeline));
 
 		std::array<VkPipelineShaderStageCreateInfo, 5> normalShaderStages;
 		normalShaderStages[0] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -900,7 +908,7 @@ namespace SWVL
 				poolSizes.data(),
 				1);
 
-		VK_CHECK_RESULT(vkCreateDescriptorPool(*m_device, &descriptorPoolInfo, nullptr, m_descriptorPool));
+		VK_CHECK_RESULT(vkCreateDescriptorPool(*m_device, &descriptorPoolInfo, m_allocator, m_descriptorPool));
 	}
 
 	void SWVulkanLattice::setupDescriptorSets()
@@ -975,12 +983,12 @@ namespace SWVL
 				bufSize);
 
 		// Results are saved in a host visible buffer for easy access by the application
-		VK_CHECK_RESULT(vkCreateBuffer(*m_device, &bufferCreateInfo, nullptr, &m_queryResult.buffer));
+		VK_CHECK_RESULT(vkCreateBuffer(*m_device, &bufferCreateInfo, m_allocator, &m_queryResult.buffer));
 		vkGetBufferMemoryRequirements(*m_device, m_queryResult.buffer, &memReqs);
 		memAlloc.allocationSize = memReqs.size;
 		memAlloc.memoryTypeIndex = m_vulkanDevice->getMemoryType(memReqs.memoryTypeBits, 
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		VK_CHECK_RESULT(vkAllocateMemory(*m_device, &memAlloc, nullptr, &m_queryResult.memory));
+		VK_CHECK_RESULT(vkAllocateMemory(*m_device, &memAlloc, m_allocator, &m_queryResult.memory));
 		VK_CHECK_RESULT(vkBindBufferMemory(*m_device, m_queryResult.buffer, m_queryResult.memory, 0));
 
 		uint32_t timeBufSize = m_timingResult.count * sizeof(uint64_t);
@@ -991,12 +999,12 @@ namespace SWVL
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 				timeBufSize
 			);
-		VK_CHECK_RESULT(vkCreateBuffer(*m_device, &timeBufferCreateInfo, nullptr, &m_timingResult.buffer));
+		VK_CHECK_RESULT(vkCreateBuffer(*m_device, &timeBufferCreateInfo, m_allocator, &m_timingResult.buffer));
 		vkGetBufferMemoryRequirements(*m_device, m_timingResult.buffer, &timeMemReqs);
 		timeMemAlloc.allocationSize = timeMemReqs.size;
 		timeMemAlloc.memoryTypeIndex = m_vulkanDevice->getMemoryType(timeMemReqs.memoryTypeBits, 
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		VK_CHECK_RESULT(vkAllocateMemory(*m_device, &timeMemAlloc, nullptr, &m_timingResult.memory));
+		VK_CHECK_RESULT(vkAllocateMemory(*m_device, &timeMemAlloc, m_allocator, &m_timingResult.memory));
 		VK_CHECK_RESULT(vkBindBufferMemory(*m_device, m_timingResult.buffer, m_timingResult.memory, 0));
 		m_timestampPeriod = m_vulkanDevice->properties.limits.timestampPeriod;
 
