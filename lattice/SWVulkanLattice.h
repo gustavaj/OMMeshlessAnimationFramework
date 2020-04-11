@@ -118,6 +118,9 @@ namespace SWVL
 		/* Update UIOverlay with information about the lattice */
 		bool onUpdateUIOverlay(vks::UIOverlay* overlay);
 
+		static void CheckAndSetupRequiredPhysicalDeviceFeatures(
+			VkPhysicalDeviceFeatures& deviceFeatures, VkPhysicalDeviceFeatures& enabledFeatures);
+
 	protected:
 		virtual void localUpdate(double dt) override;
 

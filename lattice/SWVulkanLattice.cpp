@@ -7,6 +7,7 @@ namespace SWVL
 	SWVulkanLattice::SWVulkanLattice()
 		: SWVulkanLattice("")
 	{
+		std::cout << "--VulkanLattice::VulkanLattice()" << std::endl;
 	}
 
 	SWVulkanLattice::SWVulkanLattice(std::string name)
@@ -16,14 +17,18 @@ namespace SWVL
 		  m_device(nullptr), m_vulkanDevice(nullptr), m_descriptorPool(nullptr), m_renderPass(nullptr),
 		  m_queue(nullptr), m_commandPool(nullptr), m_allocator(nullptr), m_selectedSurface(0)
 	{
+		std::cout << "--VulkanLattice::VulkanLattice(std::string)" << std::endl;
 	}
 
 	SWVulkanLattice::~SWVulkanLattice()
 	{
+		std::cout << "--VulkanLattice::~VulkanLattice()" << std::endl;
 	}
 
 	void SWVulkanLattice::initVulkanStuff(VkDevice* device, vks::VulkanDevice* vulkanDevice, VkQueue* queue, VkCommandPool* commandPool, VkDescriptorPool* descriptorPool, VkRenderPass* renderPass, VkAllocationCallbacks* allocator)
 	{
+		std::cout << "--VulkanLattice::initVulkanStuff()" << std::endl;
+
 		if (m_vulkanInitiated) return;
 
 		m_device = device;
@@ -59,6 +64,8 @@ namespace SWVL
 
 	void SWVulkanLattice::destroyVulkanStuff()
 	{
+		std::cout << "--VulkanLattice::destroyVulkanStuff()" << std::endl;
+
 		if (m_pointsPipeline) {
 			vkDestroyPipeline(*m_device, m_pointsPipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_linesPipeline, m_allocator);
@@ -110,6 +117,8 @@ namespace SWVL
 
 	void SWVulkanLattice::addToCommandbufferPreRenderpass(VkCommandBuffer& commandBuffer)
 	{
+		std::cout << "--VulkanLattice::addToCommandBufferPreRenderpass(" << commandBuffer << ")" << std::endl;
+
 		if (m_doPipelineQueries) {
 			vkCmdResetQueryPool(commandBuffer, m_queryPool, 0, m_queryResult.count);
 		}
@@ -120,9 +129,9 @@ namespace SWVL
 
 	void SWVulkanLattice::addToCommandbuffer(VkCommandBuffer& commandBuffer)
 	{
-		if (!m_draw) return;
+		std::cout << "--VulkanLattice::addToCommandBuffer(" << commandBuffer << ")" <<  std::endl;
 
-		std::cout << "Add to command buffer" << std::endl;
+		if (!m_draw) return;
 
 		VkDeviceSize offsets[1] = { 0 };
 
@@ -413,8 +422,24 @@ namespace SWVL
 		return rebuildCmd;
 	}
 
+	void SWVulkanLattice::CheckAndSetupRequiredPhysicalDeviceFeatures(
+		VkPhysicalDeviceFeatures& deviceFeatures, VkPhysicalDeviceFeatures& enabledFeatures)
+	{
+		assert(deviceFeatures.tessellationShader && deviceFeatures.geometryShader &&
+			deviceFeatures.fillModeNonSolid && deviceFeatures.pipelineStatisticsQuery &&
+			deviceFeatures.vertexPipelineStoresAndAtomics);
+
+		enabledFeatures.tessellationShader = VK_TRUE;				// For tessellation
+		enabledFeatures.geometryShader = VK_TRUE;					// For drawing normals
+		enabledFeatures.fillModeNonSolid = VK_TRUE;					// For drawing wireframe
+		enabledFeatures.pipelineStatisticsQuery = VK_TRUE;			// For getting stats from the rendering
+		enabledFeatures.vertexPipelineStoresAndAtomics = VK_TRUE;	// For using shader storage buffers
+	}
+
 	void SWVulkanLattice::createDeviceLocalBuffer(VkBuffer& buffer, VkDeviceMemory& memory, void* data, uint32_t bufferSize, VkBufferUsageFlagBits usage)
 	{
+		std::cout << "--VulkanLattice::createDeviceLocalBuffer()" << std::endl;
+
 		if (buffer != VK_NULL_HANDLE) {
 			vkDestroyBuffer(*m_device, buffer, m_allocator);
 		}
@@ -483,6 +508,8 @@ namespace SWVL
 
 	void SWVulkanLattice::setupVertices()
 	{
+		std::cout << "--VulkanLattice::setupVertices()" << std::endl;
+
 		// Set up local surface vertices
 		m_localSurfaceVertices.resize(0);
 		for (size_t i = 0; i < m_loci.size(); i++)
@@ -536,6 +563,8 @@ namespace SWVL
 
 	void SWVulkanLattice::createBuffers()
 	{
+		std::cout << "--VulkanLattice::createBuffers()" << std::endl;
+
 		// Lattice grid points
 		std::vector<GridVertex> gridPoints;
 
@@ -588,6 +617,8 @@ namespace SWVL
 
 	void SWVulkanLattice::prepareUniformBuffers()
 	{
+		std::cout << "--VulkanLattice::prepareUniformBuffers()" << std::endl;
+
 		// Shared tessellation shader stages uniform buffer
 		VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -628,6 +659,8 @@ namespace SWVL
 
 	void SWVulkanLattice::setupDescriptorSetLayouts()
 	{
+		std::cout << "--VulkanLattice::setupDescriptorSetLAyouts()" << std::endl;
+
 		std::vector<VkDescriptorSetLayout> descriptorLayouts;
 
 		// LAttice
@@ -666,6 +699,8 @@ namespace SWVL
 
 	VkPipelineShaderStageCreateInfo SWVulkanLattice::loadShader(std::string fileName, VkShaderStageFlagBits stage)
 	{
+		std::cout << "--VulkanLattice::loadShader()" << std::endl;
+
 		VkPipelineShaderStageCreateInfo shaderStage = {};
 		shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shaderStage.stage = stage; shaderStage.module = vks::tools::loadShader(fileName.c_str(), *m_device);
@@ -676,6 +711,8 @@ namespace SWVL
 
 	void SWVulkanLattice::preparePipelines()
 	{
+		std::cout << "--VulkanLattice::preparePipelines()" << std::endl;
+
 		// Input Assembly States
 		VkPipelineInputAssemblyStateCreateInfo lineInputAssemblyState =
 			vks::initializers::pipelineInputAssemblyStateCreateInfo(
@@ -876,6 +913,8 @@ namespace SWVL
 
 	void SWVulkanLattice::setupDescriptorPool()
 	{
+		std::cout << "--VulkanLattice::setupDescriptorPool()" << std::endl;
+
 		std::vector<VkDescriptorPoolSize> poolSizes =
 		{
 			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2),
@@ -893,6 +932,8 @@ namespace SWVL
 
 	void SWVulkanLattice::setupDescriptorSets()
 	{
+		std::cout << "--VulkanLattice::setupDescriptorSets()" << std::endl;
+
 		VkDescriptorSetAllocateInfo allocInfo;
 		std::vector<VkWriteDescriptorSet> writeDescriptorSets;
 
@@ -928,17 +969,23 @@ namespace SWVL
 
 	void SWVulkanLattice::updateLatticeUniformBuffer()
 	{
+		std::cout << "--VulkanLattice::updateLatticeUniformBuffer()" << std::endl;
+
 		m_uniforms.modelview = m_view * m_matrix;
 		memcpy(m_latticeUniformBuffer.mapped, &m_uniforms, sizeof(m_uniforms));
 	}
 
 	void SWVulkanLattice::updateMatrixUniformBuffer()
 	{
+		std::cout << "--VulkanLattice::updateMatrixUniformBuffer()" << std::endl;
+
 		memcpy(m_matrixUniformBuffer.mapped, &m_matrices[0][0], sizeof(glm::mat4) * m_numLoci);
 	}
 
 	void SWVulkanLattice::uploadStorageBuffers()
 	{
+		std::cout << "--VulkanLattice::uploadStorageBuffers()" << std::endl;
+
 		createDeviceLocalBuffer(m_controlPointBuffer.buffer, m_controlPointBuffer.memory,
 			m_controlPoints.data(), m_controlPointBuffer.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		m_controlPointBuffer.descriptor.buffer = m_controlPointBuffer.buffer;
@@ -949,6 +996,8 @@ namespace SWVL
 
 	void SWVulkanLattice::setupQueryResultBuffer()
 	{
+		std::cout << "--VulkanLattice::setupQueryResultBuffer()" << std::endl;
+
 		m_queryResult.count = 10;
 		m_timingResult.count = 2;
 

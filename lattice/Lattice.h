@@ -25,27 +25,27 @@ namespace OML {
 
 	class NormalSinSimulator {
 	public:
-		NormalSinSimulator() : NormalSinSimulator(0.0, 0.0, 0.0, Vec3f(0.0f)) {}
+		NormalSinSimulator() : NormalSinSimulator(0.0, 0.0, 0.0, Vec3f(0.0f, 0.0f, 0.0f)) {}
 		NormalSinSimulator(double t, double max, double speed, Vec3f normal)
-			: m_t(t), m_max(max), m_speed(speed), m_normal(normal), m_lastOffset(0.0f) {}
+			: m_t(t), m_max(max), m_speed(speed), 
+			  m_normal(normal[0], normal[1], normal[2]), m_lastOffset(0.0f, 0.0f, 0.0f) {}
 		~NormalSinSimulator() {}
 
 		void simulate(double dt, glm::mat4& mat) {
 			m_t += dt;
-
-			double f = std::sin(m_t * m_speed);
-			Vec3f offset = m_normal * f * m_max;
-			glm::vec3 trans(offset[0] - m_lastOffset[0], offset[1] - m_lastOffset[1], offset[2] - m_lastOffset[2]);
+			float f = std::sin(m_t * m_speed) * m_max;
+			glm::vec3 offset = (m_normal * f);
+			//mat = glm::translate(mat, offset - m_lastOffset);
+			glm::vec4 trans(offset[0] - m_lastOffset[0], offset[1] - m_lastOffset[1], offset[2] - m_lastOffset[2], 0.0f);
+			mat[3] -= trans;
 			m_lastOffset = offset;
-
-			mat = glm::translate(mat, trans);
 		}
 	private:
 		double m_t;
 		double m_max;
 		double m_speed;
-		Vec3f m_normal;
-		Vec3f m_lastOffset;
+		glm::vec3 m_normal;
+		glm::vec3 m_lastOffset;
 	};
 
 	struct BoundaryInfo

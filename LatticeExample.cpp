@@ -29,31 +29,35 @@ class LatticeExample : public VulkanExampleBase
 public:
 
 	std::vector<Lattice> lattices;
+
+	// Variables used for lattice creation
 	int latticeCreateTypeIndex = 0;
 	int c_rows = 2, c_cols = 2;
 	float c_width = 10.0f, c_height = 10.0f;
 	glm::vec3 c_pos = glm::vec3(0.0f);
 	glm::vec3 c_rot = glm::vec3(0.0f);
 	glm::vec3 c_col = glm::vec3(0.8f, 0.2f, 0.5f);
+	bool perPatchColors = false;
 	int latticeIdx = 0;
 	int latticeDeleteIdx = 0;
-	std::vector<std::string> latticeNames;
 	char latticeName[64] = "Lattice";
-	bool perPatchColors = false;
+	std::vector<std::string> latticeNames;
 
 	LatticeExample(bool enableValidation)
 		: VulkanExampleBase(enableValidation)
 	{
+		title = "Lattice Example";
+
+		// Camera
 		zoom = -100.0f;
 		zoomSpeed = 20.0f;
-		title = "OpenMesh Lattice Example";
 		camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 10000.0f);
-		//camera.position = glm::vec3(0.0f, 0.0f, -30.0f);
 		/*camera.type = Camera::CameraType::firstperson;*/
+		/*camera.movementSpeed = 0.025f;*/
 		camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
 		camera.setTranslation(glm::vec3(0.0f, 0.0f, -50.0f));
-		/*camera.movementSpeed = 0.025f;*/
-		settings.overlay = true;
+
+		settings.overlay = true; // ImGui overlay
 	}
 
 	~LatticeExample()
@@ -62,34 +66,22 @@ public:
 			lat.destroyVulkanStuff();
 	}
 
-	virtual void getEnabledFeatures() {
-		// Tessellation shader support is required for this example
-		if (deviceFeatures.tessellationShader && deviceFeatures.geometryShader &&
-			deviceFeatures.fillModeNonSolid && deviceFeatures.pipelineStatisticsQuery &&
-			deviceFeatures.vertexPipelineStoresAndAtomics) {
-			enabledFeatures.tessellationShader = VK_TRUE;
-			enabledFeatures.geometryShader = VK_TRUE;
-			enabledFeatures.fillModeNonSolid = VK_TRUE;
-			enabledFeatures.pipelineStatisticsQuery = VK_TRUE;
-			enabledFeatures.vertexPipelineStoresAndAtomics = VK_TRUE;
-		}
-		else {
-			vks::tools::exitFatal("Selected GPU does not support tessellation shaders!", VK_ERROR_FEATURE_NOT_PRESENT);
+	void setupAnimation()
+	{
+		for (auto& lat : lattices)
+		{
+			lat.addNormalSinSimulation();
+			lat.setAnimate(true);
+			lat.setDrawLatticeGrid(false);
 		}
 	}
 
-	void setupQueryResultBuffer() {
-		
+	virtual void getEnabledFeatures() {
+		Lattice::CheckAndSetupRequiredPhysicalDeviceFeatures(deviceFeatures, enabledFeatures);
 	}
 
 	void loadAssets() {
 		createLatticeGeometry();
-
-		for (auto& lat : lattices)
-		{
-			lat.induceLattice();
-			lat.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
-		}
 	}
 
 	virtual void createLatticeGeometry()
@@ -175,10 +167,8 @@ public:
 	void prepare() {
 		VulkanExampleBase::prepare();
 		loadAssets();
-		if (deviceFeatures.pipelineStatisticsQuery) {
-			setupQueryResultBuffer();
-		}
-		reBuildCommandBuffers();
+		if(!checkCommandBuffers())
+			reBuildCommandBuffers();
 		viewChanged();
 		prepared = true;
 	}

@@ -97,7 +97,7 @@ std::string VulkanExampleBase::getWindowTitle()
 	std::string windowTitle;
 	windowTitle = title + " - " + device;
 	if (!settings.overlay) {
-		windowTitle += " - " + std::to_string(frameCounter) + " fps";
+		windowTitle += " - " + std::to_string(frameTimer) + "ms/frame (" + std::to_string(frameCounter) + " fps)";
 	}
 	return windowTitle;
 }
@@ -1225,6 +1225,23 @@ void VulkanExampleBase::handleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 		keyPressed((uint32_t)wParam);
 		break;
 	case WM_KEYUP:
+		switch (wParam)
+		{
+		case KEY_0: numberInput.k0 = false; numberInput.k0_handled = false; break;
+		case KEY_1: numberInput.k1 = false; numberInput.k1_handled = false; break;
+		case KEY_2: numberInput.k2 = false; numberInput.k2_handled = false; break;
+		case KEY_3: numberInput.k3 = false; numberInput.k3_handled = false; break;
+		case KEY_4: numberInput.k4 = false; numberInput.k4_handled = false; break;
+		case KEY_5: numberInput.k5 = false; numberInput.k5_handled = false; break;
+		case KEY_6: numberInput.k6 = false; numberInput.k6_handled = false; break;
+		case KEY_7: numberInput.k7 = false; numberInput.k7_handled = false; break;
+		case KEY_8: numberInput.k8 = false; numberInput.k8_handled = false; break;
+		case KEY_9: numberInput.k9 = false; numberInput.k9_handled = false; break;
+		case KEY_RETURN: numberInput.kReturn = false; numberInput.kReturn_handled = false; break;
+		case KEY_BACKSPACE: numberInput.kBackspace = false; numberInput.kBackspace_handled = false; break;
+		case KEY_PERIOD: numberInput.kPeriod = false; numberInput.kPeriod_handled = false; break;
+		case KEY_MINUS: numberInput.kMinus = false; numberInput.kMinus_handled = false; break;
+		}
 		if (camera.firstperson)
 		{
 			switch (wParam)
@@ -1241,20 +1258,6 @@ void VulkanExampleBase::handleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 			case KEY_D:
 				camera.keys.right = false;
 				break;
-			case KEY_0: numberInput.k0 = false; numberInput.k0_handled = false; break;
-			case KEY_1: numberInput.k1 = false; numberInput.k1_handled = false; break;
-			case KEY_2: numberInput.k2 = false; numberInput.k2_handled = false; break;
-			case KEY_3: numberInput.k3 = false; numberInput.k3_handled = false; break;
-			case KEY_4: numberInput.k4 = false; numberInput.k4_handled = false; break;
-			case KEY_5: numberInput.k5 = false; numberInput.k5_handled = false; break;
-			case KEY_6: numberInput.k6 = false; numberInput.k6_handled = false; break;
-			case KEY_7: numberInput.k7 = false; numberInput.k7_handled = false; break;
-			case KEY_8: numberInput.k8 = false; numberInput.k8_handled = false; break;
-			case KEY_9: numberInput.k9 = false; numberInput.k9_handled = false; break;
-			case KEY_RETURN: numberInput.kReturn = false; numberInput.kReturn_handled = false; break;
-			case KEY_BACKSPACE: numberInput.kBackspace = false; numberInput.kBackspace_handled = false; break;
-			case KEY_PERIOD: numberInput.kPeriod = false; numberInput.kPeriod_handled = false; break;
-			case KEY_MINUS: numberInput.kMinus = false; numberInput.kMinus_handled = false; break;
 			}
 		}
 		break;
