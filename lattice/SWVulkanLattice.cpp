@@ -45,7 +45,7 @@ namespace SWVL
 
 		m_listItems.resize(0);
 		m_listItems.push_back(m_name);
-		for (size_t i = 0; i < m_numPatches; i++)
+		for (size_t i = 0; i < m_patches.size(); i++)
 		{
 			auto idx = std::to_string(i);
 			m_listItems.push_back("Patch " + idx + " - p00");
@@ -614,7 +614,7 @@ namespace SWVL
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			&m_matrixUniformBuffer,
-			sizeof(glm::mat4) * m_numLoci
+			sizeof(glm::mat4) * m_matrices.size()
 		));
 
 		VK_CHECK_RESULT(m_matrixUniformBuffer.map());
@@ -623,7 +623,7 @@ namespace SWVL
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			&m_controlPointBuffer,
-			sizeof(glm::vec4) * m_numControlPoints
+			sizeof(glm::vec4) * m_controlPoints.size()
 		));
 
 		VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
@@ -820,9 +820,9 @@ namespace SWVL
 			int numLocalSurfaces;
 			int numPatches;
 		} specializationData;
-		specializationData.numLocalSurfacesControlPoints = m_numControlPoints;
-		specializationData.numLocalSurfaces = m_numLoci;
-		specializationData.numPatches = m_numPatches;
+		specializationData.numLocalSurfacesControlPoints = m_controlPoints.size();
+		specializationData.numLocalSurfaces = m_matrices.size();
+		specializationData.numPatches = m_patches.size();
 		std::array<VkSpecializationMapEntry, 3> specializationMapEntries;
 		specializationMapEntries[0].constantID = 0;
 		specializationMapEntries[0].size = sizeof(specializationData.numLocalSurfacesControlPoints);
@@ -947,7 +947,7 @@ namespace SWVL
 
 	void SWVulkanLattice::updateMatrixUniformBuffer()
 	{
-		memcpy(m_matrixUniformBuffer.mapped, &m_matrices[0][0], sizeof(glm::mat4) * m_numLoci);
+		memcpy(m_matrixUniformBuffer.mapped, &m_matrices[0][0], sizeof(glm::mat4) * m_matrices.size());
 	}
 
 	void SWVulkanLattice::uploadStorageBuffers()

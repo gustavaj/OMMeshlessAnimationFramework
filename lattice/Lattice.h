@@ -235,6 +235,12 @@ namespace OML {
 		float m_maxSpeed = 5.0;
 
 	private:
+		inline bool equal(Vec3f& p1, Vec3f& p2) {
+			return std::abs(p1[0] - p2[0]) < 1e-5 &&
+				   std::abs(p1[1] - p2[1]) < 1e-5 &&
+				   std::abs(p1[2] - p2[2]) < 1e-5;
+		}
+
 		// Helper functions for setting up the lattice stuff
 		void setupEdgeColor();
 		void setupLociValenceAndPointColor();
@@ -256,12 +262,12 @@ namespace OML {
 			OpenMesh::VertexHandle vertex, OpenMesh::VertexHandle next_vertex,
 			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace);
 
-		void addLocus(OpenMesh::VertexHandle vertex, std::vector<Vec3f>& controlPoints,
-			std::unordered_map<OpenMesh::FaceHandle, uint32_t>& boundaryIndices, Vec3f offset);
+		void addLocus(OpenMesh::VertexHandle vertex, uint32_t controlPointIndex, uint32_t controlPointCount,
+			std::unordered_map<OpenMesh::FaceHandle, uint32_t>& boundaryIndices, Vec3f offset, bool addMatrix = true);
 
-		std::vector<Vec3f> createLocalSurfaceControlPoints(
+		uint32_t createLocalSurfaceControlPoints(
 			Vec3f topLeft, Vec3f topRight, Vec3f bottomLeft, Vec3f bottomRight);
-		std::vector<Vec3f> createLocalSurfaceControlPoints(
+		uint32_t createLocalSurfaceControlPoints(
 			Vec3f topLeft, Vec3f topMiddle, Vec3f topRight,
 			Vec3f middleLeft, Vec3f middle, Vec3f middleRight,
 			Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight);

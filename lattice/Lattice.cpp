@@ -1,5 +1,8 @@
 #include "Lattice.h"
 
+#include <chrono>
+#include <iostream>
+
 namespace OML
 {
 	Lattice::Lattice()
@@ -23,14 +26,16 @@ namespace OML
 
 	void Lattice::addPatch(Vec3f topLeft, Vec3f topRight, Vec3f bottomLeft, Vec3f bottomRight)
 	{
+		// TODO: Should probably try to improve this
+
 		OpenMesh::VertexHandle tl, tr, bl, br;
 		for (auto it = vertices_begin(); it != vertices_end(); it++)
 		{
 			auto p = point(*it);
-			if ((p - topLeft).length() < 1e-5) tl = *it;
-			if ((p - topRight).length() < 1e-5) tr = *it;
-			if ((p - bottomLeft).length() < 1e-5) bl = *it;
-			if ((p - bottomRight).length() < 1e-5) br = *it;
+			if (equal(p, topLeft)) tl = *it;
+			if (equal(p, topRight)) tr = *it;
+			if (equal(p, bottomLeft)) bl = *it;
+			if (equal(p, bottomRight)) br = *it;
 		}
 
 		if (!tl.is_valid()) tl = add_vertex(topLeft);
@@ -62,6 +67,14 @@ namespace OML
 
 	void Lattice::addGrid(Vec2f topLeft, float width, float height, int rows, int cols)
 	{
+		/*
+			Improvements of this:
+			-time start: ~3000ms
+			-improve point equality check, dont use .length(): ~800ms
+		*/
+
+		auto start = std::chrono::high_resolution_clock::now();
+
 		float w = width / (float)cols;
 		float h = height / (float)rows;
 		Vec2f dw(w, 0.0f);
@@ -73,6 +86,11 @@ namespace OML
 			}
 			topLeft += dh;
 		}
+
+		auto end = std::chrono::high_resolution_clock::now();
+		auto time = std::chrono::duration<double, std::milli>(end - start).count();
+
+		std::cout << "Lattice::addGrid(rows: " << rows << ", cols: " << cols << ") time: " << time << "ms" << std::endl;
 	}
 
 	void Lattice::addDonut(Vec2f topLeft, float outerRadius, float innerRadius)
@@ -170,6 +188,7 @@ namespace OML
 		m_simulators.resize(0);
 		for (auto& locus : m_loci)
 		{
+			if (property(LatticeProperties::Type, locus.vh) == LocusType::T_Terminal) continue;
 			double t = 0.0; //random(0.0, 100.0);
 			double amp = random(m_minAmp, m_maxAmp);
 			double speed = random(m_minSpeed, m_maxSpeed);
@@ -192,8 +211,7 @@ namespace OML
 
 	void Lattice::induceLattice()
 	{
-		// Set the edge color of gridlines depending on if the edge is on the boundary or not
-		setupEdgeColor();
+		auto start = std::chrono::high_resolution_clock::now();
 
 		// Setup the valence property of the loci, and set the color of gridpoints based on the point's valence
 		setupLociValenceAndPointColor();
@@ -201,8 +219,16 @@ namespace OML
 		// Find and resolve T-loci, and add local surface for them
 		handleTLoci();
 
+		// Set the edge color of gridlines depending on if the edge is on the boundary or not
+		setupEdgeColor();
+
 		// Add regular local surfaces for each loci, and setup patches
 		setupLocalSurfacesAndPatches();
+
+		auto end = std::chrono::high_resolution_clock::now();
+		auto time = std::chrono::duration<double, std::milli>(end - start).count();
+
+		std::cout << "Lattice::induceLattice() time: " << time << "ms" << std::endl;
 	}
 
 	void Lattice::resetMatrices()
@@ -254,97 +280,151 @@ namespace OML
 	void Lattice::handleTLoci()
 	{
 		// Look for T-loci, and handle it!
-		//for (auto v_itr = vertices_begin(); v_itr != vertices_end(); v_itr++)
-		//{
-		//	auto vh = *v_itr;
-		//	if (property(LatticeProperties::LocusValence, vh) == 5
-		//		|| (property(LatticeProperties::LocusValence, vh) == 4 && is_boundary(vh)))
-		//	{
-		//		// Find the opposite extreme point vertex
-		//		OpenMesh::VertexHandle vh2, vht;
-		//		for (auto vv_itr = vv_iter(vh); vv_itr.is_valid(); vv_itr++)
-		//		{
-		//			if (property(LatticeProperties::LocusValence, *vv_itr) == 5 ||
-		//				(property(LatticeProperties::LocusValence, *vv_itr) == 4 && is_boundary(*vv_itr)))
-		//			{
-		//				vh2 = *vv_itr;
-		//				break;
-		//			}
-		//		}
+		for (auto v_itr = vertices_begin(); v_itr != vertices_end(); v_itr++)
+		{
+			auto vh_terminal = *v_itr;
+			// Look for a terminal point for a T-vertex
+			if (property(LatticeProperties::VertexValence, vh_terminal) == 5
+				|| (property(LatticeProperties::VertexValence, vh_terminal) == 4 && is_boundary(vh_terminal)))
+			{
+				// Find the opposite terminal point vertex
+				OpenMesh::VertexHandle vh_terminal2, vh_T;
+				for (auto vv_itr = vv_iter(vh_terminal); vv_itr.is_valid(); vv_itr++)
+				{
+					if (property(LatticeProperties::VertexValence, *vv_itr) == 5 ||
+						(property(LatticeProperties::VertexValence, *vv_itr) == 4 && is_boundary(*vv_itr)))
+					{
+						vh_terminal2 = *vv_itr;
+						break;
+					}
+				}
 
-		//		auto heh12 = find_halfedge(vh, vh2);
+				auto heh12 = find_halfedge(vh_terminal, vh_terminal2);
 
-		//		OpenMesh::HalfedgeHandle heht1, heht2;
+				OpenMesh::HalfedgeHandle heht1, heht2;
 
-		//		// Find the other t-point
-		//		for (auto vv_itr = vv_iter(vh); vv_itr.is_valid(); vv_itr++)
-		//		{
-		//			heht1 = find_halfedge(*vv_itr, vh);
-		//			heht2 = find_halfedge(*vv_itr, vh2);
-		//			if (heht1.is_valid() && heht2.is_valid())
-		//			{
-		//				vht = *vv_itr;
-		//				break;
-		//			}
-		//		}
+				// Find the other t-point
+				for (auto vv_itr = vv_iter(vh_terminal); vv_itr.is_valid(); vv_itr++)
+				{
+					heht1 = find_halfedge(*vv_itr, vh_terminal);
+					heht2 = find_halfedge(*vv_itr, vh_terminal2);
+					if (heht1.is_valid() && heht2.is_valid())
+					{
+						vh_T = *vv_itr;
+						break;
+					}
+				}
 
-		//		if (vht.is_valid()) {
-		//			// Change color of vertices
-		//			// Yellow for extreme points, purple for t-poitns
-		//			set_color(vh, Col3(255, 255, 0));
-		//			set_color(vh2, Col3(255, 255, 0));
-		//			set_color(vht, Col3(255, 0, 255));
+				if (vh_T.is_valid()) {
+					// Change color of vertices
+					// Yellow for terminal points, purple for t-poitns
+					set_color(vh_terminal, Col3(255, 255, 0));
+					set_color(vh_terminal2, Col3(255, 255, 0));
+					set_color(vh_T, Col3(255, 0, 255));
+					property(LatticeProperties::Type, vh_terminal) = LocusType::T_Terminal;
+					property(LatticeProperties::Type, vh_terminal2) = LocusType::T_Terminal;
+					property(LatticeProperties::Type, vh_T) = LocusType::T;
 
-		//			// heh12
-		//			auto heh21 = opposite_halfedge_handle(heh12);
+					// heh12
+					auto heh21 = opposite_halfedge_handle(heh12);
 
-		//			auto vh3 = from_vertex_handle(prev_halfedge_handle(heh21));
-		//			auto vh4 = to_vertex_handle(next_halfedge_handle(heh21));
+					auto vh3 = from_vertex_handle(prev_halfedge_handle(heh21));
+					auto vh4 = to_vertex_handle(next_halfedge_handle(heh21));
 
-		//			delete_edge(edge_handle(heh12));
+					delete_edge(edge_handle(heh12));
 
-		//			garbage_collection(true, true, true);
+					garbage_collection(false, true, true);
 
-		//			std::vector<OpenMesh::VertexHandle> vhs{ vh4, vh3, vh2, vht, vh };
-		//			add_face(vhs);
+					std::vector<OpenMesh::VertexHandle> vhs{ vh4, vh3, vh_terminal2, vh_T, vh_terminal };
+					add_face(vhs);
 
-		//			// Update valence
-		//			property(LatticeProperties::LocusValence, vh) -= 1;
-		//			property(LatticeProperties::LocusValence, vh2) -= 1;
+					// Update valence
+					property(LatticeProperties::VertexValence, vh_terminal) -= 1;
+					property(LatticeProperties::VertexValence, vh_terminal2) -= 1;
 
+					bool terminal1IsBoundary = is_boundary(vh_terminal);
+					bool terminal2IsBoundary = is_boundary(vh_terminal2);
 
-		//			auto heh_1_to_t = find_halfedge(vh, vht);
-		//			auto heh_t_to_2 = find_halfedge(vht, vh2);
+					auto heh_1_to_T = find_halfedge(vh_terminal, vh_T);
+					auto heh_T_to_2 = find_halfedge(vh_T, vh_terminal2);
+					OpenMesh::HalfedgeHandle heh_over_1_to_T, heh_below_T_to_2;
+					Vec3f v1, v1_1, v1_2, v2, v2_1, v2_2;
+					if (terminal1IsBoundary) {
+						v1_1 = Vec3f(0.0f);
+						v1 = -calc_edge_vector(heh_1_to_T);
+					}
+					else {
+						heh_over_1_to_T = prev_halfedge_handle(opposite_halfedge_handle(prev_halfedge_handle(heh_1_to_T)));
+						v1_1 = -calc_edge_vector(heh_1_to_T);
+						v1_2 = -calc_edge_vector(heh_over_1_to_T);
+						v1 = v1_1 + v1_2;
+					}
+					if (terminal2IsBoundary) {
+						v2_2 = Vec3f(0.0f);
+						v2 = calc_edge_vector(heh_T_to_2);
+					}
+					else {
+						heh_below_T_to_2 = next_halfedge_handle(opposite_halfedge_handle(next_halfedge_handle(heh_T_to_2)));
+						v2_1 = calc_edge_vector(heh_T_to_2);
+						v2_2 = calc_edge_vector(heh_below_T_to_2);
+						v2 = v2_1 + v2_2;
+					}
+					auto u1 = calc_edge_vector(next_halfedge_handle(opposite_halfedge_handle(heh_1_to_T)));
+					auto u2 = calc_edge_vector(next_halfedge_handle(heh_1_to_T));
 
-		//			// Create local surface and update indices for all affected parts.
-		//			auto vh_before = from_vertex_handle(prev_halfedge_handle(opposite_halfedge_handle(prev_halfedge_handle(heh_1_to_t))));
-		//			auto vh_after = to_vertex_handle(next_halfedge_handle(opposite_halfedge_handle(next_halfedge_handle(heh_t_to_2))));
+					float halfwayU = u1.length() / (u1.length() + u2.length());
+					float totalVLength = (v1.length() + v2.length());
+					float q0V = 0.0f;
+					float q1V = v1_1.length() / totalVLength;
+					float q2V = v1.length() / totalVLength;
+					float q3V = 1.0f - (v2_2.length() / totalVLength);
+					float q4V = 1.0f;
 
-		//			auto v1 = calc_edge_vector(opposite_halfedge_handle(heh_1_to_t)) + calc_edge_vector(find_halfedge(vh, vh_before));
-		//			auto v2 = calc_edge_vector(heh_t_to_2) + calc_edge_vector(find_halfedge(vh2, vh_after));
+					auto offset = point(vh_T);
+					uint32_t controlPointIndex = createLocalSurfaceControlPoints(
+						u1 + v1, u2 + v1, u1 + v2, u2 + v2);
+					uint32_t controlPointCount = 9;
 
-		//			auto u1 = calc_edge_vector(next_halfedge_handle(opposite_halfedge_handle(heh_1_to_t)));
-		//			auto u2 = calc_edge_vector(opposite_halfedge_handle(prev_halfedge_handle(heh_1_to_t)));
-		//			auto u3 = calc_edge_vector(opposite_halfedge_handle(prev_halfedge_handle(opposite_halfedge_handle(heh_t_to_2))));
-		//			auto u4 = calc_edge_vector(next_halfedge_handle(heh_t_to_2));
+					std::unordered_map<OpenMesh::FaceHandle, uint32_t> faceMappings_terminal1;
+					if (!terminal1IsBoundary) {
+						faceMappings_terminal1.insert({ face_handle(opposite_halfedge_handle(heh_over_1_to_T)), m_boundaries.size() });
+						m_boundaries.push_back(BoundaryInfo(0.0f, halfwayU, q0V, q1V));
+						faceMappings_terminal1.insert({ face_handle(heh_over_1_to_T), m_boundaries.size() });
+						m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q0V, q1V));
+					}
+					faceMappings_terminal1.insert({ face_handle(opposite_halfedge_handle(heh_1_to_T)), m_boundaries.size() });
+					m_boundaries.push_back(BoundaryInfo(0.0f, halfwayU, q1V, q3V));
+					faceMappings_terminal1.insert({ face_handle(heh_1_to_T), m_boundaries.size() });
+					m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q1V, q2V));
 
-		//			addLocalSurface(v1 + u1, v1 + u2, v2 + u3, v2 + u4, point(vht));
-		//			int ls_idx = m_localSurfaces.size() - 1;
-		//			property(LatticeProperties::LocusLocalSurfaceIdx, vh) = ls_idx;
-		//			property(LatticeProperties::LocusLocalSurfaceIdx, vht) = ls_idx;
-		//			property(LatticeProperties::LocusLocalSurfaceIdx, vh2) = ls_idx;
-		//		}
-		//	}
-		//}
+					std::unordered_map<OpenMesh::FaceHandle, uint32_t> faceMappings_T;
+					faceMappings_T.insert({ face_handle(heh_1_to_T), m_boundaries.size() });
+					m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q1V, q2V));
+					faceMappings_T.insert({ face_handle(heh_T_to_2), m_boundaries.size() });
+					m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q2V, q3V));
+
+					std::unordered_map<OpenMesh::FaceHandle, uint32_t> faceMappings_terminal2;
+					faceMappings_terminal2.insert({ face_handle(opposite_halfedge_handle(heh_T_to_2)), m_boundaries.size() });
+					m_boundaries.push_back(BoundaryInfo(0.0f, halfwayU, q1V, q3V));
+					faceMappings_terminal2.insert({ face_handle(heh_T_to_2), m_boundaries.size() });
+					m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q2V, q3V));
+					if (!terminal2IsBoundary) {
+						faceMappings_terminal2.insert({ face_handle(opposite_halfedge_handle(heh_below_T_to_2)), m_boundaries.size() });
+						m_boundaries.push_back(BoundaryInfo(0.0f, halfwayU, q3V, q4V));
+						faceMappings_terminal2.insert({ face_handle(heh_below_T_to_2), m_boundaries.size() });
+						m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q3V, q4V));
+					}
+
+					addLocus(vh_terminal, controlPointIndex, controlPointCount, faceMappings_terminal1, offset, true);
+					addLocus(vh_terminal2, controlPointIndex, controlPointCount, faceMappings_terminal2, offset, false);
+					addLocus(vh_T, controlPointIndex, controlPointCount, faceMappings_T, offset, false);
+				}
+			}
+		}
 	}
 
 	void Lattice::setupLocalSurfacesAndPatches()
 	{
-		// init values
-		m_numControlPoints = 0;
-		m_numLoci = 0;
-		m_numPatches = 0;
-
 		// Add local surfaces
 		for (auto f_itr = faces_begin(); f_itr != faces_end(); f_itr++)
 		{
@@ -352,18 +432,19 @@ namespace OML
 			auto fh = *f_itr;
 			auto f = face(fh);
 
+			if (valence(fh) == 5) {
+				std::cout << "Face valence == 5" << std::endl;
+				//break;
+			}
+
 			// Halfedge/edge handles
 			auto topheh = halfedge_handle(fh);
-			auto topeh = edge_handle(topheh);
 
 			auto leftheh = next_halfedge_handle(topheh);
-			auto lefteh = edge_handle(leftheh);
 
 			auto bottomheh = next_halfedge_handle(leftheh);
-			auto boteh = edge_handle(bottomheh);
 
-			auto rightheh = next_halfedge_handle(bottomheh);
-			auto righteh = edge_handle(rightheh);
+			auto rightheh = prev_halfedge_handle(topheh);
 
 			// Add local surfaces on vertices
 			auto vh1 = to_vertex_handle(topheh); // Top Left
@@ -406,8 +487,6 @@ namespace OML
 				patch.color = m_color;
 			}
 			m_patches.push_back(std::move(patch));
-
-			m_numPatches++;
 		}
 	}
 
@@ -419,15 +498,22 @@ namespace OML
 	}
 
 	void Lattice::addLocus(
-		OpenMesh::VertexHandle vertex, std::vector<Vec3f>& controlPoints,
-		std::unordered_map<OpenMesh::FaceHandle, uint32_t>& boundaryIndices, Vec3f offset)
+		OpenMesh::VertexHandle vertex, uint32_t controlPointIndex, uint32_t controlPointCount,
+		std::unordered_map<OpenMesh::FaceHandle, uint32_t>& boundaryIndices, Vec3f offset, bool addMatrix)
 	{
+		if (addMatrix) {
+			m_matrices.push_back(
+				glm::translate(glm::mat4(1.0f), glm::vec3(offset[0], offset[1], offset[2])));
+			m_initialMatrices.push_back(
+				glm::translate(glm::mat4(1.0f), glm::vec3(offset[0], offset[1], offset[2])));
+		}
+
 		Locus locus;
-		locus.controlPointIndex = m_numControlPoints;
-		locus.controlPointCount = controlPoints.size();
+		locus.controlPointIndex = controlPointIndex;
+		locus.controlPointCount = controlPointCount;
 		locus.vh = vertex;
 		locus.boundaryIndices = boundaryIndices;
-		locus.matrixIndex = m_numLoci;
+		locus.matrixIndex = m_matrices.size() - 1;
 
 		// Find the average normal vector over all the patches for the locus
 		Vec3f p = point(vertex);
@@ -447,21 +533,9 @@ namespace OML
 		}
 		locus.normal = normal.normalize();
 
-		property(LatticeProperties::LocusIndex, vertex) = m_numLoci;
+		property(LatticeProperties::LocusIndex, vertex) = m_loci.size();
 
 		m_loci.push_back(locus);
-		m_numLoci++;
-
-		for (auto& p : controlPoints) {
-			m_controlPoints.push_back(glm::vec4(p[0], p[1], p[2], 1.0f));
-		}
-		//m_patchUniforms.controlPoints.insert(m_patchUniforms.controlPoints.end(), controlPoints.begin(), controlPoints.end());
-		m_numControlPoints += controlPoints.size();
-
-		m_matrices.push_back(
-			glm::translate(glm::mat4(1.0f), glm::vec3(offset[0], offset[1], offset[2])));
-		m_initialMatrices.push_back(
-			glm::translate(glm::mat4(1.0f), glm::vec3(offset[0], offset[1], offset[2])));
 	}
 
 	void Lattice::addLocusOnVertex(
@@ -488,18 +562,19 @@ namespace OML
 		Vec3f o_to_p = -calc_edge_vector(prev_halfedge_handle(heh_locus_to_next));
 		Vec3f v_inner = o_to_n + o_to_n_next;
 
-		std::vector<Vec3f> controlPoints;
+		uint32_t controlPointIndex = 0;
+		uint32_t controlPointCount = 9;
 		switch (vertexIndexOnFace) {
-			case 1: { controlPoints = createLocalSurfaceControlPoints(zero, o_to_p, o_to_n, v_inner); break; }
-			case 2: { controlPoints = createLocalSurfaceControlPoints(o_to_n, zero, v_inner, o_to_p); break; }
-			case 3: { controlPoints = createLocalSurfaceControlPoints(o_to_p, v_inner, zero, o_to_n); break; }
-			case 4: { controlPoints = createLocalSurfaceControlPoints(v_inner, o_to_n, o_to_p, zero); break; }
+			case 1: { controlPointIndex = createLocalSurfaceControlPoints(zero, o_to_p, o_to_n, v_inner); break; }
+			case 2: { controlPointIndex = createLocalSurfaceControlPoints(o_to_n, zero, v_inner, o_to_p); break; }
+			case 3: { controlPointIndex = createLocalSurfaceControlPoints(o_to_p, v_inner, zero, o_to_n); break; }
+			case 4: { controlPointIndex = createLocalSurfaceControlPoints(v_inner, o_to_n, o_to_p, zero); break; }
 		}
 
 		std::unordered_map<OpenMesh::FaceHandle, uint32_t> boundaryIndices;
 		m_boundaries.push_back(BoundaryInfo( 0.0f, 1.0f, 0.0f, 1.0f ));
 		boundaryIndices.insert({ face_handle(heh_locus_to_next), m_boundaries.size() - 1 });
-		addLocus(vertex, controlPoints, boundaryIndices, offset);
+		addLocus(vertex, controlPointIndex, controlPointCount, boundaryIndices, offset);
 	}
 
 	void Lattice::addLocusOnBoundaryVertex(
@@ -514,7 +589,8 @@ namespace OML
 		BoundaryInfo boundaryFace(0.0f, 1.0f, 0.0f, 1.0f);
 		BoundaryInfo boundaryAdjFace(0.0f, 1.0f, 0.0f, 1.0f);
 
-		std::vector<Vec3f> controlPoints;
+		uint32_t controlPointIndex = 0;
+		uint32_t controlPointCount = 9;
 		std::unordered_map<OpenMesh::FaceHandle, uint32_t> boundaryIndices;
 
 		if (is_boundary(edge_handle(heh_next))) {
@@ -531,29 +607,29 @@ namespace OML
 			Vec3f pnp = np;
 			Vec3f pnp_2 = pnp * 0.5f;
 
-			//float halfwayPoint = 0.5f + (n.length() / (n - no).length() - 0.5f) / 2;
-			float halfwayPoint = 0.5f;
+			float halfwayPoint = 0.5f + (n.length() / (n - no).length() - 0.5f) / 2;
+			//float halfwayPoint = 0.5f;
 			switch (vertexIndexOnFace) {
 				case 1: { 
-					controlPoints = createLocalSurfaceControlPoints(no, no + pnop_2, no + pnop, zero, p_2, p, n, n + pnp_2, n + pnp);
+					controlPointIndex = createLocalSurfaceControlPoints(no, no + pnop_2, no + pnop, zero, p_2, p, n, n + pnp_2, n + pnp);
 					boundaryFace.vs = halfwayPoint;
 					boundaryAdjFace.ve = halfwayPoint;
 					break; 
 				}
 				case 2: { 
-					controlPoints = createLocalSurfaceControlPoints(n, zero, no, n + pnp_2, p_2, no + pnop_2, n + pnp, p, no + pnop);
+					controlPointIndex = createLocalSurfaceControlPoints(n, zero, no, n + pnp_2, p_2, no + pnop_2, n + pnp, p, no + pnop);
 					boundaryFace.ue = halfwayPoint;
 					boundaryAdjFace.us = halfwayPoint;
 					break; 
 				}
 				case 3: { 
-					controlPoints = createLocalSurfaceControlPoints(no + pnop, p, n + pnp, no + pnop_2, p_2, n + pnp_2, no, zero, n);
+					controlPointIndex = createLocalSurfaceControlPoints(no + pnop, p, n + pnp, no + pnop_2, p_2, n + pnp_2, no, zero, n);
 					boundaryFace.us = halfwayPoint;
 					boundaryAdjFace.ue = halfwayPoint;
 					break; 
 				}
 				case 4: { 
-					controlPoints = createLocalSurfaceControlPoints(n + pnp, n + pnp_2, n, p, p_2, zero, no + pnop, no + pnop_2, no); 
+					controlPointIndex = createLocalSurfaceControlPoints(n + pnp, n + pnp_2, n, p, p_2, zero, no + pnop, no + pnop_2, no);
 					boundaryFace.ve = halfwayPoint;
 					boundaryAdjFace.vs = halfwayPoint;
 					break; 
@@ -579,30 +655,30 @@ namespace OML
 			Vec3f npon = pon;
 			Vec3f npon_2 = npon * 0.5f;
 
-			//float halfwayPoint = 0.5f + (p.length() / (p - po).length() - 0.5f) / 2;
-			float halfwayPoint = 0.5f;
+			float halfwayPoint = 0.5f + (p.length() / (p - po).length() - 0.5f) / 2;
+			//float halfwayPoint = 0.5f;
 
 			switch (vertexIndexOnFace) {
 				case 1: { 
-					controlPoints = createLocalSurfaceControlPoints(po, zero, p, po + npon_2, n_2, p + npn_2, po + npon, n, p + npn);
+					controlPointIndex = createLocalSurfaceControlPoints(po, zero, p, po + npon_2, n_2, p + npn_2, po + npon, n, p + npn);
 					boundaryFace.us = halfwayPoint;
 					boundaryAdjFace.ue = halfwayPoint;
 					break; 
 				}
 				case 2: { 
-					controlPoints = createLocalSurfaceControlPoints(po + npon, po + npon_2, po, n, n_2, zero, p + npn, p + npn_2, p);
+					controlPointIndex = createLocalSurfaceControlPoints(po + npon, po + npon_2, po, n, n_2, zero, p + npn, p + npn_2, p);
 					boundaryFace.vs = halfwayPoint;
 					boundaryAdjFace.ve = halfwayPoint;
 					break; 
 				}
 				case 3: { 
-					controlPoints = createLocalSurfaceControlPoints(p, p + npn_2, p + npn, zero, n_2, n, po, po + npon_2, po + npon);
+					controlPointIndex = createLocalSurfaceControlPoints(p, p + npn_2, p + npn, zero, n_2, n, po, po + npon_2, po + npon);
 					boundaryFace.ve = halfwayPoint;
 					boundaryAdjFace.vs = halfwayPoint;
 					break; 
 				}
 				case 4: { 
-					controlPoints = createLocalSurfaceControlPoints(p + npn, n, po + npon, p + npn_2, n_2, po + npon_2, p, zero, po);
+					controlPointIndex = createLocalSurfaceControlPoints(p + npn, n, po + npon, p + npn_2, n_2, po + npon_2, p, zero, po);
 					boundaryFace.ue = halfwayPoint;
 					boundaryAdjFace.us = halfwayPoint;
 					break; 
@@ -615,7 +691,7 @@ namespace OML
 			boundaryIndices.insert({ face_handle(opposite_halfedge_handle(heh_next)), m_boundaries.size() - 1 });
 		}
 
-		addLocus(vertex, controlPoints, boundaryIndices, offset);
+		addLocus(vertex, controlPointIndex, controlPointCount, boundaryIndices, offset);
 	}
 
 	void Lattice::addLocusOnInnerVertex(
@@ -646,15 +722,16 @@ namespace OML
 		auto u46 = u6;
 		auto u35 = u5;
 
-		//float halfwayPointU = 0.5f + (u4.length() / (u3 - u4).length() - 0.5f) / 2;
-		//float halfwayPointV = 0.5f + (v2.length() / (v1 - v2).length() - 0.5f) / 2;
-		float halfwayPointU = 0.5f;
-		float halfwayPointV = 0.5f;
-		std::vector<Vec3f> controlPoints;
+		float halfwayPointU = 0.5f + (u4.length() / (u3 - u4).length() - 0.5f) / 2;
+		float halfwayPointV = 0.5f + (v2.length() / (v1 - v2).length() - 0.5f) / 2;
+		//float halfwayPointU = 0.5f;
+		//float halfwayPointV = 0.5f;
+		uint32_t controlPointIndex = 0;
+		uint32_t controlPointCount = 9;
 
 		switch (vertexIndexOnFace) {
 			case 1: { 
-				controlPoints = createLocalSurfaceControlPoints(u31 + v1, v1, u42 + v1, u3, zero, u4, u35 + v2, v2, u46 + v2);
+				controlPointIndex = createLocalSurfaceControlPoints(u31 + v1, v1, u42 + v1, u3, zero, u4, u35 + v2, v2, u46 + v2);
 				boundaryF1.us = halfwayPointU;
 				boundaryF1.vs = halfwayPointV;
 				boundaryF2.ue = halfwayPointU;
@@ -666,7 +743,7 @@ namespace OML
 				break; 
 			}
 			case 2: { 
-				controlPoints = createLocalSurfaceControlPoints(u35 + v2, u3, u31 + v1, v2, zero, v1, u46 + v2, u4, u42 + v1);
+				controlPointIndex = createLocalSurfaceControlPoints(u35 + v2, u3, u31 + v1, v2, zero, v1, u46 + v2, u4, u42 + v1);
 				boundaryF1.ue = halfwayPointU;
 				boundaryF1.vs = halfwayPointV;
 				boundaryF2.ue = halfwayPointU;
@@ -678,7 +755,7 @@ namespace OML
 				break;
 			}
 			case 3: {
-				controlPoints = createLocalSurfaceControlPoints(u42 + v1, u4, u46 + v2, v1, zero, v2, u31 + v1, u3, u35 + v2);
+				controlPointIndex = createLocalSurfaceControlPoints(u42 + v1, u4, u46 + v2, v1, zero, v2, u31 + v1, u3, u35 + v2);
 				boundaryF1.us = halfwayPointU;
 				boundaryF1.ve = halfwayPointV;
 				boundaryF2.us = halfwayPointU;
@@ -690,7 +767,7 @@ namespace OML
 				break;
 			}
 			case 4: {
-				controlPoints = createLocalSurfaceControlPoints(u46 + v2, v2, u35 + v2, u4, zero, u3, u42 + v1, v1, u31 + v1);
+				controlPointIndex = createLocalSurfaceControlPoints(u46 + v2, v2, u35 + v2, u4, zero, u3, u42 + v1, v1, u31 + v1);
 				boundaryF1.ue = halfwayPointU;
 				boundaryF1.ve = halfwayPointV;
 				boundaryF2.us = halfwayPointU;
@@ -713,10 +790,10 @@ namespace OML
 		boundaryIndices.insert({ face_handle(hehf3), m_boundaries.size() - 2 });
 		boundaryIndices.insert({ face_handle(hehf4), m_boundaries.size() - 1 });
 
-		addLocus(vertex, controlPoints, boundaryIndices, offset);
+		addLocus(vertex, controlPointIndex, controlPointCount, boundaryIndices, offset);
 	}
 
-	std::vector<Vec3f> Lattice::createLocalSurfaceControlPoints(
+	uint32_t Lattice::createLocalSurfaceControlPoints(
 		Vec3f topLeft, Vec3f topRight,
 		Vec3f bottomLeft, Vec3f bottomRight)
 	{
@@ -725,28 +802,43 @@ namespace OML
 		Vec3f middleRight = (topRight + bottomRight) / 2;
 		Vec3f bottomMiddle = (bottomLeft + bottomRight) / 2;
 		Vec3f middle = ((topMiddle + bottomMiddle) / 2 + (middleLeft + middleRight) / 2) / 2;
-		return {
-			topLeft, topMiddle, topRight,
-			middleLeft, middle, middleRight,
-			bottomLeft, bottomMiddle, bottomRight
-		};
+
+		uint32_t idx = m_controlPoints.size();
+		m_controlPoints.push_back(glm::vec4(topLeft[0], topLeft[1], topLeft[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(topMiddle[0], topMiddle[1], topMiddle[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(topRight[0], topRight[1], topRight[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(middleLeft[0], middleLeft[1], middleLeft[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(middle[0], middle[1], middle[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(middleRight[0], middleRight[1], middleRight[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(bottomLeft[0], bottomLeft[1], bottomLeft[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(bottomMiddle[0], bottomMiddle[1], bottomMiddle[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(bottomRight[0], bottomRight[1], bottomRight[2], 1.0f));
+		return idx;
 	}
 
-	std::vector<Vec3f> Lattice::createLocalSurfaceControlPoints(
+	uint32_t Lattice::createLocalSurfaceControlPoints(
 		Vec3f topLeft, Vec3f topMiddle, Vec3f topRight,
 		Vec3f middleLeft, Vec3f middle, Vec3f middleRight,
 		Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight)
 	{
-		return {
-			topLeft, topMiddle, topRight,
-			middleLeft, middle, middleRight,
-			bottomLeft, bottomMiddle, bottomRight
-		};
+		uint32_t idx = m_controlPoints.size();
+		m_controlPoints.push_back(glm::vec4(topLeft[0], topLeft[1], topLeft[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(topMiddle[0], topMiddle[1], topMiddle[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(topRight[0], topRight[1], topRight[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(middleLeft[0], middleLeft[1], middleLeft[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(middle[0], middle[1], middle[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(middleRight[0], middleRight[1], middleRight[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(bottomLeft[0], bottomLeft[1], bottomLeft[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(bottomMiddle[0], bottomMiddle[1], bottomMiddle[2], 1.0f));
+		m_controlPoints.push_back(glm::vec4(bottomRight[0], bottomRight[1], bottomRight[2], 1.0f));
+		return idx;
 	}
+
 	double Lattice::random(double a, double b)
 	{
 		return m_randomDist(m_mt) * std::max(1.0, (b - a)) + a;
 	}
+
 	float Lattice::random(float a, float b)
 	{
 		return m_randomDist(m_mt) * std::max(1.0f, (b - a)) + a;

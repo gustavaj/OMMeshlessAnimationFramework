@@ -447,10 +447,10 @@ public:
 		Lattice lat("T-locus Lattice");
 		lat.setUseRandomPatchColors(true);
 
-		lat.addPatch(OML::Vec2f(-20.0f, -20.0f), 10.0f, 10.0f);
+		/*lat.addPatch(OML::Vec2f(-20.0f, -20.0f), 10.0f, 10.0f);
 		lat.addPatch(OML::Vec2f(-10.0f, -20.0f), 10.0f, 10.0f);
 		lat.addPatch(OML::Vec2f(0.0f, -20.0f), 10.0f, 10.0f);
-		lat.addPatch(OML::Vec2f(10.0f, -20.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(10.0f, -20.0f), 10.0f, 10.0f);*/
 		lat.addPatch(OML::Vec2f(-20.0f, -10.0f), 10.0f, 20.0f);
 
 		OML::Vec2f p1(-10.0f, -10.0f);
@@ -462,10 +462,12 @@ public:
 
 		lat.addPatch(OML::Vec2f(10.0f, -10.0f), 10.0f, 10.0f);
 		lat.addPatch(OML::Vec2f(10.0f, 0.0f), 10.0f, 10.0f);
-		lat.addPatch(OML::Vec2f(-20.0f, 10.0f), 10.0f, 10.0f);
+		/*lat.addPatch(OML::Vec2f(-20.0f, 10.0f), 10.0f, 10.0f);
 		lat.addPatch(OML::Vec2f(-10.0f, 10.0f), 10.0f, 10.0f);
 		lat.addPatch(OML::Vec2f(0.0f, 10.0f), 10.0f, 10.0f);
-		lat.addPatch(OML::Vec2f(10.0f, 10.0f), 10.0f, 10.0f);
+		lat.addPatch(OML::Vec2f(10.0f, 10.0f), 10.0f, 10.0f);*/
+
+		addLattice(lat);
 	}
 };
 
