@@ -22,7 +22,7 @@ namespace OML
 
 	void Lattice::addPatch(Vec3f topLeft, Vec3f topRight, Vec3f bottomLeft, Vec3f bottomRight)
 	{
-		// TODO: Should probably try to improve this
+		// TODO: Should probably try to improve this, or not.
 
 		OpenMesh::VertexHandle tl, tr, bl, br;
 		for (auto it = vertices_begin(); it != vertices_end(); it++)
@@ -64,9 +64,9 @@ namespace OML
 	void Lattice::addGrid(Vec2f topLeft, float width, float height, int rows, int cols)
 	{
 		/*
-			Improvements of this:
+			Improvements of this for a 31x31 grid:
 			-time start: ~3000ms
-			-improve point equality check, dont use .length(): ~800ms
+			-improve point equality check in addPatch(), dont use .length(): ~800ms
 		*/
 
 		auto start = std::chrono::high_resolution_clock::now();

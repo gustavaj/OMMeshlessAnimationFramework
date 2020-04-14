@@ -99,7 +99,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_WINDOWS;VK_USE_PLATFORM_WIN32_KHR;NOMINMAX;_USE_MATH_DEFINES;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>P:\Projects\master\VulkanSascha\Vulkan\external\gli;P:\Projects\master\VulkanSascha\Vulkan\external\tinygltf;P:\Projects\master\VulkanSascha\Vulkan\external\ktx\other_include;P:\Projects\master\VulkanSascha\Vulkan\external\ktx\lib;P:\Projects\master\VulkanSascha\Vulkan\external\ktx\include;P:\Projects\master\VulkanSascha\Vulkan\external\imgui;P:\Projects\ExternalLibs\vcpkg\installed\x64-windows\include;C:\VulkanSDK\1.1.121.2\Include;C:\Users\Gustav\Desktop\OpenMesh-8.0\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>P:\Projects\master\VulkanSascha\Vulkan\external\imgui;P:\Projects\ExternalLibs\vcpkg\installed\x64-windows\include;C:\VulkanSDK\1.1.121.2\Include;C:\Users\Gustav\Desktop\OpenMesh-8.0\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <EnableModules>false</EnableModules>
@@ -138,7 +138,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_WINDOWS;VK_USE_PLATFORM_WIN32_KHR;NOMINMAX;_USE_MATH_DEFINES;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>P:\Projects\master\VulkanSascha\Vulkan\external\gli;P:\Projects\master\VulkanSascha\Vulkan\external\tinygltf;P:\Projects\master\VulkanSascha\Vulkan\external\ktx\other_include;P:\Projects\master\VulkanSascha\Vulkan\external\ktx\lib;P:\Projects\master\VulkanSascha\Vulkan\external\ktx\include;P:\Projects\master\VulkanSascha\Vulkan\external\imgui;P:\Projects\ExternalLibs\vcpkg\installed\x64-windows\include;C:\VulkanSDK\1.1.121.2\Include;C:\Users\Gustav\Desktop\OpenMesh-8.0\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>P:\Projects\master\VulkanSascha\Vulkan\external\imgui;P:\Projects\ExternalLibs\vcpkg\installed\x64-windows\include;C:\VulkanSDK\1.1.121.2\Include;C:\Users\Gustav\Desktop\OpenMesh-8.0\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <EnableModules>false</EnableModules>

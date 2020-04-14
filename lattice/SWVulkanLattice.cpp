@@ -2,7 +2,6 @@
 
 namespace SWVL
 {
-	std::vector<std::string> SIMULATORS = { "None", "NormalSinSim" };
 
 	SWVulkanLattice::SWVulkanLattice()
 		: SWVulkanLattice("")
@@ -20,6 +19,9 @@ namespace SWVL
 
 	SWVulkanLattice::~SWVulkanLattice()
 	{
+		if (!m_destroyed) {
+			destroyVulkanStuff();
+		}
 	}
 
 	void SWVulkanLattice::initVulkanStuff(VkDevice* device, vks::VulkanDevice* vulkanDevice, VkQueue* queue, VkCommandPool* commandPool, VkDescriptorPool* descriptorPool, VkRenderPass* renderPass, VkAllocationCallbacks* allocator)
@@ -55,6 +57,7 @@ namespace SWVL
 		}
 
 		m_vulkanInitiated = true;
+		m_destroyed = false;
 	}
 
 	void SWVulkanLattice::destroyVulkanStuff()
@@ -110,6 +113,7 @@ namespace SWVL
 		}
 
 		m_destroyed = true;
+		m_vulkanInitiated = false;
 	}
 
 	void SWVulkanLattice::addToCommandbufferPreRenderpass(VkCommandBuffer& commandBuffer)
@@ -196,8 +200,6 @@ namespace SWVL
 	void SWVulkanLattice::localUpdate(double dt)
 	{
 		if (m_animate) {
-			/*for (auto& mat : m_matrices)
-				mat = glm::rotate(mat, glm::radians(60.0f) * (float)dt, glm::vec3(0.0f, 0.0f, 1.0f));*/
 			updateMatrixUniformBuffer();
 		}
 
@@ -229,7 +231,7 @@ namespace SWVL
 					if (overlay->sliderInt("TessOuter", &m_uniforms.tessOuter, 0, 64)) updateLatticeUniformBuffer();
 				}
 				ImGui::Separator();
-				if (overlay->comboBox("B-Function", &m_uniforms.bFunctionIndex, BFunctionNames)) updateLatticeUniformBuffer();
+				if (overlay->comboBox("B-Function", &m_uniforms.bFunctionIndex, OML::BFunctionNames)) updateLatticeUniformBuffer();
 				ImGui::Separator();
 				overlay->checkBox("Animate", &m_animate);
 				if (m_animate) {

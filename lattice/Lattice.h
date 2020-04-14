@@ -9,12 +9,51 @@
 
 #include "Simulators.h"
 
+/*
+	In general, all local surface and patch orderings are left to right, top to bottom e.g.
+		p00 - p10
+	^ v	 |     | 
+	|	p01 - p11
+	 --> u
+	Where the first number indicates u, and the second v.
+
+
+	TODO list:
+		Matrices:
+		-Change matrix buffer to SSBO.
+		-Look at performance
+		-See how big of a lattice grid you can create.
+
+		Simulators:
+		-Fix RandomSphereSimulator
+		-Add a RotationSimulator(maxAngle, axis)
+		-Make it possible to use more than one simulator
+
+		Pre-evaluation:
+		-Evaluate local surfaces on the CPU. (pos and first partial derivatives)
+		-In vulkan implementation, save results to buffer/texture
+		-Use in TES to improve(?) evaluation time.
+		-Look at memory usage with respect to large lattices.
+		-Experiment with different buffer/texture dimensions.
+
+		Pixel-accurate rendering:
+		-Set tessellation factors in the TCS based on some error metric.
+*/
+
 namespace OML {
 
 	using Vec2f = OpenMesh::Vec2f;
 	using Vec3f = OpenMesh::Vec3f;
 	using Col3 = OpenMesh::Vec3uc;
 
+	/*
+		Struct that holds the values to clamp u and v to when evaluating a local surface
+		in the shader. In the corners the values would be us = 0.0, ue = 1.0, vs = 0.0 and ve = 1.0
+		
+		TODO: Change so patches can reuse BoundaryInfos, they already contain an index to they 
+		should be able to point to the same. For a regular rectangular grid most BoudnaryInfos will
+		be the same, so a lot of memory is wasted. Check if changing this will change performance also.
+	*/
 	struct BoundaryInfo
 	{
 		BoundaryInfo()
@@ -25,11 +64,24 @@ namespace OML {
 		float us, ue, vs, ve;
 	};
 
+	/*
+		Not in use, currently only one possible local surface, will probably not change.
+	*/
 	enum class LocalSurfaceType
 	{
 		Bezier3x3 = 0
 	};
 
+	/*
+		The loci are located at the knot vectors(?). At every locus, there is one local surface.
+		This is made up from the points:
+		[m_controlPoints[controlPointIndex], m_controlPoints[controlPointIndex + controlPointCount]]
+		The transformation matrix of the local surface is at m_matrices[matrixIndex]
+		The normal is calculated as the average of the normal of all the surrounding faces.
+		The normal is used for simulation by the NormalSinSimulator.
+		The boundaryIndices maps a patch to an index into the m_boundaries vector.
+		The boundaries contain info for how far the local surface should be evaluated for the given patch.
+	*/
 	struct Locus
 	{
 		Locus() : controlPointIndex(0), controlPointCount(0), matrixIndex(0) {}
@@ -42,6 +94,9 @@ namespace OML {
 		std::unordered_map<OpenMesh::FaceHandle, uint32_t> boundaryIndices;
 	};
 
+	/*
+		The patch contains four indices to the loci that makes up the patch.
+	*/
 	struct Patch
 	{
 		glm::vec3 color;
@@ -49,39 +104,59 @@ namespace OML {
 		OpenMesh::FaceHandle fh;
 	};
 
+	/*
+		Different B-Functions that can be used.
+		B1Poly = "3x^2-2x^3"
+		B2Polt = "6x^5-15x^4+10x^3"
+		LERBS  = "1/(1+e^(1/x-1/(1-x)))"
+	*/
 	enum class BFunctionType {
 		B1Poly = 0, B2Poly, LERBS
 	};
+	// The possible B-functions
+	const std::vector<std::string> BFunctionNames = {
+		"3x^2-2x^3", "6x^5-15x^4+10x^3", "1/(1+e^(1/x-1/(1-x)))"
+	};
 
-	// Custom traits
+	// Custom traits passed to the OpenMesh::PolyMesh class.
 	struct LatticeTraits : public OpenMesh::DefaultTraits
 	{
 		typedef Vec3f Point;
 
-		VertexAttributes(OpenMesh::Attributes::Color | OpenMesh::Attributes::Status); // Use color for vailence
+		// Vertices are colored by their valence, status is used for deleting vertices.
+		VertexAttributes(OpenMesh::Attributes::Color | OpenMesh::Attributes::Status);
 
-		EdgeAttributes(OpenMesh::Attributes::Color | OpenMesh::Attributes::Status); // Use color for on/inside boundary
+		// Edges are colored depending on if they are on the boudnary or inside the mesh
+		// Status used for deleting edges.
+		EdgeAttributes(OpenMesh::Attributes::Color | OpenMesh::Attributes::Status);
 
-		HalfedgeAttributes(OpenMesh::Attributes::Status); // Use for deleting half edges
+		// Status used for deleting halfedges
+		HalfedgeAttributes(OpenMesh::Attributes::Status);
 
-		FaceAttributes(OpenMesh::Attributes::Status); // Use for deleting faces
+		// Status used for deleting faces.
+		FaceAttributes(OpenMesh::Attributes::Status);
 	};
 
 	enum class LocusType {
 		Unresolved = 0, Corner, Boundary, Inner, T, T_Terminal
 	};
 
+	// Different properties of the vertices
 	namespace LatticeProperties {
+		// Holds the value of the valence of a vertex. So it does not need to calculated more than once.
 		static OpenMesh::VPropHandleT<size_t> VertexValence;
+		// Holds the index into the m_loci vector
 		static OpenMesh::VPropHandleT<uint32_t> LocusIndex;
 		static OpenMesh::VPropHandleT<LocusType> Type;
 	};
 
+	// Colors used for the grid. The color of a vertex is indexed by its valence.
+	// Vertices with a valence less than 2 are discarded in the fragment shader.
+	const std::vector<Col3> LOCUS_VALENCE_COLOR = {
+		Col3(255,255,255), Col3(255,255,255), Col3(255,0,0), Col3(0,255,0), Col3(0,0,255), Col3(0,255,255)
+	};
 	const Col3 BOUNDARY_EDGE_COLOR = Col3(0, 0, 0);
 	const Col3 INNER_EDGE_COLOR = Col3(200, 200, 200);
-	const std::vector<Col3> LOCUS_VALENCE_COLOR = {
-		Col3(0,255,255), Col3(255,255,255), Col3(255,0,0), Col3(0,255,0), Col3(0,0,255), Col3(0,255,255)
-	};	
 
 	class Lattice : public OpenMesh::PolyMesh_ArrayKernelT<LatticeTraits>
 	{
@@ -111,10 +186,11 @@ namespace OML {
 
 		/* Add a simulator to the patches */
 		void addNormalSinSimulation();
+		/* TODO: Not working yet. */
 		void addRandomSphereSimulation();
 		/* Removes any simulators */
 		void removeSimulator();
-		/* Update */
+		/* Used for simulation. */
 		void update(double dt);
 
 		/* Finalize lattice creation */
@@ -151,22 +227,25 @@ namespace OML {
 		/* Set color to be used for every patch, if perPatchColors = false */
 		void setPatchColor(glm::vec3 color) { m_color = color; }
 
-		// Getter
+		// Returns the name of the Lattice
 		std::string name() { return m_name; }
 
 	protected:
+		// Called by the update function, can be used in implementations
 		virtual void localUpdate(double dt) = 0;
 
+		// Resets all the matrices to their initial matrices. Used to remove any simulation.
 		void resetMatrices();
 
-		// Lattice stuff
 		std::string m_name;
+		// The transformation matrix for the Lattice
 		glm::mat4 m_matrix;
 		glm::mat4 m_view;
 
 		glm::vec3 m_color;
 		bool m_useRandomPatchColors = false;
 
+		// Setting m_draw to false should prevent any rendering.
 		bool m_draw = true;
 		bool m_animate = false;
 		bool m_drawLatticeGrid = true;
@@ -176,18 +255,19 @@ namespace OML {
 		bool m_wireframe = false;
 		bool m_drawPixelAccurate = false;
 
-		uint32_t m_numControlPoints;
-		uint32_t m_numLoci;
-		uint32_t m_numPatches;
-
 		std::vector<Locus> m_loci;
 		std::vector<Patch> m_patches;
 
+		// Vector of all the control points used by the local surfaces.
 		std::vector<glm::vec4> m_controlPoints;
+		// TODO: Fix so multiple patches can reuse the same boundaries. To save space.
 		std::vector<BoundaryInfo> m_boundaries;
+		// The initial matrices the local surfaces were created with, used for resetting transformations
 		std::vector<glm::mat4> m_initialMatrices;
+		// The transofrmation matrices for the local surfaces.
 		std::vector<glm::mat4> m_matrices;
 
+		// Structure of uniforms used by the shaders.
 		struct {
 			int tessInner = 10;
 			int tessOuter = 10;
@@ -204,27 +284,38 @@ namespace OML {
 		float m_maxSpeed = 5.0;
 
 	private:
+		// Check if two points are equal with a tolerance of 1e-5.
 		inline bool equal(Vec3f& p1, Vec3f& p2) {
 			return std::abs(p1[0] - p2[0]) < 1e-5 &&
 				   std::abs(p1[1] - p2[1]) < 1e-5 &&
 				   std::abs(p1[2] - p2[2]) < 1e-5;
 		}
 
+		/* 
+			Used to check if p1 is smaller that p2 along a given direction.
+			!!! This might not be correct !!!
+		*/
 		inline bool smaller(Vec3f& p1, Vec3f& p2, Vec3f& dir) {
 			return ((p1[0] - p2[0] * dir[0]) + (p1[1] - p2[1] * dir[1]) + (p1[2] - p2[2] * dir[2])) < 0;
-			//return std::tie(p1[0], p1[1], p2[2]) < std::tie(p2[0], p2[1], p2[2]);
 		}
 
+		/*
+			Check if face 1 is smaller than face 2 along a given direction
+			!!! This is probably not correct !!!
+		*/
 		inline bool smaller(OpenMesh::FaceHandle& f1, OpenMesh::FaceHandle& f2, Vec3f& dir) {
 			Vec3f p1 = point(to_vertex_handle(halfedge_handle(f1)));
 			Vec3f p2 = point(to_vertex_handle(halfedge_handle(f2)));
 			return smaller(p1, p2, dir);
 		}
 
-		// Helper functions for setting up the lattice stuff
+		// Goes through all the edges and sets the color depending on if it is on the boundary or not.
 		void setupEdgeColor();
+		// Goes through all vertices and sets the valence, and colors it based on the valence.
 		void setupLociValenceAndPointColor();
+		// Finds and handles T-loci. Corrects faces and creates local surfaces.
 		void handleTLoci();
+		// Iterate through vertices and create local surfaces, also sets up patches.
 		void setupLocalSurfacesAndPatches();
 
 		void addLatticeProperties();
@@ -256,7 +347,7 @@ namespace OML {
 			Vec3f middleLeft, Vec3f middle, Vec3f middleRight,
 			Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight);
 
-		// New stuff
+		// New stuff TODO: ?
 		void addLocalSurfaceOnLoci(OpenMesh::VertexHandle vh, Vec3f L2RDir, Vec3f T2BDir);
 		void getCornerPointsOfFaceL2RT2B(OpenMesh::FaceHandle& fh, std::vector<Vec3f>& points);
 

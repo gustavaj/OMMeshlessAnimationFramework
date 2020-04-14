@@ -7,6 +7,8 @@
 
 #include "Lattice.h"
 
+// TODO: Remove all dependencies on Sascha Willems' framework. Then rename
+
 namespace SWVL
 {
 	struct Buffer {
@@ -17,7 +19,14 @@ namespace SWVL
 		int count = 0;
 	};
 
-	// Holds the information for one local surface that is sent to the vertex shader
+	/*
+	Holds the information for one local surface that is sent to the vertex shader
+	A local surface is defined by a vec4 in the shader, by the index and count of their
+	control points from the m_controlPoints vector and the indices of the transformation matrix
+	and in the m_matrices vector and the BoundaryInfo in the m_boundaries vector. Also the color of the patch.
+
+	For rendering local surfaces the TCS takes one vertex per patch, and for a patch(Block) it takes 4 vertices per patch
+	*/
 	struct LocalSurfaceVertex
 	{
 		LocalSurfaceVertex() : LocalSurfaceVertex(0, 0, 0, 0) {}
@@ -25,7 +34,7 @@ namespace SWVL
 			uint32_t controlPointIndex, uint32_t controlPointCount,
 			uint32_t matrixIndex, uint32_t boundaryIndex)
 			: controlPointIndex(controlPointIndex), controlPointCount(controlPointCount),
-			matrixIndex(matrixIndex), boundaryIndex(boundaryIndex) {}
+			matrixIndex(matrixIndex), boundaryIndex(boundaryIndex), color(1.0f) {}
 		uint32_t controlPointIndex, controlPointCount, matrixIndex, boundaryIndex;
 		glm::vec3 color;
 
@@ -88,10 +97,6 @@ namespace SWVL
 		}
 	};
 
-	const std::vector<std::string> BFunctionNames = {
-		"3x^2-2x^3", "6x^5-15x^4+10x^3", "1/(1+e^(1/x-1/(1-x)))"
-	};
-
 	class SWVulkanLattice : public OML::Lattice
 	{
 	public:
@@ -118,24 +123,34 @@ namespace SWVL
 		/* Update UIOverlay with information about the lattice */
 		bool onUpdateUIOverlay(vks::UIOverlay* overlay);
 
+		/* 
+		Takes a VkPhysicalDeviceFeatures structure of the devices' capabilities, and checks if all the 
+		required features are supported. Writes VK_TRUE to all the required features in the enabledFeatures struct.
+		*/
 		static void CheckAndSetupRequiredPhysicalDeviceFeatures(
 			VkPhysicalDeviceFeatures& deviceFeatures, VkPhysicalDeviceFeatures& enabledFeatures);
 
 	protected:
+		// Called from the update function in the the Lattice class.
 		virtual void localUpdate(double dt) override;
 
 	private:
+		// Boolean to prevent vulkan stuff to be initiated more than once.
 		bool m_vulkanInitiated = false;
+		// Boolean to prevent vulkan stuff from being destroyed if it has not been initiated first.
+		bool m_destroyed = true;
 
-		// Vulkan functions
+		// Create a buffer that is local on the GPU
 		void createDeviceLocalBuffer(
 			VkBuffer& buffer, VkDeviceMemory& memory, void* data,
 			uint32_t bufferSize, VkBufferUsageFlagBits usage);
+		// Setup the vertices used for rendering. Grid, local surfaces, surfaces.
 		void setupVertices();
 		void createBuffers();
 		void prepareUniformBuffers();
 		void uploadStorageBuffers();
 		void setupDescriptorSetLayouts();
+		// Helper function to load a shader.
 		VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage);
 		void preparePipelines();
 		void setupDescriptorPool();
@@ -155,13 +170,16 @@ namespace SWVL
 
 		VkQueryPool m_queryPool = VK_NULL_HANDLE;
 		VkQueryPool m_timingPool = VK_NULL_HANDLE;
+		// Enables/disables doing timings of the render pass
 		bool m_doPipelineTimings = false;
+		// Enables/disables doing queries for the render pass.
 		bool m_doPipelineQueries = false;
 		uint64_t m_pipelineStats[10] = { 0 };
 		uint64_t m_pipelineTimings[2] = { 0 };
+		// The time it takes for the gpu to increase the timestamp in nanoseconds.
 		double m_timestampPeriod = 1.0;
 
-		// Uniform buffers
+		// Uniform/Storage buffers
 		vks::Buffer m_latticeUniformBuffer;
 		vks::Buffer m_matrixUniformBuffer;
 		vks::Buffer m_controlPointBuffer;
@@ -180,6 +198,7 @@ namespace SWVL
 		VkDescriptorSetLayout m_descriptorSetLayout;
 		VkDescriptorSet m_descriptorSet;
 
+		// Map for holding the created shader modules.
 		std::unordered_map<std::string, VkShaderModule> m_shaderModules;
 
 		// Stuff passed from class creating the lattice, used for creating vulkan stuff
@@ -194,9 +213,8 @@ namespace SWVL
 		std::vector<LocalSurfaceVertex> m_localSurfaceVertices;
 		std::vector<LocalSurfaceVertex> m_patchVertices;
 
+		// Holds the names used in the ImGui ui for the local surfaces.
 		std::vector<std::string> m_listItems;
 		int m_selectedSurface;
-
-		bool m_destroyed = false;
 	};
 }
