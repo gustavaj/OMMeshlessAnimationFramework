@@ -2,51 +2,18 @@
 
 #include <OpenMesh/Core/Mesh/PolyMesh_ArrayKernelT.hh>
 
-#include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <unordered_map>
 
-#include <random>
+#include "Simulators.h"
 
 namespace OML {
 
 	using Vec2f = OpenMesh::Vec2f;
 	using Vec3f = OpenMesh::Vec3f;
 	using Col3 = OpenMesh::Vec3uc;
-
-	enum class SimulatorTypes {
-		None = 0, NormalSin
-	};
-	const std::vector<std::string> SIMULATOR_NAMES = {
-		"None", "NormalSin"
-	};
-
-	class NormalSinSimulator {
-	public:
-		NormalSinSimulator() : NormalSinSimulator(0.0, 0.0, 0.0, Vec3f(0.0f, 0.0f, 0.0f)) {}
-		NormalSinSimulator(double t, double max, double speed, Vec3f normal)
-			: m_t(t), m_max(max), m_speed(speed), 
-			  m_normal(normal[0], normal[1], normal[2]), m_lastOffset(0.0f, 0.0f, 0.0f) {}
-		~NormalSinSimulator() {}
-
-		void simulate(double dt, glm::mat4& mat) {
-			m_t += dt;
-			float f = std::sin(m_t * m_speed) * m_max;
-			glm::vec3 offset = (m_normal * f);
-			//mat = glm::translate(mat, offset - m_lastOffset);
-			glm::vec4 trans(offset[0] - m_lastOffset[0], offset[1] - m_lastOffset[1], offset[2] - m_lastOffset[2], 0.0f);
-			mat[3] -= trans;
-			m_lastOffset = offset;
-		}
-	private:
-		double m_t;
-		double m_max;
-		double m_speed;
-		glm::vec3 m_normal;
-		glm::vec3 m_lastOffset;
-	};
 
 	struct BoundaryInfo
 	{
@@ -144,6 +111,8 @@ namespace OML {
 
 		/* Add a simulator to the patches */
 		void addNormalSinSimulation();
+		void addRandomSphereSimulation();
+		/* Removes any simulators */
 		void removeSimulator();
 		/* Update */
 		void update(double dt);
@@ -228,7 +197,7 @@ namespace OML {
 		} m_uniforms;
 
 		int m_simulatorIndex = 0;
-		std::vector<NormalSinSimulator> m_simulators;
+		std::unordered_map<uint32_t, std::shared_ptr<Simulator>> m_simulators;
 		float m_minAmp = 1.0;
 		float m_maxAmp = 10.0;
 		float m_minSpeed = 1.0;
@@ -241,6 +210,17 @@ namespace OML {
 				   std::abs(p1[2] - p2[2]) < 1e-5;
 		}
 
+		inline bool smaller(Vec3f& p1, Vec3f& p2, Vec3f& dir) {
+			return ((p1[0] - p2[0] * dir[0]) + (p1[1] - p2[1] * dir[1]) + (p1[2] - p2[2] * dir[2])) < 0;
+			//return std::tie(p1[0], p1[1], p2[2]) < std::tie(p2[0], p2[1], p2[2]);
+		}
+
+		inline bool smaller(OpenMesh::FaceHandle& f1, OpenMesh::FaceHandle& f2, Vec3f& dir) {
+			Vec3f p1 = point(to_vertex_handle(halfedge_handle(f1)));
+			Vec3f p2 = point(to_vertex_handle(halfedge_handle(f2)));
+			return smaller(p1, p2, dir);
+		}
+
 		// Helper functions for setting up the lattice stuff
 		void setupEdgeColor();
 		void setupLociValenceAndPointColor();
@@ -251,16 +231,20 @@ namespace OML {
 
 		void addLocusOnVertex(
 			OpenMesh::VertexHandle vertex, OpenMesh::VertexHandle next_vertex,
-			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace);
+			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace,
+			Vec3f L2RDir, Vec3f T2BDir);
 		void addLocusOnCornerVertex(
 			OpenMesh::VertexHandle vertex, OpenMesh::VertexHandle next_vertex,
-			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace);
+			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace,
+			Vec3f L2RDir, Vec3f T2BDir);
 		void addLocusOnBoundaryVertex(
 			OpenMesh::VertexHandle vertex, OpenMesh::VertexHandle next_vertex,
-			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace);
+			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace,
+			Vec3f L2RDir, Vec3f T2BDir);
 		void addLocusOnInnerVertex(
 			OpenMesh::VertexHandle vertex, OpenMesh::VertexHandle next_vertex,
-			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace);
+			OpenMesh::VertexHandle prev_vertex, int vertexIndexOnFace,
+			Vec3f L2RDir, Vec3f T2BDir);
 
 		void addLocus(OpenMesh::VertexHandle vertex, uint32_t controlPointIndex, uint32_t controlPointCount,
 			std::unordered_map<OpenMesh::FaceHandle, uint32_t>& boundaryIndices, Vec3f offset, bool addMatrix = true);
@@ -272,11 +256,16 @@ namespace OML {
 			Vec3f middleLeft, Vec3f middle, Vec3f middleRight,
 			Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight);
 
+		// New stuff
+		void addLocalSurfaceOnLoci(OpenMesh::VertexHandle vh, Vec3f L2RDir, Vec3f T2BDir);
+		void getCornerPointsOfFaceL2RT2B(OpenMesh::FaceHandle& fh, std::vector<Vec3f>& points);
+
+		void addLocalSurfaceOnCornerLocus(OpenMesh::VertexHandle vh, OpenMesh::FaceHandle fh);
+		void addLocalSurfaceOnBoundaryLocus(OpenMesh::VertexHandle& vh, std::vector<OpenMesh::FaceHandle>& faces, Vec3f L2RDir, Vec3f T2BDir);
+		void addLocalSurfaceOnInnerLocus(OpenMesh::VertexHandle& vh, std::vector<OpenMesh::FaceHandle>& faces, Vec3f L2RDir, Vec3f T2BDir) {}
+
 		// Something random..
-		std::mt19937 m_mt;
-		std::uniform_real_distribution<double> m_randomDist;
-		double random(double a, double b);
-		float random(float a, float b);
+		Random m_rng;
 	};
 
 }

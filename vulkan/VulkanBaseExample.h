@@ -75,7 +75,7 @@ protected:
 	uint32_t frameCounter = 0;
 	uint32_t lastFPS = 0;
 	std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp;
-	double timeSinceGuiUpdate = 0.0;
+	double timeSinceGuiUpdate = 1.0;
 	double guiUpdateFrequencyS = 0.05;
 	// Vulkan instance, stores all per-application states
 	VkInstance instance;

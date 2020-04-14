@@ -59,6 +59,9 @@
     <ClCompile Include="lattice\SWVulkanLattice.cpp">
       <Filter>lattice</Filter>
     </ClCompile>
+    <ClCompile Include="lattice\Simulators.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lattice\Lattice.h">
@@ -128,6 +131,9 @@
       <Filter>vulkan</Filter>
     </ClInclude>
     <ClInclude Include="lattice\SWVulkanLattice.h">
+      <Filter>lattice</Filter>
+    </ClInclude>
+    <ClInclude Include="lattice\Simulators.h">
       <Filter>lattice</Filter>
     </ClInclude>
   </ItemGroup>

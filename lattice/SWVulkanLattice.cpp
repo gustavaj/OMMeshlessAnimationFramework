@@ -233,7 +233,7 @@ namespace SWVL
 				ImGui::Separator();
 				overlay->checkBox("Animate", &m_animate);
 				if (m_animate) {
-					overlay->comboBox("Simulator", &m_simulatorIndex, OML::SIMULATOR_NAMES);
+					overlay->comboBox("Simulator", &m_simulatorIndex, OML::SimulatorNames);
 					if (m_simulatorIndex != 0) {
 						if (overlay->sliderFloat("Min amp", &m_minAmp, 0.0, 20.0));
 						if (overlay->sliderFloat("Max amp", &m_maxAmp, 0.0, 20.0));
@@ -243,6 +243,7 @@ namespace SWVL
 					if (overlay->button("Update")) {
 						if (m_simulatorIndex == 0) removeSimulator();
 						else if (m_simulatorIndex == 1) addNormalSinSimulation();
+						else if (m_simulatorIndex == 2) addRandomSphereSimulation();
 					}
 					ImGui::Separator();
 				}
@@ -780,8 +781,8 @@ namespace SWVL
 		vertexInputState.pVertexAttributeDescriptions = vertexInputAttributes.data();
 
 		std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
-		shaderStages[0] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/LatticeHelpers/poscolorpass/poscolorpass.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		shaderStages[1] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/LatticeHelpers/poscolorpass/poscolorpass.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		shaderStages[0] = loadShader("./shaders/LatticeHelpers/poscolorpass/poscolorpass.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		shaderStages[1] = loadShader("./shaders/LatticeHelpers/poscolorpass/poscolorpass.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 		VkGraphicsPipelineCreateInfo pipelineCreateInfo =
 			vks::initializers::pipelineCreateInfo(m_pipelineLayout, *m_renderPass, 0);
@@ -848,11 +849,11 @@ namespace SWVL
 		specializationInfo.pMapEntries = specializationMapEntries.data();
 		specializationInfo.pData = &specializationData;
 
-		localShaderStages[0] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/LatticeHelpers/localsurfaces/bezier3x3.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		localShaderStages[1] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/LatticeHelpers/localsurfaces/bezier3x3.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		localShaderStages[2] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/LatticeHelpers/localsurfaces/bezier3x3.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		localShaderStages[0] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		localShaderStages[1] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		localShaderStages[2] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		localShaderStages[2].pSpecializationInfo = &specializationInfo;
-		localShaderStages[3] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/LatticeHelpers/localsurfaces/bezier3x3.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		localShaderStages[3] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(localShaderStages.size());
 		pipelineCreateInfo.pStages = localShaderStages.data();
 
@@ -867,11 +868,11 @@ namespace SWVL
 		pipelineCreateInfo.pTessellationState = &bsTessState;
 
 		std::array<VkPipelineShaderStageCreateInfo, 4> bsShaderStages;
-		bsShaderStages[0] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		bsShaderStages[1] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		bsShaderStages[2] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		bsShaderStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		bsShaderStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		bsShaderStages[2] = loadShader("./shaders/Lattice/lattice.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		bsShaderStages[2].pSpecializationInfo = &specializationInfo;
-		bsShaderStages[3] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		bsShaderStages[3] = loadShader("./shaders/Lattice/lattice.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(bsShaderStages.size());
 		pipelineCreateInfo.pStages = bsShaderStages.data();
 
@@ -882,12 +883,12 @@ namespace SWVL
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_patchPipeline));
 
 		std::array<VkPipelineShaderStageCreateInfo, 5> normalShaderStages;
-		normalShaderStages[0] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		normalShaderStages[1] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		normalShaderStages[2] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/lattice.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		normalShaderStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		normalShaderStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		normalShaderStages[2] = loadShader("./shaders/Lattice/lattice.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		normalShaderStages[2].pSpecializationInfo = &specializationInfo;
-		normalShaderStages[3] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/normals.geom.spv", VK_SHADER_STAGE_GEOMETRY_BIT);
-		normalShaderStages[4] = loadShader("P:/Projects/Visual Studio/OMMeshlessAnimationFramework/shaders/Lattice/normals.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		normalShaderStages[3] = loadShader("./shaders/Lattice/normals.geom.spv", VK_SHADER_STAGE_GEOMETRY_BIT);
+		normalShaderStages[4] = loadShader("./shaders/Lattice/normals.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(normalShaderStages.size());
 		pipelineCreateInfo.pStages = normalShaderStages.data();
 
