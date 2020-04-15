@@ -127,6 +127,7 @@ Sampler evaluateBiquadraticBezier(LocalSurfaceInfo lsInfo, float u, float v)
 	mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];
 	
 	pos  = vec3(matrix * vec4(pos, 1.0f));
+	//mat4 normalMat = transpose(inverse(matrix));
 	dpdu = vec3(matrix * vec4(dpdu, 0.0f));
 	dpdv = vec3(matrix * vec4(dpdv, 0.0f));
 	

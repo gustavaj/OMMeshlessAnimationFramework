@@ -52,9 +52,9 @@ namespace OML {
 		size_t operator()(const glm::vec3& k) const
 		{
 			glm::vec3 v;
-			v.x = std::roundf(k.x * 100) / 100.0f;
-			v.y = std::roundf(k.y * 100) / 100.0f;
-			v.z = std::roundf(k.z * 100) / 100.0f;
+			v.x = std::roundf(k.x * 1000) / 1000.0f;
+			v.y = std::roundf(k.y * 1000) / 1000.0f;
+			v.z = std::roundf(k.z * 1000) / 1000.0f;
 			return std::hash<glm::vec3>()(v);
 		}
 
@@ -210,8 +210,10 @@ namespace OML {
 		void addNormalSinSimulation();
 		/* TODO: Not working yet. */
 		void addRandomSphereSimulation();
-		/* Removes any simulators */
-		void removeSimulator();
+		/* Add a simulator that rotates the local surfaces */
+		void addNormalRotationSimulation();
+		/* Removes a simulator */
+		void removeSimulator(SimulatorTypes simulatorType);
 		/* Used for simulation. */
 		void update(double dt);
 
@@ -300,11 +302,13 @@ namespace OML {
 		} m_uniforms;
 
 		int m_simulatorIndex = 0;
-		std::unordered_map<uint32_t, std::shared_ptr<Simulator>> m_simulators;
+		std::unordered_map<SimulatorTypes, std::unordered_map<uint32_t, std::shared_ptr<Simulator>>> m_simulators;
 		float m_minAmp = 1.0;
 		float m_maxAmp = 10.0;
 		float m_minSpeed = 1.0;
 		float m_maxSpeed = 5.0;
+		float m_minAngle = 10.0;
+		float m_maxAngle = 60.0;
 
 	private:
 		// Holds the number of unique points added.

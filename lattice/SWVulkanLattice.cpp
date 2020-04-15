@@ -235,16 +235,28 @@ namespace SWVL
 				overlay->checkBox("Animate", &m_animate);
 				if (m_animate) {
 					overlay->comboBox("Simulator", &m_simulatorIndex, OML::SimulatorNames);
-					if (m_simulatorIndex != 0) {
-						if (overlay->sliderFloat("Min amp", &m_minAmp, 0.0, 20.0));
-						if (overlay->sliderFloat("Max amp", &m_maxAmp, 0.0, 20.0));
-						if (overlay->sliderFloat("Min speed", &m_minSpeed, 0.0, 50.0));
-						if (overlay->sliderFloat("Max speed", &m_maxSpeed, 0.0, 50.0));
+					if (m_simulatorIndex == 0 || m_simulatorIndex == 1) {
+						overlay->sliderFloat("Min amp", &m_minAmp, 0.0, 20.0);
+						overlay->sliderFloat("Max amp", &m_maxAmp, 0.0, 20.0);
+						overlay->sliderFloat("Min speed", &m_minSpeed, 0.0, 50.0);
+						overlay->sliderFloat("Max speed", &m_maxSpeed, 0.0, 50.0);
 					}
-					if (overlay->button("Update")) {
-						if (m_simulatorIndex == 0) removeSimulator();
-						else if (m_simulatorIndex == 1) addNormalSinSimulation();
-						else if (m_simulatorIndex == 2) addRandomSphereSimulation();
+					else if (m_simulatorIndex == 2) {
+						overlay->sliderFloat("Min angle", &m_minAngle, 0.0, 90.0);
+						overlay->sliderFloat("Max angle", &m_maxAngle, 0.0, 90.0);
+						overlay->sliderFloat("Min speed", &m_minSpeed, 0.0, 50.0);
+						overlay->sliderFloat("Max speed", &m_maxSpeed, 0.0, 50.0);
+					}
+					if (overlay->button("Add")) {
+						if (m_simulatorIndex == 0) addNormalSinSimulation();
+						else if (m_simulatorIndex == 1) addRandomSphereSimulation();
+						else if (m_simulatorIndex == 2) addNormalRotationSimulation();
+					}
+					ImGui::SameLine();
+					if (overlay->button("Remove")) {
+						if (m_simulatorIndex == 0) removeSimulator(OML::SimulatorTypes::NormalSin);
+						else if (m_simulatorIndex == 1) removeSimulator(OML::SimulatorTypes::RandomSphere);
+						else if (m_simulatorIndex == 2) removeSimulator(OML::SimulatorTypes::Rotation);
 					}
 					ImGui::Separator();
 				}
