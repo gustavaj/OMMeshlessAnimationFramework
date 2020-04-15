@@ -617,7 +617,7 @@ namespace SWVL
 		VK_CHECK_RESULT(m_latticeUniformBuffer.map());
 
 		VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			&m_matrixUniformBuffer,
 			sizeof(glm::mat4) * m_matrices.size()
@@ -656,7 +656,7 @@ namespace SWVL
 				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_GEOMETRY_BIT,
 				0),
 			vks::initializers::descriptorSetLayoutBinding(
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
 				1),
 			vks::initializers::descriptorSetLayoutBinding(
@@ -900,8 +900,8 @@ namespace SWVL
 	{
 		std::vector<VkDescriptorPoolSize> poolSizes =
 		{
-			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2),
-			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2)
+			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
+			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3)
 		};
 
 		VkDescriptorPoolCreateInfo descriptorPoolInfo =
@@ -930,7 +930,7 @@ namespace SWVL
 				&m_latticeUniformBuffer.descriptor),
 			vks::initializers::writeDescriptorSet(
 				m_descriptorSet,
-				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 				1,
 				&m_matrixUniformBuffer.descriptor),
 			vks::initializers::writeDescriptorSet(

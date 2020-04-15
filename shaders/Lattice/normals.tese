@@ -45,7 +45,7 @@ layout(constant_id = 0) const int numLocalSurfaceControlPoints = 36000;
 layout(constant_id = 1) const int numLocalSurfaces = 1000;
 layout(constant_id = 2) const int numPatches = 1000;
 
-layout(set = 0, binding = 1) uniform MatrixBuffer
+layout(set = 0, binding = 1) buffer MatrixBuffer
 {
 	mat4 matrices[numLocalSurfaces];
 } matrixBuffer;

@@ -241,10 +241,10 @@ public:
 
 			if (latticeCreateTypeIndex == 0)
 			{
-				overlay->sliderFloat("width", &c_width, 10.0f, 100.0f);
-				overlay->sliderFloat("height", &c_height, 10.0f, 100.0f);
-				overlay->sliderInt("rows", &c_rows, 1, 31);
-				overlay->sliderInt("cols", &c_cols, 1, 31);
+				overlay->sliderFloat("width", &c_width, 10.0f, 200.0f);
+				overlay->sliderFloat("height", &c_height, 10.0f, 200.0f);
+				overlay->sliderInt("rows", &c_rows, 1, 100);
+				overlay->sliderInt("cols", &c_cols, 1, 100);
 			}
 			else if (latticeCreateTypeIndex == 1)
 			{

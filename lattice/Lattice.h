@@ -2,8 +2,10 @@
 
 #include <OpenMesh/Core/Mesh/PolyMesh_ArrayKernelT.hh>
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/hash.hpp>
 
 #include <unordered_map>
 
@@ -43,6 +45,28 @@ namespace OML {
 	using Vec2f = OpenMesh::Vec2f;
 	using Vec3f = OpenMesh::Vec3f;
 	using Col3 = OpenMesh::Vec3uc;
+
+	// This does seem to be working..
+	struct GLMVec3KeyFuncs
+	{
+		size_t operator()(const glm::vec3& k) const
+		{
+			glm::vec3 v;
+			v.x = std::roundf(k.x * 100) / 100.0f;
+			v.y = std::roundf(k.y * 100) / 100.0f;
+			v.z = std::roundf(k.z * 100) / 100.0f;
+			return std::hash<glm::vec3>()(v);
+		}
+
+		bool operator()(const glm::vec3& a, const glm::vec3& b) const
+		{
+			return std::abs(a.x - b.x) < 1e-2 &&
+				   std::abs(a.y - b.y) < 1e-2 &&
+				   std::abs(a.z - b.z) < 1e-2;
+		}
+	};
+
+	typedef std::unordered_map<glm::vec3, size_t, GLMVec3KeyFuncs, GLMVec3KeyFuncs> vec3_map;
 
 	/*
 		Struct that holds the values to clamp u and v to when evaluating a local surface
@@ -283,6 +307,12 @@ namespace OML {
 		float m_maxSpeed = 5.0;
 
 	private:
+		// Holds the number of unique points added.
+		size_t m_numUniquePointsAdded = 0;
+		// Map using the points' pos as a key with a value of the index of the vertex handle of the given point.
+		vec3_map m_uniquePointsIndexMap;
+
+
 		// Check if two points are equal with a tolerance of 1e-5.
 		inline bool equal(Vec3f& p1, Vec3f& p2) {
 			return std::abs(p1[0] - p2[0]) < 1e-5 &&

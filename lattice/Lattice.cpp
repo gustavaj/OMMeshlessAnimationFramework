@@ -23,8 +23,44 @@ namespace OML
 	void Lattice::addPatch(Vec3f topLeft, Vec3f topRight, Vec3f bottomLeft, Vec3f bottomRight)
 	{
 		// TODO: Should probably try to improve this, or not.
+		glm::vec3 TL = glm::vec3(topLeft[0], topLeft[1], topLeft[2]);
+		glm::vec3 TR = glm::vec3(topRight[0], topRight[1], topRight[2]);
+		glm::vec3 BL = glm::vec3(bottomLeft[0], bottomLeft[1], bottomLeft[2]);
+		glm::vec3 BR = glm::vec3(bottomRight[0], bottomRight[1], bottomRight[2]);
 
-		OpenMesh::VertexHandle tl, tr, bl, br;
+		OpenMesh::VertexHandle tlvh, trvh, blvh, brvh;
+
+		auto TLItr = m_uniquePointsIndexMap.insert({ TL, m_numUniquePointsAdded });
+		if (TLItr.second) {
+			tlvh = add_vertex(topLeft);
+			m_numUniquePointsAdded++;
+		}
+		else tlvh = vertex_handle(TLItr.first->second);
+
+		auto TRItr = m_uniquePointsIndexMap.insert({ TR, m_numUniquePointsAdded });
+		if (TRItr.second) {
+			trvh = add_vertex(topRight);
+			m_numUniquePointsAdded++;
+		}
+		else trvh = vertex_handle(TRItr.first->second);
+
+		auto BLItr = m_uniquePointsIndexMap.insert({ BL, m_numUniquePointsAdded });
+		if (BLItr.second) {
+			blvh = add_vertex(bottomLeft);
+			m_numUniquePointsAdded++;
+		}
+		else blvh = vertex_handle(BLItr.first->second);
+
+		auto BRItr = m_uniquePointsIndexMap.insert({ BR, m_numUniquePointsAdded });
+		if (BRItr.second) {
+			brvh = add_vertex(bottomRight);
+			m_numUniquePointsAdded++;
+		}
+		else brvh = vertex_handle(BRItr.first->second);
+
+		add_face(tlvh, blvh, brvh, trvh);
+
+		/*OpenMesh::VertexHandle tl, tr, bl, br;
 		for (auto it = vertices_begin(); it != vertices_end(); it++)
 		{
 			auto p = point(*it);
@@ -39,7 +75,7 @@ namespace OML
 		if (!bl.is_valid()) bl = add_vertex(bottomLeft);
 		if (!br.is_valid()) br = add_vertex(bottomRight);
 
-		add_face(tl, bl, br, tr);
+		add_face(tl, bl, br, tr);*/
 	}
 
 	void Lattice::addPatch(Vec2f topLeft, Vec2f topRight, Vec2f bottomLeft, Vec2f bottomRight)
@@ -67,11 +103,12 @@ namespace OML
 			Improvements of this for a 31x31 grid:
 			-time start: ~3000ms
 			-improve point equality check in addPatch(), dont use .length(): ~800ms
+			-dont compare points, instead keep a map of unique points: ~60ms
 		*/
 
 		auto start = std::chrono::high_resolution_clock::now();
 
-		float w = width / (float)cols;
+ 		float w = width / (float)cols;
 		float h = height / (float)rows;
 		Vec2f dw(w, 0.0f);
 		Vec2f dh(0.0f, h);
@@ -222,6 +259,10 @@ namespace OML
 	void Lattice::induceLattice()
 	{
 		auto start = std::chrono::high_resolution_clock::now();
+
+		std::cout << "Number of unique points added: " << m_numUniquePointsAdded << std::endl;
+		// Clear out the pointIndexMap
+		m_uniquePointsIndexMap.clear();
 
 		// Setup the valence property of the loci, and set the color of gridpoints based on the point's valence
 		setupLociValenceAndPointColor();
