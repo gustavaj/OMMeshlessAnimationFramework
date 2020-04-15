@@ -156,56 +156,57 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="LatticeExample.cpp" />
-    <ClCompile Include="lattice\Lattice.cpp" />
-    <ClCompile Include="lattice\LocalSurface.cpp" />
-    <ClCompile Include="lattice\Patch.cpp" />
-    <ClCompile Include="lattice\Simulators.cpp" />
-    <ClCompile Include="lattice\SWVulkanLattice.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="vulkan\imgui.cpp" />
-    <ClCompile Include="vulkan\imgui_demo.cpp" />
-    <ClCompile Include="vulkan\imgui_draw.cpp" />
-    <ClCompile Include="vulkan\imgui_widgets.cpp" />
-    <ClCompile Include="vulkan\VulkanAndroid.cpp" />
-    <ClCompile Include="vulkan\VulkanBaseExample.cpp" />
-    <ClCompile Include="vulkan\VulkanDebug.cpp" />
-    <ClCompile Include="vulkan\VulkanTools.cpp" />
-    <ClCompile Include="vulkan\VulkanUIOverlay.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="lattice\Lattice.h" />
-    <ClInclude Include="lattice\LocalSurface.h" />
-    <ClInclude Include="lattice\Patch.h" />
-    <ClInclude Include="lattice\Simulators.h" />
-    <ClInclude Include="lattice\SWVulkanLattice.h" />
-    <ClInclude Include="vulkan\benchmark.hpp" />
-    <ClInclude Include="vulkan\camera.hpp" />
-    <ClInclude Include="vulkan\frustum.hpp" />
-    <ClInclude Include="vulkan\keycodes.hpp" />
-    <ClInclude Include="vulkan\threadpool.hpp" />
-    <ClInclude Include="vulkan\VulkanAndroid.h" />
-    <ClInclude Include="vulkan\VulkanBaseExample.h" />
-    <ClInclude Include="vulkan\VulkanBuffer.hpp" />
-    <ClInclude Include="vulkan\VulkanDebug.h" />
-    <ClInclude Include="vulkan\VulkanDevice.hpp" />
-    <ClInclude Include="vulkan\VulkanFrameBuffer.hpp" />
-    <ClInclude Include="vulkan\VulkanglTFModel.hpp" />
-    <ClInclude Include="vulkan\VulkanHeightmap.hpp" />
-    <ClInclude Include="vulkan\VulkanInitializers.hpp" />
-    <ClInclude Include="vulkan\VulkanModel.hpp" />
-    <ClInclude Include="vulkan\VulkanSwapChain.hpp" />
-    <ClInclude Include="vulkan\VulkanTexture.hpp" />
-    <ClInclude Include="vulkan\VulkanTools.h" />
-    <ClInclude Include="vulkan\VulkanUIOverlay.h" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="shaders\Lattice\lattice.frag" />
     <None Include="shaders\Lattice\lattice.tesc" />
     <None Include="shaders\Lattice\lattice.tese" />
     <None Include="shaders\Lattice\lattice.vert" />
     <None Include="shaders\Lattice\normals.frag" />
     <None Include="shaders\Lattice\normals.geom" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\LatticeExample.cpp" />
+    <ClCompile Include="src\lattice\Lattice.cpp" />
+    <ClCompile Include="src\lattice\LocalSurface.cpp" />
+    <ClCompile Include="src\lattice\Patch.cpp" />
+    <ClCompile Include="src\lattice\Simulators.cpp" />
+    <ClCompile Include="src\lattice\SWVulkanLattice.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\vulkan\imgui.cpp" />
+    <ClCompile Include="src\vulkan\imgui_demo.cpp" />
+    <ClCompile Include="src\vulkan\imgui_draw.cpp" />
+    <ClCompile Include="src\vulkan\imgui_widgets.cpp" />
+    <ClCompile Include="src\vulkan\VulkanAndroid.cpp" />
+    <ClCompile Include="src\vulkan\VulkanBaseExample.cpp" />
+    <ClCompile Include="src\vulkan\VulkanDebug.cpp" />
+    <ClCompile Include="src\vulkan\VulkanTools.cpp" />
+    <ClCompile Include="src\vulkan\VulkanUIOverlay.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\lattice\Lattice.h" />
+    <ClInclude Include="src\lattice\LatticeUtility.h" />
+    <ClInclude Include="src\lattice\LocalSurface.h" />
+    <ClInclude Include="src\lattice\Patch.h" />
+    <ClInclude Include="src\lattice\Simulators.h" />
+    <ClInclude Include="src\lattice\SWVulkanLattice.h" />
+    <ClInclude Include="src\vulkan\benchmark.hpp" />
+    <ClInclude Include="src\vulkan\camera.hpp" />
+    <ClInclude Include="src\vulkan\frustum.hpp" />
+    <ClInclude Include="src\vulkan\keycodes.hpp" />
+    <ClInclude Include="src\vulkan\threadpool.hpp" />
+    <ClInclude Include="src\vulkan\VulkanAndroid.h" />
+    <ClInclude Include="src\vulkan\VulkanBaseExample.h" />
+    <ClInclude Include="src\vulkan\VulkanBuffer.hpp" />
+    <ClInclude Include="src\vulkan\VulkanDebug.h" />
+    <ClInclude Include="src\vulkan\VulkanDevice.hpp" />
+    <ClInclude Include="src\vulkan\VulkanFrameBuffer.hpp" />
+    <ClInclude Include="src\vulkan\VulkanglTFModel.hpp" />
+    <ClInclude Include="src\vulkan\VulkanHeightmap.hpp" />
+    <ClInclude Include="src\vulkan\VulkanInitializers.hpp" />
+    <ClInclude Include="src\vulkan\VulkanModel.hpp" />
+    <ClInclude Include="src\vulkan\VulkanSwapChain.hpp" />
+    <ClInclude Include="src\vulkan\VulkanTexture.hpp" />
+    <ClInclude Include="src\vulkan\VulkanTools.h" />
+    <ClInclude Include="src\vulkan\VulkanUIOverlay.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

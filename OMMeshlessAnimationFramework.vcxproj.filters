@@ -18,126 +18,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="lattice\Lattice.cpp">
-      <Filter>lattice</Filter>
-    </ClCompile>
-    <ClCompile Include="lattice\LocalSurface.cpp">
-      <Filter>lattice</Filter>
-    </ClCompile>
-    <ClCompile Include="lattice\Patch.cpp">
-      <Filter>lattice</Filter>
-    </ClCompile>
-    <ClCompile Include="vulkan\imgui.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="vulkan\imgui_demo.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="vulkan\imgui_draw.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="vulkan\imgui_widgets.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="vulkan\VulkanAndroid.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="vulkan\VulkanBaseExample.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="vulkan\VulkanDebug.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="vulkan\VulkanTools.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="vulkan\VulkanUIOverlay.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="LatticeExample.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="lattice\SWVulkanLattice.cpp">
-      <Filter>lattice</Filter>
-    </ClCompile>
-    <ClCompile Include="lattice\Simulators.cpp">
-      <Filter>lattice</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="lattice\Lattice.h">
-      <Filter>lattice</Filter>
-    </ClInclude>
-    <ClInclude Include="lattice\LocalSurface.h">
-      <Filter>lattice</Filter>
-    </ClInclude>
-    <ClInclude Include="lattice\Patch.h">
-      <Filter>lattice</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\benchmark.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\camera.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\frustum.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\keycodes.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\threadpool.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanAndroid.h">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanBaseExample.h">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanBuffer.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanDebug.h">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanDevice.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanFrameBuffer.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanglTFModel.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanHeightmap.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanInitializers.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanModel.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanSwapChain.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanTexture.hpp">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanTools.h">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="vulkan\VulkanUIOverlay.h">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="lattice\SWVulkanLattice.h">
-      <Filter>lattice</Filter>
-    </ClInclude>
-    <ClInclude Include="lattice\Simulators.h">
-      <Filter>lattice</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="shaders\Lattice\lattice.frag">
       <Filter>shaders\lattice</Filter>
     </None>
@@ -156,5 +36,128 @@
     <None Include="shaders\Lattice\normals.geom">
       <Filter>shaders\lattice</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\lattice\Lattice.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
+    <ClCompile Include="src\lattice\LocalSurface.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
+    <ClCompile Include="src\lattice\Patch.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
+    <ClCompile Include="src\lattice\Simulators.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
+    <ClCompile Include="src\lattice\SWVulkanLattice.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkan\imgui.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkan\imgui_demo.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkan\imgui_draw.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkan\imgui_widgets.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkan\VulkanAndroid.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkan\VulkanBaseExample.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkan\VulkanDebug.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkan\VulkanTools.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkan\VulkanUIOverlay.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\LatticeExample.cpp" />
+    <ClCompile Include="src\main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\lattice\Lattice.h">
+      <Filter>lattice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\lattice\LatticeUtility.h">
+      <Filter>lattice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\lattice\LocalSurface.h">
+      <Filter>lattice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\lattice\Patch.h">
+      <Filter>lattice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\lattice\Simulators.h">
+      <Filter>lattice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\lattice\SWVulkanLattice.h">
+      <Filter>lattice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\benchmark.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\camera.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\frustum.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\keycodes.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\threadpool.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanAndroid.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanBaseExample.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanBuffer.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanDebug.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanDevice.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanFrameBuffer.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanglTFModel.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanHeightmap.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanInitializers.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanModel.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanSwapChain.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanTexture.hpp">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanTools.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\vulkan\VulkanUIOverlay.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

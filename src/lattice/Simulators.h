@@ -29,11 +29,11 @@ namespace OML {
 
 
 	enum class SimulatorTypes {
-		NormalSin = 0, RandomSphere, Rotation
+		NormalSin = 0, RandomSphere, Rotation, XYScale
 	};
 
 	const std::vector<std::string> SimulatorNames = {
-		"NormalSin", "RandomSphere", "NormalRotation"
+		"NormalSin", "RandomSphere", "NormalRotation", "XYScale"
 	};
 
 	class Simulator {
@@ -61,20 +61,8 @@ namespace OML {
 			: Simulator(t, speed), m_max(max), m_normal(normal[0], normal[1], normal[2]) {}
 		~NormalSinSimulator() {}
 
-		virtual void simulate(double dt, glm::mat4& matrix) override {
-			m_t += dt;
-			float f = std::sin(m_t * m_speed) * m_max;
-			glm::vec3 offset = (m_normal * f);
-			glm::vec4 trans(offset[0] - m_lastOffset[0], offset[1] - m_lastOffset[1], offset[2] - m_lastOffset[2], 0.0f);
-			matrix[3] += trans;
-			m_lastOffset = offset;
-		}
-
-		virtual void undoTransformation(glm::mat4& matrix) override {
-			glm::vec4 trans(-m_lastOffset[0], -m_lastOffset[1], -m_lastOffset[2], 0.0f);
-			matrix[3] += trans;
-			m_lastOffset = glm::vec3(0.0f);
-		}
+		virtual void simulate(double dt, glm::mat4& matrix) override;
+		virtual void undoTransformation(glm::mat4& matrix) override;
 
 	private:
 		double m_max;
@@ -88,25 +76,8 @@ namespace OML {
 			: Simulator(t, speed), m_max(max), m_direction(glm::normalize(dir)) {}
 		~RandomSphereSimulator() {}
 
-		virtual void simulate(double dt, glm::mat4& matrix) override {
-			m_t += dt;
-
-			glm::vec3 offset = m_direction * (float)(dt * m_speed);
-			glm::vec4 trans(offset[0], offset[1], offset[2], 0.0f);
-
-			matrix[3] += trans;
-			m_lastOffset += offset;
-			if (m_lastOffset.length() > m_max) {
-				m_direction = -m_direction;// glm::normalize((-m_direction +
-					//glm::vec3(m_rng.random(0.0, 1.0), m_rng.random(0.0, 1.0), m_rng.random(-1.0, 1.0))));
-			}
-		}
-
-		virtual void undoTransformation(glm::mat4& matrix) override {
-			glm::vec4 trans(-m_lastOffset[0], -m_lastOffset[1], -m_lastOffset[2], 0.0f);
-			matrix[3] += trans;
-			m_lastOffset = glm::vec3(0.0f);
-		}
+		virtual void simulate(double dt, glm::mat4& matrix) override;
+		virtual void undoTransformation(glm::mat4& matrix) override;
 
 	private:
 		double m_max;
@@ -122,22 +93,27 @@ namespace OML {
 			: Simulator(t, speed), m_maxAngle(maxAngle), m_rotAxis(rotAxis), m_lastAngle(0.0) {}
 		~RangeRotationSimulator() {}
 
-		virtual void simulate(double dt, glm::mat4& matrix) override {
-			m_t += dt;
-
-			float angle = std::sin(m_t * m_speed) * m_maxAngle;
-			matrix = glm::rotate(matrix, glm::radians(angle - m_lastAngle), m_rotAxis);
-			m_lastAngle = angle;
-		}
-
-		virtual void undoTransformation(glm::mat4& matrix) override {
-			matrix = glm::rotate(matrix, glm::radians(-m_lastAngle), m_rotAxis);
-			m_lastAngle = 0.0f;
-		}
+		virtual void simulate(double dt, glm::mat4& matrix) override;
+		virtual void undoTransformation(glm::mat4& matrix) override;
 
 	private:
 		double m_maxAngle;
 		glm::vec3 m_rotAxis;
 		float m_lastAngle;
+	};
+
+	class XYScalingSimulator : public Simulator {
+	public:
+		XYScalingSimulator() : XYScalingSimulator(0.0, 1.0, 0.2) {}
+		XYScalingSimulator(double t, double speed, double maxScale)
+			: Simulator(t, speed), m_maxScale(maxScale), m_lastScale(1.0f) {}
+		~XYScalingSimulator() {}
+
+		virtual void simulate(double dt, glm::mat4& matrix) override;
+		virtual void undoTransformation(glm::mat4& matrix) override;
+
+	private:
+		double m_maxScale;
+		float m_lastScale;
 	};
 }

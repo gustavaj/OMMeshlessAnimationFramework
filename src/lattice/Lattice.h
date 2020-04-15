@@ -9,6 +9,7 @@
 
 #include <unordered_map>
 
+#include "LatticeUtility.h"
 #include "Simulators.h"
 
 /*
@@ -45,46 +46,6 @@ namespace OML {
 	using Vec2f = OpenMesh::Vec2f;
 	using Vec3f = OpenMesh::Vec3f;
 	using Col3 = OpenMesh::Vec3uc;
-
-	// This does seem to be working..
-	struct GLMVec3KeyFuncs
-	{
-		size_t operator()(const glm::vec3& k) const
-		{
-			glm::vec3 v;
-			v.x = std::roundf(k.x * 1000) / 1000.0f;
-			v.y = std::roundf(k.y * 1000) / 1000.0f;
-			v.z = std::roundf(k.z * 1000) / 1000.0f;
-			return std::hash<glm::vec3>()(v);
-		}
-
-		bool operator()(const glm::vec3& a, const glm::vec3& b) const
-		{
-			return std::abs(a.x - b.x) < 1e-2 &&
-				   std::abs(a.y - b.y) < 1e-2 &&
-				   std::abs(a.z - b.z) < 1e-2;
-		}
-	};
-
-	typedef std::unordered_map<glm::vec3, size_t, GLMVec3KeyFuncs, GLMVec3KeyFuncs> vec3_map;
-
-	/*
-		Struct that holds the values to clamp u and v to when evaluating a local surface
-		in the shader. In the corners the values would be us = 0.0, ue = 1.0, vs = 0.0 and ve = 1.0
-		
-		TODO: Change so patches can reuse BoundaryInfos, they already contain an index to they 
-		should be able to point to the same. For a regular rectangular grid most BoudnaryInfos will
-		be the same, so a lot of memory is wasted. Check if changing this will change performance also.
-	*/
-	struct BoundaryInfo
-	{
-		BoundaryInfo()
-			: us(0.0f), ue(1.0f), vs(0.0f), ve(1.0f) {}
-		BoundaryInfo(float us, float ue, float vs, float ve)
-			: us(us), ue(ue), vs(vs), ve(ve) {}
-
-		float us, ue, vs, ve;
-	};
 
 	/*
 		Not in use, currently only one possible local surface, will probably not change.
@@ -212,6 +173,7 @@ namespace OML {
 		void addRandomSphereSimulation();
 		/* Add a simulator that rotates the local surfaces */
 		void addNormalRotationSimulation();
+		void addXYScalingSimulation();
 		/* Removes a simulator */
 		void removeSimulator(SimulatorTypes simulatorType);
 		/* Used for simulation. */
@@ -286,6 +248,8 @@ namespace OML {
 		std::vector<glm::vec4> m_controlPoints;
 		// TODO: Fix so multiple patches can reuse the same boundaries. To save space.
 		std::vector<BoundaryInfo> m_boundaries;
+		boundary_map m_boundaryMap;
+		size_t m_numUniqueBoundaries = 0;
 		// The initial matrices the local surfaces were created with, used for resetting transformations
 		std::vector<glm::mat4> m_initialMatrices;
 		// The transofrmation matrices for the local surfaces.
@@ -309,6 +273,8 @@ namespace OML {
 		float m_maxSpeed = 5.0;
 		float m_minAngle = 10.0;
 		float m_maxAngle = 60.0;
+		float m_minScale = 0.1f;
+		float m_maxScale = 0.5f;
 
 	private:
 		// Holds the number of unique points added.
@@ -372,6 +338,8 @@ namespace OML {
 
 		void addLocus(OpenMesh::VertexHandle vertex, uint32_t controlPointIndex, uint32_t controlPointCount,
 			std::unordered_map<OpenMesh::FaceHandle, uint32_t>& boundaryIndices, Vec3f offset, bool addMatrix = true);
+
+		size_t addBoundaryInfo(BoundaryInfo boundary);
 
 		uint32_t createLocalSurfaceControlPoints(
 			Vec3f topLeft, Vec3f topRight, Vec3f bottomLeft, Vec3f bottomRight);

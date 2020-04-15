@@ -269,6 +269,21 @@ namespace OML
 		m_simulators.insert({ SimulatorTypes::Rotation, sims });
 	}
 
+	void Lattice::addXYScalingSimulation()
+	{
+		removeSimulator(SimulatorTypes::XYScale);
+
+		std::unordered_map<uint32_t, std::shared_ptr<Simulator>> sims;
+		for (auto& locus : m_loci)
+		{
+			double t = 0.0; //random(0.0, 100.0);
+			double speed = m_rng.random(m_minSpeed, m_maxSpeed);
+			double maxScale = m_rng.random(m_minScale, m_maxScale);
+			sims.insert({ locus.matrixIndex, std::make_shared<XYScalingSimulator>(t, speed, maxScale) });
+		}
+		m_simulators.insert({ SimulatorTypes::XYScale, sims });
+	}
+
 	void Lattice::update(double dt)
 	{
 		if (m_animate)
@@ -303,6 +318,10 @@ namespace OML
 
 		// Add regular local surfaces for each loci, and setup patches
 		setupLocalSurfacesAndPatches();
+
+		// Clean up boundary map
+		m_boundaryMap.clear();
+		std::cout << "Unique boundary infos added: " << m_numUniqueBoundaries << std::endl;
 
 		auto end = std::chrono::high_resolution_clock::now();
 		auto time = std::chrono::duration<double, std::milli>(end - start).count();
@@ -479,32 +498,32 @@ namespace OML
 
 					std::unordered_map<OpenMesh::FaceHandle, uint32_t> faceMappings_terminal1;
 					if (!terminal1IsBoundary) {
-						faceMappings_terminal1.insert({ face_handle(opposite_halfedge_handle(heh_over_1_to_T)), m_boundaries.size() });
-						m_boundaries.push_back(BoundaryInfo(0.0f, halfwayU, q0V, q1V));
-						faceMappings_terminal1.insert({ face_handle(heh_over_1_to_T), m_boundaries.size() });
-						m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q0V, q1V));
+						faceMappings_terminal1.insert({ face_handle(opposite_halfedge_handle(heh_over_1_to_T)), 
+							addBoundaryInfo(BoundaryInfo(0.0f, halfwayU, q0V, q1V)) });
+						faceMappings_terminal1.insert({ face_handle(heh_over_1_to_T), 
+							addBoundaryInfo(BoundaryInfo(halfwayU, 1.0f, q0V, q1V)) });
 					}
-					faceMappings_terminal1.insert({ face_handle(opposite_halfedge_handle(heh_1_to_T)), m_boundaries.size() });
-					m_boundaries.push_back(BoundaryInfo(0.0f, halfwayU, q1V, q3V));
-					faceMappings_terminal1.insert({ face_handle(heh_1_to_T), m_boundaries.size() });
-					m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q1V, q2V));
+					faceMappings_terminal1.insert({ face_handle(opposite_halfedge_handle(heh_1_to_T)), 
+						addBoundaryInfo(BoundaryInfo(0.0f, halfwayU, q1V, q3V)) });
+					faceMappings_terminal1.insert({ face_handle(heh_1_to_T), 
+						addBoundaryInfo(BoundaryInfo(halfwayU, 1.0f, q1V, q2V)) });
 
 					std::unordered_map<OpenMesh::FaceHandle, uint32_t> faceMappings_T;
-					faceMappings_T.insert({ face_handle(heh_1_to_T), m_boundaries.size() });
-					m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q1V, q2V));
-					faceMappings_T.insert({ face_handle(heh_T_to_2), m_boundaries.size() });
-					m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q2V, q3V));
+					faceMappings_T.insert({ face_handle(heh_1_to_T), 
+						addBoundaryInfo(BoundaryInfo(halfwayU, 1.0f, q1V, q2V)) });
+					faceMappings_T.insert({ face_handle(heh_T_to_2), 
+						addBoundaryInfo(BoundaryInfo(halfwayU, 1.0f, q2V, q3V)) });
 
 					std::unordered_map<OpenMesh::FaceHandle, uint32_t> faceMappings_terminal2;
-					faceMappings_terminal2.insert({ face_handle(opposite_halfedge_handle(heh_T_to_2)), m_boundaries.size() });
-					m_boundaries.push_back(BoundaryInfo(0.0f, halfwayU, q1V, q3V));
-					faceMappings_terminal2.insert({ face_handle(heh_T_to_2), m_boundaries.size() });
-					m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q2V, q3V));
+					faceMappings_terminal2.insert({ face_handle(opposite_halfedge_handle(heh_T_to_2)), 
+						addBoundaryInfo(BoundaryInfo(0.0f, halfwayU, q1V, q3V)) });
+					faceMappings_terminal2.insert({ face_handle(heh_T_to_2), 
+						addBoundaryInfo(BoundaryInfo(halfwayU, 1.0f, q2V, q3V)) });
 					if (!terminal2IsBoundary) {
-						faceMappings_terminal2.insert({ face_handle(opposite_halfedge_handle(heh_below_T_to_2)), m_boundaries.size() });
-						m_boundaries.push_back(BoundaryInfo(0.0f, halfwayU, q3V, q4V));
-						faceMappings_terminal2.insert({ face_handle(heh_below_T_to_2), m_boundaries.size() });
-						m_boundaries.push_back(BoundaryInfo(halfwayU, 1.0f, q3V, q4V));
+						faceMappings_terminal2.insert({ face_handle(opposite_halfedge_handle(heh_below_T_to_2)), 
+							addBoundaryInfo(BoundaryInfo(0.0f, halfwayU, q3V, q4V)) });
+						faceMappings_terminal2.insert({ face_handle(heh_below_T_to_2), 
+							addBoundaryInfo(BoundaryInfo(halfwayU, 1.0f, q3V, q4V)) });
 					}
 
 					addLocus(vh_terminal, controlPointIndex, controlPointCount, faceMappings_terminal1, offset, true);
@@ -626,6 +645,17 @@ namespace OML
 		property(LatticeProperties::LocusIndex, vertex) = m_loci.size();
 
 		m_loci.push_back(locus);
+	}
+
+	size_t Lattice::addBoundaryInfo(BoundaryInfo boundary)
+	{
+		auto res = m_boundaryMap.insert({ boundary, m_numUniqueBoundaries });
+		if (res.second) {
+			m_boundaries.push_back(boundary);
+			m_numUniqueBoundaries++;
+		}
+
+		return res.first->second;
 	}
 
 	void Lattice::addLocusOnVertex(
@@ -757,10 +787,8 @@ namespace OML
 				}
 			}
 
-			m_boundaries.push_back(boundaryFace);
-			m_boundaries.push_back(boundaryAdjFace);
-			boundaryIndices.insert({ face_handle(heh_next), m_boundaries.size() - 2 });
-			boundaryIndices.insert({ face_handle(heh_prev), m_boundaries.size() - 1 });
+			boundaryIndices.insert({ face_handle(heh_next), addBoundaryInfo(boundaryFace) });
+			boundaryIndices.insert({ face_handle(heh_prev), addBoundaryInfo(boundaryAdjFace) });
 		}
 		else {
 			auto heh_prev = find_halfedge(prev_vertex, vertex);
@@ -806,10 +834,8 @@ namespace OML
 				}
 			}
 
-			m_boundaries.push_back(boundaryFace);
-			m_boundaries.push_back(boundaryAdjFace);
-			boundaryIndices.insert({ face_handle(heh_next), m_boundaries.size() - 2 });
-			boundaryIndices.insert({ face_handle(opposite_halfedge_handle(heh_next)), m_boundaries.size() - 1 });
+			boundaryIndices.insert({ face_handle(heh_next), addBoundaryInfo(boundaryFace) });
+			boundaryIndices.insert({ face_handle(opposite_halfedge_handle(heh_next)), addBoundaryInfo(boundaryAdjFace) });
 		}
 
 		addLocus(vertex, controlPointIndex, controlPointCount, boundaryIndices, offset);
@@ -902,15 +928,11 @@ namespace OML
 			}
 		}
 
-		m_boundaries.push_back(boundaryF1);
-		m_boundaries.push_back(boundaryF2);
-		m_boundaries.push_back(boundaryF3);
-		m_boundaries.push_back(boundaryF4);
 		std::unordered_map<OpenMesh::FaceHandle, uint32_t> boundaryIndices;
-		boundaryIndices.insert({ face_handle(hehf1), m_boundaries.size() - 4 });
-		boundaryIndices.insert({ face_handle(hehf2), m_boundaries.size() - 3 });
-		boundaryIndices.insert({ face_handle(hehf3), m_boundaries.size() - 2 });
-		boundaryIndices.insert({ face_handle(hehf4), m_boundaries.size() - 1 });
+		boundaryIndices.insert({ face_handle(hehf1), addBoundaryInfo(boundaryF1) });
+		boundaryIndices.insert({ face_handle(hehf2), addBoundaryInfo(boundaryF2) });
+		boundaryIndices.insert({ face_handle(hehf3), addBoundaryInfo(boundaryF3) });
+		boundaryIndices.insert({ face_handle(hehf4), addBoundaryInfo(boundaryF4) });
 
 		addLocus(vertex, controlPointIndex, controlPointCount, boundaryIndices, offset);
 	}
@@ -998,8 +1020,7 @@ namespace OML
 			points[1] - offset, points[2] - offset, points[3] - offset);
 
 		std::unordered_map<OpenMesh::FaceHandle, uint32_t> boundaryIndices;
-		m_boundaries.push_back(BoundaryInfo(0.0f, 1.0f, 0.0f, 1.0f));
-		boundaryIndices.insert({ fh, m_boundaries.size() - 1 });
+		boundaryIndices.insert({ fh, addBoundaryInfo(BoundaryInfo(0.0f, 1.0f, 0.0f, 1.0f)) });
 		addLocus(vh, controlPointIndex, controlPointCount, boundaryIndices, offset);
 	}
 	void Lattice::addLocalSurfaceOnBoundaryLocus(
@@ -1042,10 +1063,8 @@ namespace OML
 			boundaryF1.ve = halfwayV; boundaryF2.vs = halfwayV;
 		}
 
-		m_boundaries.push_back(boundaryF1);
-		boundaryIndices.insert({ faces[0], m_boundaries.size() - 1 });
-		m_boundaries.push_back(boundaryF2);
-		boundaryIndices.insert({ faces[1], m_boundaries.size() - 1 });
+		boundaryIndices.insert({ faces[0], addBoundaryInfo(boundaryF1) });
+		boundaryIndices.insert({ faces[1], addBoundaryInfo(boundaryF2) });
 
 		uint32_t controlPointCount = 9;
 		uint32_t controlPointIndex = createLocalSurfaceControlPoints(
