@@ -19,10 +19,8 @@
 
 
 	TODO list:
-		Matrices:
-		-Change matrix buffer to SSBO.
-		-Look at performance
-		-See how big of a lattice grid you can create.
+		Sphere:
+		-Set all the top and bottom local surfaces to point to the same matrix.
 
 		Simulators:
 		-Fix RandomSphereSimulator
@@ -274,6 +272,7 @@ namespace OML {
 			int bFunctionIndex = 0;
 			alignas(16) glm::mat4 projection = glm::mat4(1.0f);
 			alignas(16) glm::mat4 modelview = glm::mat4(1.0f);
+			alignas(16) glm::mat4 normal = glm::mat4(1.0f);
 		} m_uniforms;
 
 		int m_simulatorIndex = 0;

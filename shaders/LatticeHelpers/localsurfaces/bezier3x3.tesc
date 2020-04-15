@@ -21,6 +21,7 @@ layout(set = 0, binding = 0) uniform LatticeUBO
 	int bFunctionIndex;
 	mat4 projection;
 	mat4 modelview;
+	mat4 normal;
 } latticeUbo;
 
 void main()

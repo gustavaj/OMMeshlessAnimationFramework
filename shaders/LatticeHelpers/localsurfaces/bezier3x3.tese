@@ -31,16 +31,17 @@ layout(set = 0, binding = 0) uniform LatticeUBO
 	int bFunctionIndex;
 	mat4 projection;
 	mat4 modelview;
+	mat4 normal;
 } latticeUbo;
 
 layout(constant_id = 0) const int numLocalSurfaceControlPoints = 36000;
 layout(constant_id = 1) const int numLocalSurfaces = 1000;
 layout(constant_id = 2) const int numPatches = 1000;
 
-layout(set = 0, binding = 1) uniform MatrixUBO
+layout(set = 0, binding = 1) uniform MatrixBuffer
 {
 	mat4 matrices[numLocalSurfaces];
-} matrixUbo;
+} matrixBuffer;
 
 layout(set = 0, binding = 2) buffer ControlPointBuffer
 {
@@ -86,7 +87,7 @@ Sampler evaluateBiquadraticBezier(LocalSurfaceInfo lsInfo, float u, float v)
 			  + dbv1 * (bu0 * p01 + bu1 * p11 + bu2 * p21)
 			  + dbv2 * (bu0 * p02 + bu1 * p12 + bu2 * p22);
 			 
-	mat4 matrix = matrixUbo.matrices[lsInfo.matrixIndex];
+	mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];
 	
 	pos  = vec3(matrix * vec4(pos, 1.0f));
 	dpdu = vec3(matrix * vec4(dpdu, 0.0f));

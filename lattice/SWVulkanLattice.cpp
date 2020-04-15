@@ -19,9 +19,6 @@ namespace SWVL
 
 	SWVulkanLattice::~SWVulkanLattice()
 	{
-		if (!m_destroyed) {
-			destroyVulkanStuff();
-		}
 	}
 
 	void SWVulkanLattice::initVulkanStuff(VkDevice* device, vks::VulkanDevice* vulkanDevice, VkQueue* queue, VkCommandPool* commandPool, VkDescriptorPool* descriptorPool, VkRenderPass* renderPass, VkAllocationCallbacks* allocator)
@@ -62,6 +59,8 @@ namespace SWVL
 
 	void SWVulkanLattice::destroyVulkanStuff()
 	{
+		if (m_destroyed) return;
+
 		for (auto& shader : m_shaderModules) {
 			vkDestroyShaderModule(*m_device, shader.second, m_allocator);
 		}
@@ -887,7 +886,7 @@ namespace SWVL
 		std::array<VkPipelineShaderStageCreateInfo, 5> normalShaderStages;
 		normalShaderStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		normalShaderStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		normalShaderStages[2] = loadShader("./shaders/Lattice/lattice.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		normalShaderStages[2] = loadShader("./shaders/Lattice/normals.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		normalShaderStages[2].pSpecializationInfo = &specializationInfo;
 		normalShaderStages[3] = loadShader("./shaders/Lattice/normals.geom.spv", VK_SHADER_STAGE_GEOMETRY_BIT);
 		normalShaderStages[4] = loadShader("./shaders/Lattice/normals.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -953,6 +952,7 @@ namespace SWVL
 	{
 		vkDeviceWaitIdle(*m_device); // Just do it
 		m_uniforms.modelview = m_view * m_matrix;
+		m_uniforms.normal = glm::transpose(glm::inverse(m_matrix));
 		memcpy(m_latticeUniformBuffer.mapped, &m_uniforms, sizeof(m_uniforms));
 	}
 

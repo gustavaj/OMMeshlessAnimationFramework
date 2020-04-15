@@ -165,7 +165,7 @@ void main()
 			  
 	gl_Position = latticeUbo.projection * latticeUbo.modelview * vec4(pos, 1.0f);
 	tePosition = vec3(latticeUbo.modelview * vec4(pos, 1.0f));
-	teNormal = vec3(latticeUbo.normal * vec4(normalize(cross(dpdu, dpdv)), 0.0f));
+	teNormal = normalize(cross(dpdu, dpdv));
 	
 	// float fac = gl_PrimitiveID / float(numPatches);
 	// if(fac < 0.5f) {
