@@ -268,13 +268,15 @@ namespace SWVL
 					else if (m_simulatorIndex == 2) addNormalRotationSimulation();
 					else if (m_simulatorIndex == 3) addXYScalingSimulation();
 				}
-				if (simulatorActive && overlay->button("Remove")) {
+				if (simulatorActive) {
 					ImGui::SameLine();
-					if (m_simulatorIndex == 0) removeSimulator(OML::SimulatorTypes::NormalSin);
-					else if (m_simulatorIndex == 1) removeSimulator(OML::SimulatorTypes::RandomSphere);
-					else if (m_simulatorIndex == 2) removeSimulator(OML::SimulatorTypes::Rotation);
-					else if (m_simulatorIndex == 3) removeSimulator(OML::SimulatorTypes::XYScale);
-				}
+					if (overlay->button("Remove")) {
+						if (m_simulatorIndex == 0) removeSimulator(OML::SimulatorTypes::NormalSin);
+						else if (m_simulatorIndex == 1) removeSimulator(OML::SimulatorTypes::RandomSphere);
+						else if (m_simulatorIndex == 2) removeSimulator(OML::SimulatorTypes::Rotation);
+						else if (m_simulatorIndex == 3) removeSimulator(OML::SimulatorTypes::XYScale);
+					}
+				}				
 			}
 
 			// Pipeline stats
@@ -552,7 +554,7 @@ namespace SWVL
 			localVert00.controlPointIndex = locus00.controlPointIndex;
 			localVert00.controlPointCount = locus00.controlPointCount;
 			localVert00.matrixIndex = locus00.matrixIndex;
-			localVert00.boundaryIndex = locus00.boundaryIndices[m_patches[i].fh];
+			localVert00.boundaryIndex = locus00.boundaryIndices[m_patches[i].faceIdx];
 			localVert00.color = m_patches[i].color;
 			m_patchVertices.push_back(localVert00);
 
@@ -560,7 +562,7 @@ namespace SWVL
 			localVert10.controlPointIndex = locus10.controlPointIndex;
 			localVert10.controlPointCount = locus10.controlPointCount;
 			localVert10.matrixIndex = locus10.matrixIndex;
-			localVert10.boundaryIndex = locus10.boundaryIndices[m_patches[i].fh];
+			localVert10.boundaryIndex = locus10.boundaryIndices[m_patches[i].faceIdx];
 			localVert10.color = m_patches[i].color;
 			m_patchVertices.push_back(localVert10);
 
@@ -568,7 +570,7 @@ namespace SWVL
 			localVert01.controlPointIndex = locus01.controlPointIndex;
 			localVert01.controlPointCount = locus01.controlPointCount;
 			localVert01.matrixIndex = locus01.matrixIndex;
-			localVert01.boundaryIndex = locus01.boundaryIndices[m_patches[i].fh];
+			localVert01.boundaryIndex = locus01.boundaryIndices[m_patches[i].faceIdx];
 			localVert01.color = m_patches[i].color;
 			m_patchVertices.push_back(localVert01);
 
@@ -576,7 +578,7 @@ namespace SWVL
 			localVert11.controlPointIndex = locus11.controlPointIndex;
 			localVert11.controlPointCount = locus11.controlPointCount;
 			localVert11.matrixIndex = locus11.matrixIndex;
-			localVert11.boundaryIndex = locus11.boundaryIndices[m_patches[i].fh];
+			localVert11.boundaryIndex = locus11.boundaryIndices[m_patches[i].faceIdx];
 			localVert11.color = m_patches[i].color;
 			m_patchVertices.push_back(localVert11);
 		}

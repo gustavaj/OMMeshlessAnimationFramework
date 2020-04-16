@@ -25,6 +25,11 @@ namespace OML {
 		{
 			return m_randomDist(m_mt) * std::max(0.0f, (b - a)) + a;
 		}
+
+		int random(int a, int b)
+		{
+			return static_cast<int>(m_randomDist(m_mt) * std::max(0, (b - a))) + a;
+		}
 	};
 
 

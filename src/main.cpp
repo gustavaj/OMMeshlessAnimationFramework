@@ -26,7 +26,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	//example = new LatticeExample(true);
 	
 	// Grid example
-	example = new GridLatticeExample(true, 100.0f, 100.0f, 13, 13);
+	//example = new GridLatticeExample(true, 100.0f, 100.0f, 5, 5);
+
+	// Random grid example
+	//example = new RandomGridLatticeExample(true, 100.0f, 100.0f, 10, 10);
 	
 	// Cylinder Example
 	//example = new CylinderLatticeExample(true, 20.0f, 50.0f, 8, 12);
@@ -42,6 +45,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 
 	// T-locus example
 	//example = new TLocusExample(true);
+	example = new TLocusx4Example(true);
 
 	// Example with several lattices
 	//example = new MultiLatticeExample(true);

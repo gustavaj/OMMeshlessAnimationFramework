@@ -382,6 +382,26 @@ public:
 	}
 };
 
+class RandomGridLatticeExample : public LatticeExample
+{
+public:
+	int m_rows, m_cols;
+	float m_width, m_height;
+
+	RandomGridLatticeExample(bool enableValidation, float width, float height, int rows, int cols)
+		: LatticeExample(enableValidation), m_width(width), m_height(height), m_rows(rows), m_cols(cols)
+	{
+	}
+
+	virtual void createLatticeGeometry() override
+	{
+		Lattice lat("Random Grid Lattice");
+		lat.setUseRandomPatchColors(true);
+		lat.addGridRandom(OML::Vec2f(-m_width / 2, -m_height / 2), m_width, m_height, m_rows, m_cols);
+		addLattice(lat);
+	}
+};
+
 class CylinderLatticeExample : public LatticeExample
 {
 public:
@@ -509,6 +529,60 @@ public:
 		lat.addPatch(OML::Vec2f(-10.0f, 10.0f), 10.0f, 10.0f);
 		lat.addPatch(OML::Vec2f(0.0f, 10.0f), 10.0f, 10.0f);
 		lat.addPatch(OML::Vec2f(10.0f, 10.0f), 10.0f, 10.0f);*/
+
+		addLattice(lat);
+	}
+};
+
+class TLocusx4Example : public LatticeExample
+{
+public:
+	TLocusx4Example(bool enableValidation)
+		: LatticeExample(enableValidation)
+	{
+	}
+
+	virtual void createLatticeGeometry() override
+	{
+		Lattice lat("T-locus x4 Lattice");
+		lat.setUseRandomPatchColors(true);
+
+		lat.addPatch(OML::Vec2f(-30, -30), 10, 10);
+		lat.addPatch(OML::Vec2f(-20, -30), 10, 10);
+		lat.addPatch(OML::Vec2f(-10, -30), 10, 10);
+		lat.addPatch(OML::Vec2f(0, -30), 10, 10);
+		lat.addPatch(OML::Vec2f(10, -30), 10, 10);
+		lat.addPatch(OML::Vec2f(20, -30), 10, 10);
+
+		lat.addPatch(OML::Vec2f(-30, -20), 10, 10);
+		lat.addPatch(OML::Vec2f(-20, -20), 10, 10);
+		lat.addPatch(OML::Vec2f(-10, -20), 20, 10);
+		lat.addPatch(OML::Vec2f(10, -20), 10, 10);
+		lat.addPatch(OML::Vec2f(20, -20), 10, 10);
+
+		lat.addPatch(OML::Vec2f(-30, -10), 10, 10);
+		lat.addPatch(OML::Vec2f(-20, -10), 10, 20);
+		lat.addPatch(OML::Vec2f(-10, -10), 20, 20);
+		lat.addPatch(OML::Vec2f(10, -10), 10, 20);
+		lat.addPatch(OML::Vec2f(20, -10), 10, 10);
+
+		lat.addPatch(OML::Vec2f(-30, 0), 10, 10);
+		lat.addPatch(OML::Vec2f(20, 0), 10, 10);
+
+		lat.addPatch(OML::Vec2f(-30, 10), 10, 10);
+		lat.addPatch(OML::Vec2f(-20, 10), 10, 10);
+		lat.addPatch(OML::Vec2f(-10, 10), 20, 10);
+		lat.addPatch(OML::Vec2f(10, 10), 10, 10);
+		lat.addPatch(OML::Vec2f(20, 10), 10, 10);
+
+		lat.addPatch(OML::Vec2f(-30, 20), 10, 10);
+		lat.addPatch(OML::Vec2f(-20, 20), 10, 10);
+		lat.addPatch(OML::Vec2f(-10, 20), 10, 10);
+		lat.addPatch(OML::Vec2f(0, 20), 10, 10);
+		lat.addPatch(OML::Vec2f(10, 20), 10, 10);
+		lat.addPatch(OML::Vec2f(20, 20), 10, 10);
+
+		// 29 patches, 44 loci, 36 local
 
 		addLattice(lat);
 	}
