@@ -13,7 +13,7 @@
 #include "Simulators.h"
 
 /*
-	In general, all local surface and patch orderings are left to right, top to bottom e.g.
+	In general, all local surface and patch orderings are left to right, top to bottom i.e.
 		p00 - p10
 	^ v	 |     | 
 	|	p01 - p11
@@ -56,7 +56,7 @@ namespace OML {
 	};
 
 	/*
-		The loci are located at the knot vectors(?). At every locus, there is one local surface.
+		The loci are located at the knots. At every locus, there is one local surface.
 		This is made up from the points:
 		[m_controlPoints[controlPointIndex], m_controlPoints[controlPointIndex + controlPointCount]]
 		The transformation matrix of the local surface is at m_matrices[matrixIndex]
@@ -187,7 +187,7 @@ namespace OML {
 		/* Sets wheter the lattice is displayed */
 		void setDraw(bool draw) { m_draw = draw; }
 		/* Sets wheter the lattice should be animated */
-		void setAnimate(bool animate) { m_animate = animate; }
+		void setAnimate(bool animate) { m_simulate = animate; }
 		/* Sets wheter the grid is displayed */
 		void setDrawLatticeGrid(bool drawLatticeGrid) { m_drawLatticeGrid = drawLatticeGrid; }
 		/* Sets wheter local surfaces are displayed */
@@ -233,8 +233,8 @@ namespace OML {
 
 		// Setting m_draw to false should prevent any rendering.
 		bool m_draw = true;
-		bool m_animate = false;
-		bool m_drawLatticeGrid = true;
+		bool m_simulate = false;
+		bool m_drawLatticeGrid = false;
 		bool m_drawLocalSurfaces = false;
 		bool m_drawSurface = true;
 		bool m_drawNormals = false;
@@ -246,7 +246,7 @@ namespace OML {
 
 		// Vector of all the control points used by the local surfaces.
 		std::vector<glm::vec4> m_controlPoints;
-		// TODO: Fix so multiple patches can reuse the same boundaries. To save space.
+		// Boundaries
 		std::vector<BoundaryInfo> m_boundaries;
 		boundary_map m_boundaryMap;
 		size_t m_numUniqueBoundaries = 0;
@@ -265,16 +265,8 @@ namespace OML {
 			alignas(16) glm::mat4 normal = glm::mat4(1.0f);
 		} m_uniforms;
 
-		int m_simulatorIndex = 0;
+		// Simulator stuff
 		std::unordered_map<SimulatorTypes, std::unordered_map<uint32_t, std::shared_ptr<Simulator>>> m_simulators;
-		float m_minAmp = 1.0;
-		float m_maxAmp = 10.0;
-		float m_minSpeed = 1.0;
-		float m_maxSpeed = 5.0;
-		float m_minAngle = 10.0;
-		float m_maxAngle = 60.0;
-		float m_minScale = 0.1f;
-		float m_maxScale = 0.5f;
 
 	private:
 		// Holds the number of unique points added.

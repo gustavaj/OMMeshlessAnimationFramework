@@ -226,12 +226,8 @@ namespace OML
 		std::unordered_map<uint32_t, std::shared_ptr<Simulator>> sims;
 		for (auto& locus : m_loci)
 		{
-			double t = 0.0; //random(0.0, 100.0);
-			double speed = m_rng.random(m_minSpeed, m_maxSpeed);
-			double amp = m_rng.random(m_minAmp, m_maxAmp);
 			sims.insert({ locus.matrixIndex, 
-				std::make_shared<NormalSinSimulator>(t, speed, amp,
-				glm::vec3(locus.normal[0], locus.normal[1], locus.normal[2])) });
+				std::make_shared<NormalSinSimulator>(glm::vec3(locus.normal[0], locus.normal[1], locus.normal[2])) });
 		}
 		m_simulators.insert({ SimulatorTypes::NormalSin, sims });
 	}
@@ -243,11 +239,8 @@ namespace OML
 		std::unordered_map<uint32_t, std::shared_ptr<Simulator>> sims;
 		for (auto& locus : m_loci)
 		{
-			double t = 0.0; //random(0.0, 100.0);
-			double speed = m_rng.random(m_minSpeed, m_maxSpeed);
-			double amp = m_rng.random(m_minAmp, m_maxAmp);
 			sims.insert({ locus.matrixIndex,
-				std::make_shared<RandomSphereSimulator>(t, speed, amp, glm::vec3(1.0f)) });
+				std::make_shared<RandomSphereSimulator>() });
 		}
 		m_simulators.insert({ SimulatorTypes::RandomSphere, sims });
 	}
@@ -259,12 +252,8 @@ namespace OML
 		std::unordered_map<uint32_t, std::shared_ptr<Simulator>> sims;
 		for (auto& locus : m_loci)
 		{
-			double t = 0.0; //random(0.0, 100.0);
-			double speed = m_rng.random(m_minSpeed, m_maxSpeed);
-			double angle = m_rng.random(m_minAngle, m_maxAngle);
 			sims.insert({ locus.matrixIndex,
-				std::make_shared<RangeRotationSimulator>(t, speed, angle,
-				glm::vec3(locus.normal[0], locus.normal[1], locus.normal[2])) });
+				std::make_shared<RangeRotationSimulator>(glm::vec3(locus.normal[0], locus.normal[1], locus.normal[2])) });
 		}
 		m_simulators.insert({ SimulatorTypes::Rotation, sims });
 	}
@@ -276,17 +265,14 @@ namespace OML
 		std::unordered_map<uint32_t, std::shared_ptr<Simulator>> sims;
 		for (auto& locus : m_loci)
 		{
-			double t = 0.0; //random(0.0, 100.0);
-			double speed = m_rng.random(m_minSpeed, m_maxSpeed);
-			double maxScale = m_rng.random(m_minScale, m_maxScale);
-			sims.insert({ locus.matrixIndex, std::make_shared<XYScalingSimulator>(t, speed, maxScale) });
+			sims.insert({ locus.matrixIndex, std::make_shared<XYScalingSimulator>() });
 		}
 		m_simulators.insert({ SimulatorTypes::XYScale, sims });
 	}
 
 	void Lattice::update(double dt)
 	{
-		if (m_animate)
+		if (m_simulate)
 		{
 			for (auto& simT : m_simulators)
 			{

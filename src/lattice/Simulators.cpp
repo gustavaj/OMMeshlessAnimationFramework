@@ -4,10 +4,29 @@
 
 namespace OML {
 
+	// Parameters used for constructing simulators.
+	Random Simulator::RNG{};
+
+	float Simulator::MinSpeed = 0.0f;
+	float Simulator::MaxSpeed = 5.0f;
+	glm::vec2 Simulator::SpeedRange = glm::vec2(0.0f, 20.0f);
+
+	float Simulator::MinAmp = 0.0f;
+	float Simulator::MaxAmp = 5.0f;
+	glm::vec2 Simulator::AmpRange = glm::vec2(0.0f, 30.0f);
+
+	float Simulator::MinAngle = 10.0f;
+	float Simulator::MaxAngle = 60.0f;
+	glm::vec2 Simulator::AngleRange = glm::vec2(0.0f, 90.0f);
+
+	float Simulator::MinScale = 0.1f;
+	float Simulator::MaxScale = 0.5f;
+	glm::vec2 Simulator::ScaleRange = glm::vec2(0.0f, 1.0f);
+
 	void NormalSinSimulator::simulate(double dt, glm::mat4& matrix)
 	{
 		m_t += dt;
-		float f = std::sin(m_t * m_speed) * m_max;
+		float f = std::sin(m_t * m_speed) * m_amp;
 		glm::vec3 offset = (m_normal * f);
 		glm::vec4 trans(offset[0] - m_lastOffset[0], offset[1] - m_lastOffset[1], offset[2] - m_lastOffset[2], 0.0f);
 		matrix[3] += trans;
@@ -33,9 +52,9 @@ namespace OML {
 
 		matrix[3] += trans;
 		m_lastOffset += offset;
-		if (m_lastOffset.length() > m_max) {
+		if (m_lastOffset.length() > m_amp) {
 			m_direction = -m_direction;// glm::normalize((-m_direction +
-				//glm::vec3(m_rng.random(0.0, 1.0), m_rng.random(0.0, 1.0), m_rng.random(-1.0, 1.0))));
+				//glm::vec3(RNG.random(0.0, 1.0), RNG.random(0.0, 1.0), RNG.random(-1.0, 1.0))));
 		}
 	}
 

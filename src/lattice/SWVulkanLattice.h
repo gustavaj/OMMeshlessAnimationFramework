@@ -140,6 +140,19 @@ namespace SWVL
 		// Boolean to prevent vulkan stuff from being destroyed if it has not been initiated first.
 		bool m_destroyed = true;
 
+		// Index counting the number fo lattices created
+		static size_t Index;
+
+		// Menu variables collected here--
+		// Suffix to use on all menu items to make their id unique
+		std::string m_menuSuffix;
+		// Index of curretn simulator in menu
+		int m_simulatorIndex = 0;
+		// Holds the names used in the ImGui ui for the local surfaces.
+		std::vector<std::string> m_listItems;
+		// Index of current surface in menu
+		int m_selectedSurface = 0;
+
 		// Create a buffer that is local on the GPU
 		void createDeviceLocalBuffer(
 			VkBuffer& buffer, VkDeviceMemory& memory, void* data,
@@ -212,9 +225,5 @@ namespace SWVL
 
 		std::vector<LocalSurfaceVertex> m_localSurfaceVertices;
 		std::vector<LocalSurfaceVertex> m_patchVertices;
-
-		// Holds the names used in the ImGui ui for the local surfaces.
-		std::vector<std::string> m_listItems;
-		int m_selectedSurface;
 	};
 }

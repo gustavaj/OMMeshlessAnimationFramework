@@ -18,12 +18,12 @@ namespace OML {
 
 		double random(double a, double b)
 		{
-			return m_randomDist(m_mt) * std::max(1.0, (b - a)) + a;
+			return m_randomDist(m_mt) * std::max(0.0, (b - a)) + a;
 		}
 
 		float random(float a, float b)
 		{
-			return m_randomDist(m_mt) * std::max(1.0f, (b - a)) + a;
+			return m_randomDist(m_mt) * std::max(0.0f, (b - a)) + a;
 		}
 	};
 
@@ -38,59 +38,73 @@ namespace OML {
 
 	class Simulator {
 	public:
-		Simulator() : Simulator(0.0, 1.0) {}
-		Simulator(double t, double speed)
-			: m_t(t), m_speed(speed), m_lastOffset(glm::vec3(0.0f)) {}
+		Simulator()
+			: m_t(0.0), m_speed(RNG.random(Simulator::MinSpeed, Simulator::MaxSpeed)) {}
 		~Simulator() {}
 
 		/* Performs simulation on the given matrix */
 		virtual void simulate(double dt, glm::mat4& matrix) = 0;
 		/* Undoes the transformation caused by this simulator on the given matrix */
 		virtual void undoTransformation(glm::mat4& matrix) = 0;
+		
+		// Static member variables used to construct random simulators
+		static glm::vec2 SpeedRange;
+		static float MinSpeed, MaxSpeed;
+		static glm::vec2 AmpRange;
+		static float MinAmp, MaxAmp;
+		static glm::vec2 AngleRange;
+		static float MinAngle, MaxAngle;
+		static glm::vec2 ScaleRange;
+		static float MinScale, MaxScale;
 
 	protected:
 		double m_t;
-		double m_speed;
-		glm::vec3 m_lastOffset;
+		float m_speed;
+
+		static Random RNG;
 	};
 
 	class NormalSinSimulator : public Simulator {
 	public:
-		NormalSinSimulator() : NormalSinSimulator(0.0, 0.0, 0.0, glm::vec3(0.0f, 0.0f, 0.0f)) {}
-		NormalSinSimulator(double t, double speed, double max, glm::vec3 normal)
-			: Simulator(t, speed), m_max(max), m_normal(normal[0], normal[1], normal[2]) {}
+		NormalSinSimulator() : NormalSinSimulator(glm::vec3(0.0f, 0.0f, 1.0f)) {}
+		NormalSinSimulator(glm::vec3 normal) : 
+			Simulator(), m_amp(RNG.random(Simulator::MinAmp, Simulator::MaxAmp)), 
+			m_normal(normal[0], normal[1], normal[2]), m_lastOffset(glm::vec3(0.0f)) {}
 		~NormalSinSimulator() {}
 
 		virtual void simulate(double dt, glm::mat4& matrix) override;
 		virtual void undoTransformation(glm::mat4& matrix) override;
 
 	private:
-		double m_max;
+		double m_amp;
 		glm::vec3 m_normal;
+		glm::vec3 m_lastOffset;
 	};
 
 	class RandomSphereSimulator : public Simulator {
 	public:
-		RandomSphereSimulator() : RandomSphereSimulator(0.0, 1.0, 1.0f, glm::vec3(1.0f)) {}
-		RandomSphereSimulator(double t, double speed, double max, glm::vec3 dir)
-			: Simulator(t, speed), m_max(max), m_direction(glm::normalize(dir)) {}
+		RandomSphereSimulator() : 
+			Simulator(), m_amp(RNG.random(Simulator::MinAmp, Simulator::MaxAmp)), 
+			m_direction(glm::normalize(glm::vec3(RNG.random(0.0f, 1.0f), 
+				RNG.random(0.0f, 1.0f), RNG.random(0.0f, 1.0f)))),
+			m_lastOffset(glm::vec3(0.0f)) {}
 		~RandomSphereSimulator() {}
 
 		virtual void simulate(double dt, glm::mat4& matrix) override;
 		virtual void undoTransformation(glm::mat4& matrix) override;
 
 	private:
-		double m_max;
+		double m_amp;
 		glm::vec3 m_direction;
-
-		Random m_rng;
+		glm::vec3 m_lastOffset;
 	};
 
 	class RangeRotationSimulator : public Simulator {
 	public:
-		RangeRotationSimulator() : RangeRotationSimulator(0.0, 1.0, 60.0) {}
-		RangeRotationSimulator(double t, double speed, double maxAngle, glm::vec3 rotAxis = glm::vec3(0.0f, 0.0f, 1.0f))
-			: Simulator(t, speed), m_maxAngle(maxAngle), m_rotAxis(rotAxis), m_lastAngle(0.0) {}
+		RangeRotationSimulator() : RangeRotationSimulator(glm::vec3(0.0f, 0.0f, 1.0f)) {}
+		RangeRotationSimulator(glm::vec3 rotAxis = glm::vec3(0.0f, 0.0f, 1.0f)) : 
+			Simulator(), m_maxAngle(RNG.random(Simulator::MinAngle, Simulator::MaxAngle)), 
+			m_rotAxis(rotAxis), m_lastAngle(0.0) {}
 		~RangeRotationSimulator() {}
 
 		virtual void simulate(double dt, glm::mat4& matrix) override;
@@ -104,9 +118,9 @@ namespace OML {
 
 	class XYScalingSimulator : public Simulator {
 	public:
-		XYScalingSimulator() : XYScalingSimulator(0.0, 1.0, 0.2) {}
-		XYScalingSimulator(double t, double speed, double maxScale)
-			: Simulator(t, speed), m_maxScale(maxScale), m_lastScale(1.0f) {}
+		XYScalingSimulator() : 
+			Simulator(), m_maxScale(RNG.random(Simulator::MinScale, Simulator::MaxScale)), 
+			m_lastScale(1.0f) {}
 		~XYScalingSimulator() {}
 
 		virtual void simulate(double dt, glm::mat4& matrix) override;

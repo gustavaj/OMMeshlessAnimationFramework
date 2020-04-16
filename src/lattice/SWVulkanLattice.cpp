@@ -2,6 +2,7 @@
 
 namespace SWVL
 {
+	size_t SWVulkanLattice::Index = 0;
 
 	SWVulkanLattice::SWVulkanLattice()
 		: SWVulkanLattice("")
@@ -15,6 +16,7 @@ namespace SWVL
 		  m_device(nullptr), m_vulkanDevice(nullptr), m_descriptorPool(nullptr), m_renderPass(nullptr),
 		  m_queue(nullptr), m_commandPool(nullptr), m_allocator(nullptr), m_selectedSurface(0)
 	{
+		m_menuSuffix = "##" + std::to_string(SWVulkanLattice::Index++);
 	}
 
 	SWVulkanLattice::~SWVulkanLattice()
@@ -198,7 +200,7 @@ namespace SWVL
 
 	void SWVulkanLattice::localUpdate(double dt)
 	{
-		if (m_animate) {
+		if (m_simulate) {
 			updateMatrixUniformBuffer();
 		}
 
@@ -211,8 +213,13 @@ namespace SWVL
 
 		ImGui::Separator();
 
+		ImGui::PushID(m_menuSuffix.c_str());
+
 		if (overlay->header(m_name.c_str(), false))
 		{
+			// Settings
+			ImGui::Spacing(); ImGui::Spacing(); ImGui::SameLine();
+			ImGui::BeginGroup();
 			if (overlay->header("Settings", false))
 			{
 				if (overlay->checkBox("Render", &m_draw)) rebuildCmd = true;
@@ -232,37 +239,41 @@ namespace SWVL
 				ImGui::Separator();
 				if (overlay->comboBox("B-Function", &m_uniforms.bFunctionIndex, OML::BFunctionNames)) updateLatticeUniformBuffer();
 				ImGui::Separator();
-				overlay->checkBox("Animate", &m_animate);
-				if (m_animate) {
-					overlay->comboBox("Simulator", &m_simulatorIndex, OML::SimulatorNames);
-					if (m_simulatorIndex == 0 || m_simulatorIndex == 1) {
-						overlay->sliderFloat("Min amp", &m_minAmp, 0.0, 20.0);
-						overlay->sliderFloat("Max amp", &m_maxAmp, 0.0, 20.0);
-					}
-					else if (m_simulatorIndex == 2) {
-						overlay->sliderFloat("Min angle", &m_minAngle, 0.0, 90.0);
-						overlay->sliderFloat("Max angle", &m_maxAngle, 0.0, 90.0);
-					}
-					else if (m_simulatorIndex == 3) {
-						overlay->sliderFloat("Min scale - 1", &m_minScale, 0.0, 1.0);
-						overlay->sliderFloat("Max scale - 1", &m_maxScale, 0.0, 1.0);
-					}
-					overlay->sliderFloat("Min speed", &m_minSpeed, 0.0, 50.0);
-					overlay->sliderFloat("Max speed", &m_maxSpeed, 0.0, 50.0);
-					if (overlay->button("Add")) {
-						if (m_simulatorIndex == 0) addNormalSinSimulation();
-						else if (m_simulatorIndex == 1) addRandomSphereSimulation();
-						else if (m_simulatorIndex == 2) addNormalRotationSimulation();
-						else if (m_simulatorIndex == 3) addXYScalingSimulation();
-					}
+			}
+
+			// Simulation
+			if (overlay->header("Simulation", false))
+			{
+				overlay->checkBox("Simulate", &m_simulate);
+				overlay->comboBox("Simulator", &m_simulatorIndex, OML::SimulatorNames);
+				if (m_simulatorIndex == 0 || m_simulatorIndex == 1) {
+					overlay->sliderFloat("Min amp", &OML::Simulator::MinAmp, OML::Simulator::AmpRange.x, OML::Simulator::MaxAmp);
+					overlay->sliderFloat("Max amp", &OML::Simulator::MaxAmp, OML::Simulator::MinAmp, OML::Simulator::AmpRange.y);
+				}
+				else if (m_simulatorIndex == 2) {
+					overlay->sliderFloat("Min angle", &OML::Simulator::MinAngle, OML::Simulator::AngleRange.x, OML::Simulator::MaxAngle);
+					overlay->sliderFloat("Max angle", &OML::Simulator::MaxAngle, OML::Simulator::MinAngle, OML::Simulator::AngleRange.y);
+				}
+				else if (m_simulatorIndex == 3) {
+					overlay->sliderFloat("Min scale - 1", &OML::Simulator::MinScale, OML::Simulator::ScaleRange.x, OML::Simulator::MaxScale);
+					overlay->sliderFloat("Max scale - 1", &OML::Simulator::MaxScale, OML::Simulator::MinScale, OML::Simulator::ScaleRange.y);
+				}
+				overlay->sliderFloat("Min speed", &OML::Simulator::MinSpeed, OML::Simulator::SpeedRange.x, OML::Simulator::MaxSpeed);
+				overlay->sliderFloat("Max speed", &OML::Simulator::MaxSpeed, OML::Simulator::MinSpeed, OML::Simulator::SpeedRange.y);
+				bool simulatorActive = m_simulators.find(static_cast<OML::SimulatorTypes>(m_simulatorIndex)) != m_simulators.end();
+				std::string addBtnTitle = simulatorActive ? "Update" : "Add";
+				if (overlay->button(addBtnTitle.c_str())) {
+					if (m_simulatorIndex == 0) addNormalSinSimulation();
+					else if (m_simulatorIndex == 1) addRandomSphereSimulation();
+					else if (m_simulatorIndex == 2) addNormalRotationSimulation();
+					else if (m_simulatorIndex == 3) addXYScalingSimulation();
+				}
+				if (simulatorActive && overlay->button("Remove")) {
 					ImGui::SameLine();
-					if (overlay->button("Remove")) {
-						if (m_simulatorIndex == 0) removeSimulator(OML::SimulatorTypes::NormalSin);
-						else if (m_simulatorIndex == 1) removeSimulator(OML::SimulatorTypes::RandomSphere);
-						else if (m_simulatorIndex == 2) removeSimulator(OML::SimulatorTypes::Rotation);
-						else if (m_simulatorIndex == 3) removeSimulator(OML::SimulatorTypes::XYScale);
-					}
-					ImGui::Separator();
+					if (m_simulatorIndex == 0) removeSimulator(OML::SimulatorTypes::NormalSin);
+					else if (m_simulatorIndex == 1) removeSimulator(OML::SimulatorTypes::RandomSphere);
+					else if (m_simulatorIndex == 2) removeSimulator(OML::SimulatorTypes::Rotation);
+					else if (m_simulatorIndex == 3) removeSimulator(OML::SimulatorTypes::XYScale);
 				}
 			}
 
@@ -426,9 +437,12 @@ namespace SWVL
 					else updateMatrixUniformBuffer();
 				}
 			}
+
+			ImGui::EndGroup();
 		}
 
 		//ImGui::ShowStyleEditor();
+		ImGui::PopID();
 
 		return rebuildCmd;
 	}
