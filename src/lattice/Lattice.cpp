@@ -330,8 +330,13 @@ namespace OML
 
 		// Set up the FaceIndices
 		for (auto fit = faces_begin(); fit != faces_end(); fit++) {
-			property(LatticeProperties::FaceIndex, *fit) = currFaceIndex++;
+			property(LatticeProperties::FaceIndex, *fit) = m_currFaceIndex++;
 		}
+
+		m_loci.resize(m_numUniquePointsAdded);
+		//m_loci.resize(0);
+		m_curLocusIndex = 0;
+		std::cout << "Num loci: " << m_loci.size() << std::endl;
 
 		// Setup the valence property of the loci, and set the color of gridpoints based on the point's valence
 		setupLociValenceAndPointColor();
@@ -351,6 +356,8 @@ namespace OML
 
 		auto end = std::chrono::high_resolution_clock::now();
 		auto time = std::chrono::duration<double, std::milli>(end - start).count();
+
+		std::cout << "m_curLocusIndex: " << m_curLocusIndex << std::endl;
 
 		std::cout << "Lattice::induceLattice() time: " << time << "ms" << std::endl;
 	}
@@ -538,7 +545,7 @@ namespace OML
 					}
 					Vec3f endTOrthogonal = point(vh_T) + (point(vh1) - point(vh_t1));
 
-					property(LatticeProperties::FaceIndex, newFaceHandle) = currFaceIndex++;
+					property(LatticeProperties::FaceIndex, newFaceHandle) = m_currFaceIndex++;
 
 					Vec3f us, ue, vs, ve;
 					if (isHorizontal) {
@@ -618,7 +625,7 @@ namespace OML
 	void Lattice::setupLocalSurfacesAndPatches()
 	{
 
-		std::vector<OpenMesh::VertexHandle> cornerVertices;;
+		std::vector<OpenMesh::VertexHandle> cornerVertices;
 
 		// Add local surfaces
 		for (auto f_itr = faces_begin(); f_itr != faces_end(); f_itr++)
@@ -655,6 +662,7 @@ namespace OML
 
 			// Local surfaces are handled differently based on where it is in the patch
 			// addGrid(100 rows, 100 cols): ~1800ms
+			// -remove push_back on m_loci: ~1500ms
 			/*if (property(LatticeProperties::LocusIndex, vh1) == -1)
 				addLocusOnVertex(vh1, vh3, vh2, 1);
 			if (property(LatticeProperties::LocusIndex, vh2) == -1)
@@ -665,7 +673,11 @@ namespace OML
 				addLocusOnVertex(vh4, vh2, vh3, 4);*/
 
 			// Local surfaces are handled differently based on where it is in the patch
-			// addGrid(100 rows, 100 cols): ~2700ms
+			// addGrid(100 rows, 100 cols): ~2900ms
+			// -remove push_back in getCornerPoints: ~2800ms
+			// -remove push_back on m_loci: ~2300ms
+			// -use push_back but with std::move on loci: ~2600ms
+			// TODO: Fix for cylinder and sphere
 			if (property(LatticeProperties::LocusIndex, vh1) == -1)
 				addLocalSurfaceOnLoci(vh1, L2RDir, T2BDir);
 			if (property(LatticeProperties::LocusIndex, vh2) == -1)
@@ -685,7 +697,7 @@ namespace OML
 			};
 			patch.faceIdx = property(LatticeProperties::FaceIndex, fh);
 			if (m_useRandomPatchColors) {
-				patch.color = glm::vec3(m_rng.random(0.0f, 1.0f), m_rng.random(0.0f, 1.0f), m_rng.random(0.0f, 1.0f));
+				patch.color = glm::vec3(m_rng.random(0.2f, 1.0f), m_rng.random(0.2f, 1.0f), m_rng.random(0.2f, 1.0f));
 				/*float fac = (float)m_numPatches / (float)n_faces();
 				if (fac < 0.5f) {
 					fac *= 2.0f;
@@ -746,9 +758,10 @@ namespace OML
 		}
 		locus.normal = normal.normalize();
 
-		property(LatticeProperties::LocusIndex, vertex) = m_loci.size();
+		property(LatticeProperties::LocusIndex, vertex) = m_curLocusIndex;
 
-		m_loci.push_back(locus);
+		m_loci[m_curLocusIndex++] = locus;
+		//m_loci.push_back(std::move(locus));
 	}
 
 	size_t Lattice::addBoundaryInfo(BoundaryInfo boundary)
@@ -1067,11 +1080,14 @@ namespace OML
 	void Lattice::getCornerPointsOfFaceL2RT2B(
 		OpenMesh::FaceHandle& fh, std::vector<Vec3f>& p)
 	{
+		auto faceValence = valence(fh);
 		// 1. Add the faces vertices to the points array
-		p.resize(0);
+		p.resize(faceValence);
+		size_t idx = 0;
 		for (auto fvit = fv_ccwiter(fh); fvit.is_valid(); fvit++)
 		{
-			p.push_back(point(*fvit));
+			//vhs.push_back(*fvit);
+			p[idx++] = point(*fvit);
 		}
 
 		// 2. Remove collinear points until there are only the 4 corner vertices left
@@ -1125,15 +1141,19 @@ namespace OML
 	}
 
 	void Lattice::getCornerVertexHandlesOfFaceL2RT2B(OpenMesh::FaceHandle& fh, std::vector<OpenMesh::VertexHandle>& vhs)
-	{// 1. Add the faces vertices to the points array
-		vhs.resize(0);
+	{
+		auto faceValence = valence(fh);
+		// 1. Add the faces vertex handles to the points array
+		vhs.resize(faceValence);
+		size_t idx = 0;
 		for (auto fvit = fv_ccwiter(fh); fvit.is_valid(); fvit++)
 		{
-			vhs.push_back(*fvit);
+			//vhs.push_back(*fvit);
+			vhs[idx++] = *fvit;
 		}
 
 		// 2. Remove collinear points until there are only the 4 corner vertices left
-		if (valence(fh) != 4)
+		if (faceValence != 4)
 		{
 			for (auto it = vhs.begin(); it != vhs.end(); )
 			{
@@ -1227,7 +1247,7 @@ namespace OML
 			p20 = f1_points[1]; p21 = f1_points[3]; p22 = f2_points[3]; // Right col
 			p10 = p00 + (p20 - p00) * 0.5f; p11 = p01 + (p21 - p01) * 0.5f; p12 = p02 + (p22 - p02) * 0.5f;
 			//float halfwayV = (p11 - p01).length() / (p21 - p01).length();
-			float halfwayV = 0.5f + ((p11 - p01).length() / (p21 - p01).length() - 0.5f) / 2;
+			float halfwayV = 0.5f + ((p11 - p10).length() / (p12 - p10).length() - 0.5f) / 2;
 			boundaryF1.ve = halfwayV; boundaryF2.vs = halfwayV;
 		}
 

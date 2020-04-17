@@ -360,7 +360,8 @@ namespace OML {
 		// Something random..
 		Random m_rng;
 
-		uint32_t currFaceIndex = 0;
+		uint32_t m_currFaceIndex = 0;
+		size_t m_curLocusIndex = 0;
 	};
 
 }
