@@ -6,8 +6,9 @@
 #include "../vulkan/VulkanUIOverlay.h"
 
 #include "Lattice.h"
+#include "LocalSurfaceTexture.h"
 
-// TODO: Remove all dependencies on Sascha Willems' framework. Then rename
+// TODO: Remove all dependencies on Sascha Willems' framework. Then rename.. Maybe not.
 
 namespace SWVL
 {

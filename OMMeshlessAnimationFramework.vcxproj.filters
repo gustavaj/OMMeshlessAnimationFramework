@@ -82,6 +82,9 @@
     </ClCompile>
     <ClCompile Include="src\LatticeExample.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\lattice\LocalSurfaceTexture.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\lattice\Lattice.h">
@@ -158,6 +161,9 @@
     </ClInclude>
     <ClInclude Include="src\vulkan\VulkanUIOverlay.h">
       <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\lattice\LocalSurfaceTexture.h">
+      <Filter>lattice</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

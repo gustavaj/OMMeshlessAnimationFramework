@@ -167,6 +167,7 @@
     <ClCompile Include="src\LatticeExample.cpp" />
     <ClCompile Include="src\lattice\Lattice.cpp" />
     <ClCompile Include="src\lattice\LocalSurface.cpp" />
+    <ClCompile Include="src\lattice\LocalSurfaceTexture.cpp" />
     <ClCompile Include="src\lattice\Patch.cpp" />
     <ClCompile Include="src\lattice\Simulators.cpp" />
     <ClCompile Include="src\lattice\SWVulkanLattice.cpp" />
@@ -185,6 +186,7 @@
     <ClInclude Include="src\lattice\Lattice.h" />
     <ClInclude Include="src\lattice\LatticeUtility.h" />
     <ClInclude Include="src\lattice\LocalSurface.h" />
+    <ClInclude Include="src\lattice\LocalSurfaceTexture.h" />
     <ClInclude Include="src\lattice\Patch.h" />
     <ClInclude Include="src\lattice\Simulators.h" />
     <ClInclude Include="src\lattice\SWVulkanLattice.h" />
