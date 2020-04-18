@@ -10,6 +10,15 @@
 
 // TODO: Remove all dependencies on Sascha Willems' framework. Then rename.. Maybe not.
 
+// What are the differences between pre- and direct evaluation?
+//	-Descriptor sets
+//  -Local surface uniforms
+//  -Draw commands
+
+// 1. Set up textures
+// 2. Set up descriptors
+// 3. Draw commands
+
 namespace SWVL
 {
 	struct Buffer {
@@ -207,6 +216,7 @@ namespace SWVL
 		VkPipeline m_patchPipeline;
 		VkPipeline m_patchWireframePipeline;
 		VkPipeline m_normalPipeline;
+		VkPipeline m_surfaceAccuracyPipeline;
 
 		VkPipelineLayout m_pipelineLayout;
 		VkDescriptorSetLayout m_descriptorSetLayout;

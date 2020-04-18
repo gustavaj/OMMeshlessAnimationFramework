@@ -75,6 +75,7 @@ namespace SWVL
 			vkDestroyPipeline(*m_device, m_patchPipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_patchWireframePipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_normalPipeline, m_allocator);
+			vkDestroyPipeline(*m_device, m_surfaceAccuracyPipeline, m_allocator);
 
 			vkDestroyPipelineLayout(*m_device, m_pipelineLayout, m_allocator);
 			vkDestroyDescriptorSetLayout(*m_device, m_descriptorSetLayout, m_allocator);
@@ -144,7 +145,9 @@ namespace SWVL
 
 		if (m_drawSurface)
 		{
-			if (m_wireframe)
+			if (m_displaySurfaceAccuracy)
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_surfaceAccuracyPipeline);
+			else if (m_wireframe)
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_patchWireframePipeline);
 			else
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_patchPipeline);
@@ -231,6 +234,7 @@ namespace SWVL
 				if (overlay->checkBox("Draw Normals", &m_drawNormals)) rebuildCmd = true;
 				ImGui::Separator();
 				if (overlay->checkBox("Pixel-Accurate", &m_drawPixelAccurate)) rebuildCmd = true;
+				if (overlay->checkBox("Display Accuracy", &m_displaySurfaceAccuracy)) rebuildCmd = true;
 				if (!m_drawPixelAccurate)
 				{
 					if (overlay->sliderInt("TessInner", &m_uniforms.tessInner, 0, 64)) updateLatticeUniformBuffer();
@@ -454,13 +458,14 @@ namespace SWVL
 	{
 		assert(deviceFeatures.tessellationShader && deviceFeatures.geometryShader &&
 			deviceFeatures.fillModeNonSolid && deviceFeatures.pipelineStatisticsQuery &&
-			deviceFeatures.vertexPipelineStoresAndAtomics);
+			deviceFeatures.vertexPipelineStoresAndAtomics && deviceFeatures.fragmentStoresAndAtomics);
 
 		enabledFeatures.tessellationShader = VK_TRUE;				// For tessellation
 		enabledFeatures.geometryShader = VK_TRUE;					// For drawing normals
 		enabledFeatures.fillModeNonSolid = VK_TRUE;					// For drawing wireframe
 		enabledFeatures.pipelineStatisticsQuery = VK_TRUE;			// For getting stats from the rendering
 		enabledFeatures.vertexPipelineStoresAndAtomics = VK_TRUE;	// For using shader storage buffers
+		enabledFeatures.fragmentStoresAndAtomics = VK_TRUE;			// For using shader storage buffers in fragment shader
 	}
 
 	void SWVulkanLattice::createDeviceLocalBuffer(VkBuffer& buffer, VkDeviceMemory& memory, void* data, uint32_t bufferSize, VkBufferUsageFlagBits usage)
@@ -685,19 +690,20 @@ namespace SWVL
 			vks::initializers::descriptorSetLayoutBinding(
 				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_GEOMETRY_BIT,
+				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_GEOMETRY_BIT | 
+				VK_SHADER_STAGE_FRAGMENT_BIT,
 				0),
 			vks::initializers::descriptorSetLayoutBinding(
 				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 				1),
 			vks::initializers::descriptorSetLayoutBinding(
 				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 				2),
 			vks::initializers::descriptorSetLayoutBinding(
 				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 				3)
 		};
 
@@ -914,6 +920,18 @@ namespace SWVL
 
 		rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_patchPipeline));
+
+		std::array<VkPipelineShaderStageCreateInfo, 4> surfaceAccuractStages;
+		surfaceAccuractStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		surfaceAccuractStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		surfaceAccuractStages[2] = loadShader("./shaders/Lattice/accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		surfaceAccuractStages[2].pSpecializationInfo = &specializationInfo;
+		surfaceAccuractStages[3] = loadShader("./shaders/Lattice/accuracy.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		surfaceAccuractStages[3].pSpecializationInfo = &specializationInfo;
+		pipelineCreateInfo.stageCount = static_cast<uint32_t>(surfaceAccuractStages.size());
+		pipelineCreateInfo.pStages = surfaceAccuractStages.data();
+
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_surfaceAccuracyPipeline));
 
 		std::array<VkPipelineShaderStageCreateInfo, 5> normalShaderStages;
 		normalShaderStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);

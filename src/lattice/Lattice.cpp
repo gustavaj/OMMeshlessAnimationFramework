@@ -660,18 +660,21 @@ namespace OML
 			Vec3f L2RDir = (point(vh2) - point(vh1)).normalize();
 			Vec3f T2BDir = (point(vh3) - point(vh1)).normalize();
 
+
+
+#ifdef USE_OLD_LOCAL_SURFACE_METHOD
 			// Local surfaces are handled differently based on where it is in the patch
 			// addGrid(100 rows, 100 cols): ~1800ms
 			// -remove push_back on m_loci: ~1500ms
-			/*if (property(LatticeProperties::LocusIndex, vh1) == -1)
+			if (property(LatticeProperties::LocusIndex, vh1) == -1)
 				addLocusOnVertex(vh1, vh3, vh2, 1);
 			if (property(LatticeProperties::LocusIndex, vh2) == -1)
 				addLocusOnVertex(vh2, vh1, vh4, 2);
 			if (property(LatticeProperties::LocusIndex, vh3) == -1)
 				addLocusOnVertex(vh3, vh4, vh1, 3);
 			if (property(LatticeProperties::LocusIndex, vh4) == -1)
-				addLocusOnVertex(vh4, vh2, vh3, 4);*/
-
+				addLocusOnVertex(vh4, vh2, vh3, 4);
+#else			
 			// Local surfaces are handled differently based on where it is in the patch
 			// addGrid(100 rows, 100 cols): ~2900ms
 			// -remove push_back in getCornerPoints: ~2800ms
@@ -686,6 +689,7 @@ namespace OML
 				addLocalSurfaceOnLoci(vh3, L2RDir, T2BDir);
 			if (property(LatticeProperties::LocusIndex, vh4) == -1)
 				addLocalSurfaceOnLoci(vh4, L2RDir, T2BDir);
+#endif
 
 			// Setup patch vertices for face.
 			Patch patch;
@@ -1032,6 +1036,12 @@ namespace OML
 		Vec3f bottomMiddle = (bottomLeft + bottomRight) / 2;
 		Vec3f middle = ((topMiddle + bottomMiddle) / 2 + (middleLeft + middleRight) / 2) / 2;
 
+#ifdef TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+		Vec3f normal = ((topRight - topLeft) % (bottomLeft - topLeft)).normalize();
+		float amp = (topRight - topLeft).length();
+		middle += normal * m_rng.random(-amp, amp);
+#endif // TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+
 		uint32_t idx = m_controlPoints.size();
 		m_controlPoints.push_back(glm::vec4(topLeft[0], topLeft[1], topLeft[2], 1.0f));
 		m_controlPoints.push_back(glm::vec4(topMiddle[0], topMiddle[1], topMiddle[2], 1.0f));
@@ -1050,6 +1060,13 @@ namespace OML
 		Vec3f middleLeft, Vec3f middle, Vec3f middleRight,
 		Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight)
 	{
+#ifdef TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+		Vec3f normal = ((topRight - topLeft) % (bottomLeft - topLeft)).normalize();
+		float amp = (topRight - topLeft).length();
+		middle += normal * m_rng.random(-amp, amp);
+#endif // TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+
+
 		uint32_t idx = m_controlPoints.size();
 		m_controlPoints.push_back(glm::vec4(topLeft[0], topLeft[1], topLeft[2], 1.0f));
 		m_controlPoints.push_back(glm::vec4(topMiddle[0], topMiddle[1], topMiddle[2], 1.0f));

@@ -117,7 +117,7 @@ namespace OML {
 
 
 		// Transfer data to buffer
-		float* data;
+		float* data = nullptr;
 		VK_CHECK_RESULT(vkMapMemory(*m_device, stagingMemory, 0, memReqs.size, 0, (void**)data));
 		memcpy(data, positions.data(), imageSize);
 		vkUnmapMemory(*m_device, stagingMemory);

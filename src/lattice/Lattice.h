@@ -12,6 +12,9 @@
 #include "LatticeUtility.h"
 #include "Simulators.h"
 
+//#define USE_OLD_LOCAL_SURFACE_METHOD
+#define TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+
 /*
 	In general, all local surface and patch orderings are left to right, top to bottom i.e.
 		p00 - p10
@@ -244,6 +247,7 @@ namespace OML {
 		bool m_drawNormals = false;
 		bool m_wireframe = false;
 		bool m_drawPixelAccurate = false;
+		bool m_displaySurfaceAccuracy = false;
 
 		std::vector<Locus> m_loci;
 		std::vector<Patch> m_patches;
