@@ -248,6 +248,7 @@ namespace OML {
 		bool m_wireframe = false;
 		bool m_drawPixelAccurate = false;
 		bool m_displaySurfaceAccuracy = false;
+		bool m_displayPixelAccuracy = false;
 
 		std::vector<Locus> m_loci;
 		std::vector<Patch> m_patches;
@@ -271,6 +272,7 @@ namespace OML {
 			alignas(16) glm::mat4 projection = glm::mat4(1.0f);
 			alignas(16) glm::mat4 modelview = glm::mat4(1.0f);
 			alignas(16) glm::mat4 normal = glm::mat4(1.0f);
+			alignas(16) glm::vec2 windowSize = glm::vec2(800, 600);
 		} m_uniforms;
 
 		// Simulator stuff

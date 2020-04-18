@@ -22,6 +22,7 @@ layout(set = 0, binding = 0) uniform LatticeUBO
 	mat4 projection;
 	mat4 modelview;
 	mat4 normal;
+	vec2 windowSize;
 } latticeUbo;
 
 void main()

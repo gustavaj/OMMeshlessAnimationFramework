@@ -129,6 +129,8 @@ namespace SWVL
 		void addToCommandbuffer(VkCommandBuffer& commandBuffer);
 		/* Update projection and view matrices */
 		void onViewChanged(glm::mat4 projection, glm::mat4 view);
+		/* Update windowSize uniform */
+		void onWindowResized(float width, float height);
 
 		/* Update UIOverlay with information about the lattice */
 		bool onUpdateUIOverlay(vks::UIOverlay* overlay);
@@ -216,7 +218,8 @@ namespace SWVL
 		VkPipeline m_patchPipeline;
 		VkPipeline m_patchWireframePipeline;
 		VkPipeline m_normalPipeline;
-		VkPipeline m_surfaceAccuracyPipeline;
+		VkPipeline m_displaySurfaceAccuracyPipeline;
+		VkPipeline m_displayPixelAccuracyPipeline;
 
 		VkPipelineLayout m_pipelineLayout;
 		VkDescriptorSetLayout m_descriptorSetLayout;

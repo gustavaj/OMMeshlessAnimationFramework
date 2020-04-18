@@ -41,6 +41,7 @@ layout(set = 0, binding = 0) uniform LatticeUBO
 	mat4 projection;
 	mat4 modelview;
 	mat4 normal;
+	vec2 windowSize;
 } latticeUbo;
 
 layout(constant_id = 0) const int numLocalSurfaceControlPoints = 36000;
@@ -119,20 +120,25 @@ void main()
 	vec3 p  = Su1 + (Su0 - Su1) * Bv;
 			  
 	vec4 pos = latticeUbo.projection * latticeUbo.modelview * vec4(p, 1.0f);
+	vec4 ndc = pos / pos.w;
+	float windowX = (latticeUbo.windowSize.x / 2) * (ndc.x + 1);
+	float windowY = (latticeUbo.windowSize.y / 2) * (ndc.y + 1);
+	float windowZ = 0.5 * ndc.z + 0.5;
+	vec4 windowPos = vec4(windowX, windowY, windowZ, 1.0f);
 	
-	float error = distance(tePosition, pos);
+	float error = distance(gl_FragCoord.xy, windowPos.xy);
 	vec3 color;
 	
-	if(error <= 0.05) {
+	if(error <= 0.5) {
 		color = vec3(1.0, 1.0, 1.0);
 	}
-	else if(error <= 0.1) {
+	else if(error <= 1.0) {
 		color = vec3(0.0, 1.0, 0.0);
 	}
-	else if(error <= 0.3) {
+	else if(error <= 2.0) {
 		color = vec3(0.0, 0.0, 1.0);
 	}
-	else if(error <= 0.5) {
+	else if(error <= 5.0) {
 		color = vec3(1.0, 1.0, 0.0);
 	}
 	else {

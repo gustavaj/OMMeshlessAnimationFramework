@@ -13,6 +13,7 @@ layout(set = 0, binding = 0) uniform UBO
 	mat4 projection;
 	mat4 modelview;
 	mat4 normal;
+	vec2 windowSize;
 } ubo;
 
 void main()

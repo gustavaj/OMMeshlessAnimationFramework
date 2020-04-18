@@ -75,7 +75,8 @@ namespace SWVL
 			vkDestroyPipeline(*m_device, m_patchPipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_patchWireframePipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_normalPipeline, m_allocator);
-			vkDestroyPipeline(*m_device, m_surfaceAccuracyPipeline, m_allocator);
+			vkDestroyPipeline(*m_device, m_displaySurfaceAccuracyPipeline, m_allocator);
+			vkDestroyPipeline(*m_device, m_displayPixelAccuracyPipeline, m_allocator);
 
 			vkDestroyPipelineLayout(*m_device, m_pipelineLayout, m_allocator);
 			vkDestroyDescriptorSetLayout(*m_device, m_descriptorSetLayout, m_allocator);
@@ -146,7 +147,9 @@ namespace SWVL
 		if (m_drawSurface)
 		{
 			if (m_displaySurfaceAccuracy)
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_surfaceAccuracyPipeline);
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_displaySurfaceAccuracyPipeline);
+			else if (m_displayPixelAccuracy)
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_displayPixelAccuracyPipeline);
 			else if (m_wireframe)
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_patchWireframePipeline);
 			else
@@ -201,6 +204,11 @@ namespace SWVL
 		updateLatticeUniformBuffer();
 	}
 
+	void SWVulkanLattice::onWindowResized(float width, float height)
+	{
+		m_uniforms.windowSize = glm::vec2(width, height);
+	}
+
 	void SWVulkanLattice::localUpdate(double dt)
 	{
 		if (m_simulate) {
@@ -234,7 +242,8 @@ namespace SWVL
 				if (overlay->checkBox("Draw Normals", &m_drawNormals)) rebuildCmd = true;
 				ImGui::Separator();
 				if (overlay->checkBox("Pixel-Accurate", &m_drawPixelAccurate)) rebuildCmd = true;
-				if (overlay->checkBox("Display Accuracy", &m_displaySurfaceAccuracy)) rebuildCmd = true;
+				if (overlay->checkBox("Color by Surf Acc", &m_displaySurfaceAccuracy)) rebuildCmd = true;
+				if (overlay->checkBox("Color by Pixel Acc", &m_displayPixelAccuracy)) rebuildCmd = true;
 				if (!m_drawPixelAccurate)
 				{
 					if (overlay->sliderInt("TessInner", &m_uniforms.tessInner, 0, 64)) updateLatticeUniformBuffer();
@@ -924,14 +933,26 @@ namespace SWVL
 		std::array<VkPipelineShaderStageCreateInfo, 4> surfaceAccuractStages;
 		surfaceAccuractStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		surfaceAccuractStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		surfaceAccuractStages[2] = loadShader("./shaders/Lattice/accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		surfaceAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		surfaceAccuractStages[2].pSpecializationInfo = &specializationInfo;
-		surfaceAccuractStages[3] = loadShader("./shaders/Lattice/accuracy.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		surfaceAccuractStages[3] = loadShader("./shaders/Lattice/surf_accuracy.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		surfaceAccuractStages[3].pSpecializationInfo = &specializationInfo;
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(surfaceAccuractStages.size());
 		pipelineCreateInfo.pStages = surfaceAccuractStages.data();
 
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_surfaceAccuracyPipeline));
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_displaySurfaceAccuracyPipeline));
+		
+		std::array<VkPipelineShaderStageCreateInfo, 4> pixelAccuractStages;
+		pixelAccuractStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		pixelAccuractStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		pixelAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		pixelAccuractStages[2].pSpecializationInfo = &specializationInfo;
+		pixelAccuractStages[3] = loadShader("./shaders/Lattice/pixel_accuracy.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		pixelAccuractStages[3].pSpecializationInfo = &specializationInfo;
+		pipelineCreateInfo.stageCount = static_cast<uint32_t>(pixelAccuractStages.size());
+		pipelineCreateInfo.pStages = pixelAccuractStages.data();
+
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_displayPixelAccuracyPipeline));
 
 		std::array<VkPipelineShaderStageCreateInfo, 5> normalShaderStages;
 		normalShaderStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);

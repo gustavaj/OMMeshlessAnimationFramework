@@ -84,12 +84,14 @@ public:
 		}
 	}
 
-	virtual void getEnabledFeatures() {
+	virtual void getEnabledFeatures() override {
 		Lattice::CheckAndSetupRequiredPhysicalDeviceFeatures(deviceFeatures, enabledFeatures);
 	}
 
 	void loadAssets() {
 		createLatticeGeometry();
+
+		windowResized();
 	}
 
 	virtual void createLatticeGeometry()
@@ -172,7 +174,7 @@ public:
 		prepared = true;
 	}
 
-	virtual void render() {
+	virtual void render() override {
 		if (!prepared)
 			return;
 		for (auto& lat : lattices)
@@ -180,10 +182,17 @@ public:
 		draw();
 	}
 
-	virtual void viewChanged() {
+	virtual void viewChanged() override {
 		for (auto& lat : lattices)
 		{
 			lat.onViewChanged(camera.matrices.perspective, camera.matrices.view);
+		}
+	}
+
+	virtual void windowResized() override {
+		for (auto& lat : lattices)
+		{
+			lat.onWindowResized(width, height);
 		}
 	}
 
@@ -221,7 +230,7 @@ public:
 		}
 	}
 
-	virtual void OnUpdateUIOverlay(vks::UIOverlay* overlay) {
+	virtual void OnUpdateUIOverlay(vks::UIOverlay* overlay) override {
 		// Lattice creation
 		if (overlay->header("Add/Delete", false))
 		{
