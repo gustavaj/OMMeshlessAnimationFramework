@@ -1,6 +1,6 @@
 #include "LocalSurfaceTexture.h"
 
-namespace OML {
+namespace SWVL {
 
 	LocalSurfaceTexture::LocalSurfaceTexture()
 		: LocalSurfaceTexture(VK_NULL_HANDLE, nullptr, VK_NULL_HANDLE, VK_NULL_HANDLE, nullptr)

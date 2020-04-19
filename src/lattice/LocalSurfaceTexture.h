@@ -10,7 +10,7 @@
 
 // https://github.com/SaschaWillems/Vulkan/blob/master/examples/texturearray/texturearray.cpp
 
-namespace OML {
+namespace SWVL {
 
 	class LocalSurfaceTexture
 	{

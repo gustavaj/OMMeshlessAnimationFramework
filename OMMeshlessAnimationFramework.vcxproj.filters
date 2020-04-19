@@ -85,6 +85,9 @@
     <ClCompile Include="src\lattice\LocalSurfaceTexture.cpp">
       <Filter>lattice</Filter>
     </ClCompile>
+    <ClCompile Include="src\lattice\SWVulkanLatticePre.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\lattice\Lattice.h">
@@ -163,6 +166,9 @@
       <Filter>vulkan</Filter>
     </ClInclude>
     <ClInclude Include="src\lattice\LocalSurfaceTexture.h">
+      <Filter>lattice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\lattice\SWVulkanLatticePre.h">
       <Filter>lattice</Filter>
     </ClInclude>
   </ItemGroup>

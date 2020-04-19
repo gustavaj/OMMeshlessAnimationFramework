@@ -1,110 +1,36 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include "SWVulkanLattice.h"
 
-// Sascha willems
-#include "../vulkan/VulkanDevice.hpp"
-#include "../vulkan/VulkanBuffer.hpp"
-#include "../vulkan/VulkanUIOverlay.h"
 
-#include "Lattice.h"
+#include "LocalSurfaceTexture.h"
 
-// TODO: Remove all dependencies on Sascha Willems' framework. Then rename.. Maybe not.
+// What are the differences between pre- and direct evaluation?
+//	-Descriptor sets
+//  -Local surface uniforms
+//  -Draw commands
+
+// 1. Set up textures
+// 2. Set up descriptors
+// 3. Draw commands
 
 namespace SWVL
 {
-	struct Buffer {
-		Buffer() : buffer(VK_NULL_HANDLE), memory(VK_NULL_HANDLE), count(0) {}
 
-		VkBuffer buffer;
-		VkDeviceMemory memory;
-		int count = 0;
-	};
-
-	/*
-	Holds the information for one local surface that is sent to the vertex shader
-	A local surface is defined by a vec4 in the shader, by the index and count of their
-	control points from the m_controlPoints vector and the indices of the transformation matrix
-	and in the m_matrices vector and the BoundaryInfo in the m_boundaries vector. Also the color of the patch.
-
-	For rendering local surfaces the TCS takes one vertex per patch, and for a patch(Block) it takes 4 vertices per patch
-	*/
-	struct LocalSurfaceVertex
+	struct PatchSamplers
 	{
-		LocalSurfaceVertex() : LocalSurfaceVertex(0, 0, 0, 0) {}
-		LocalSurfaceVertex(
-			uint32_t controlPointIndex, uint32_t controlPointCount,
-			uint32_t matrixIndex, uint32_t boundaryIndex)
-			: controlPointIndex(controlPointIndex), controlPointCount(controlPointCount),
-			matrixIndex(matrixIndex), boundaryIndex(boundaryIndex), color(1.0f) {}
-		uint32_t controlPointIndex, controlPointCount, matrixIndex, boundaryIndex;
-		glm::vec3 color;
-
-		static std::vector<VkVertexInputBindingDescription> GetBindingDescriptions()
-		{
-			std::vector<VkVertexInputBindingDescription> bindings;
-			bindings.resize(1);
-			bindings[0].binding = 0;
-			bindings[0].stride = sizeof(LocalSurfaceVertex);
-			bindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-			return bindings;
-		}
-
-		static std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptions()
-		{
-			std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {};
-			attributeDescriptions.resize(2);
-			attributeDescriptions[0].binding = 0;
-			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32B32A32_UINT;
-			attributeDescriptions[0].offset = offsetof(LocalSurfaceVertex, controlPointIndex);
-			attributeDescriptions[1].binding = 0;
-			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[1].offset = offsetof(LocalSurfaceVertex, color);
-
-			return attributeDescriptions;
-		}
+		VkSampler p00Sampler;
+		VkSampler p10Sampler;
+		VkSampler p01Sampler;
+		VkSampler p11Sampler;
 	};
 
-	// Struct containing info for a vertex used for points and lines in the lattice grid.
-	struct GridVertex
-	{
-		OML::Vec3f pos;
-		OML::Col3 col;
-
-		static VkVertexInputBindingDescription GetBindingDescription() {
-			VkVertexInputBindingDescription bindingDescription = {};
-			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(GridVertex);
-			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-			return bindingDescription;
-		}
-
-		static std::vector<VkVertexInputAttributeDescription> GetAttributeDesctiptions() {
-			std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {};
-			attributeDescriptions.resize(2);
-
-			attributeDescriptions[0].binding = 0;
-			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[0].offset = offsetof(GridVertex, pos);
-
-			attributeDescriptions[1].binding = 0;
-			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R8G8B8_UINT;
-			attributeDescriptions[1].offset = offsetof(GridVertex, col);
-
-			return attributeDescriptions;
-		}
-	};
-
-	class SWVulkanLattice : public OML::Lattice
+	class SWVulkanLatticePre : public OML::Lattice
 	{
 	public:
-		SWVulkanLattice();
-		SWVulkanLattice(std::string name);
-		~SWVulkanLattice();
+		SWVulkanLatticePre();
+		SWVulkanLatticePre(std::string name);
+		~SWVulkanLatticePre();
 
 		// Vulkan framework
 		/* Create buffers and pipelines and stuff for Vulkan */
@@ -127,8 +53,8 @@ namespace SWVL
 		/* Update UIOverlay with information about the lattice */
 		bool onUpdateUIOverlay(vks::UIOverlay* overlay);
 
-		/* 
-		Takes a VkPhysicalDeviceFeatures structure of the devices' capabilities, and checks if all the 
+		/*
+		Takes a VkPhysicalDeviceFeatures structure of the devices' capabilities, and checks if all the
 		required features are supported. Writes VK_TRUE to all the required features in the enabledFeatures struct.
 		*/
 		static void CheckAndSetupRequiredPhysicalDeviceFeatures(
@@ -216,6 +142,10 @@ namespace SWVL
 		VkPipelineLayout m_pipelineLayout;
 		VkDescriptorSetLayout m_descriptorSetLayout;
 		VkDescriptorSet m_descriptorSet;
+		std::vector<VkDescriptorSet> m_samplerDescriptorSets;
+
+		std::vector<LocalSurfaceTexture> m_localSurfaceTextures;
+		std::vector<PatchSamplers> m_patchSamplers;
 
 		// Map for holding the created shader modules.
 		std::unordered_map<std::string, VkShaderModule> m_shaderModules;
