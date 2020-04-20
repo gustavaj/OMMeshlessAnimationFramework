@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../vulkan/VulkanDevice.hpp"
+#include "../vulkan/VulkanTexture.hpp"
 
 // https://github.com/SaschaWillems/Vulkan/blob/master/examples/texturearray/texturearray.cpp
 
@@ -22,15 +23,18 @@ namespace SWVL {
 
 		void loadBezier3x3(std::vector<glm::vec3> controlPoints, uint32_t numSamplesU, uint32_t numSamplesV);
 
-		const VkImage& image() { return m_image; }
-		const VkSampler& sampler() { return m_sampler; }
-		const VkImageView& imageView() { return m_imageView; }
+		void destroy();
+
+		const VkImage& image() { return m_texture.image; }
+		const VkSampler& sampler() { return m_texture.sampler; }
+		const VkImageView& imageView() { return m_texture.view; }
+		VkDescriptorImageInfo* descriptor() { return &m_texture.descriptor; }
 
 	private:
 		glm::vec3 bezBasis(float t);
 		glm::vec3 bezBasisDer(float t);
 
-		void createImage(std::vector<glm::vec3> positions, std::vector<glm::vec3> normals);
+		void createImage(std::vector<glm::vec4> samples);
 
 		uint32_t m_index;
 		uint32_t m_width;
@@ -41,6 +45,9 @@ namespace SWVL {
 		VkDeviceMemory m_memory;
 		VkSampler m_sampler;
 		VkImageView m_imageView;
+		VkDescriptorImageInfo m_descriptor;
+
+		vks::Texture2DArray m_texture;
 
 		// Vulkan pointers
 		VkDevice* m_device;
@@ -48,6 +55,8 @@ namespace SWVL {
 		VkCommandPool* m_commandPool;
 		VkQueue* m_queue;
 		VkAllocationCallbacks* m_allocator;
+
+		std::vector<glm::vec4> m_mapped;
 	};
 
 }

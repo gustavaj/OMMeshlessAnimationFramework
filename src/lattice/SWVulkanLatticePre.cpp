@@ -63,6 +63,10 @@ namespace SWVL
 	{
 		if (m_destroyed) return;
 
+		for (auto& lst : m_localSurfaceTextures) {
+			lst.second.destroy();
+		}
+
 		for (auto& shader : m_shaderModules) {
 			vkDestroyShaderModule(*m_device, shader.second, m_allocator);
 		}
@@ -121,6 +125,8 @@ namespace SWVL
 
 	void SWVulkanLatticePre::addToCommandbufferPreRenderpass(VkCommandBuffer& commandBuffer)
 	{
+		if (!m_draw) return;
+
 		if (m_doPipelineQueries) {
 			vkCmdResetQueryPool(commandBuffer, m_queryPool, 0, m_queryResult.count);
 		}
@@ -146,7 +152,7 @@ namespace SWVL
 
 		if (m_drawSurface)
 		{
-			if (m_displaySurfaceAccuracy)
+			/*if (m_displaySurfaceAccuracy)
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_displaySurfaceAccuracyPipeline);
 			else if (m_displayPixelAccuracy)
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_displayPixelAccuracyPipeline);
@@ -161,6 +167,31 @@ namespace SWVL
 			{
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_normalPipeline);
 				vkCmdDraw(commandBuffer, m_patchVertexBuffer.count, 1, 0, 0);
+			}*/
+
+			if (m_displaySurfaceAccuracy)
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_displaySurfaceAccuracyPipeline);
+			else if (m_displayPixelAccuracy)
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_displayPixelAccuracyPipeline);
+			else if (m_wireframe)
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_patchWireframePipeline);
+			else
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_patchPipeline);
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_patchVertexBuffer.buffer, offsets);
+			for (size_t i = 0; i < m_samplerDescriptorSets.size(); i++)
+			{
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 1, 1, &m_samplerDescriptorSets[i], 0, NULL);
+				vkCmdDraw(commandBuffer, 4, 1, i * 4, 0);
+			}
+
+			if (m_drawNormals)
+			{
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_normalPipeline);
+				for (size_t i = 0; i < m_samplerDescriptorSets.size(); i++)
+				{
+					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 1, 1, &m_samplerDescriptorSets[i], 0, NULL);
+					vkCmdDraw(commandBuffer, 4, 1, i * 4, 0);
+				}
 			}
 		}
 
@@ -172,7 +203,12 @@ namespace SWVL
 			else
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_localSurfacePipeline);
 			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_localSurfaceVertexBuffer.buffer, offsets);
-			vkCmdDraw(commandBuffer, m_localSurfaceVertexBuffer.count, 1, 0, 0);
+			for (size_t i = 0; i < m_localSamplerDescriptorSets.size(); i++)
+			{
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 2, 1, &m_localSamplerDescriptorSets[i], 0, NULL);
+				vkCmdDraw(commandBuffer, 1, 1, i, 0);
+			}
+			//vkCmdDraw(commandBuffer, m_localSurfaceVertexBuffer.count, 1, 0, 0);
 		}
 
 		// Draw Lattice Grid
@@ -547,13 +583,34 @@ namespace SWVL
 
 	void SWVulkanLatticePre::setupVertices()
 	{
+		auto start = std::chrono::high_resolution_clock::now();
+		std::cout << "Creating images of local surfaces" << std::endl;
+
 		// Set up local surface vertices
 		m_localSurfaceVertices.resize(0);
 		for (size_t i = 0; i < m_loci.size(); i++)
 		{
 			m_localSurfaceVertices.push_back(LocalSurfaceVertex(
 				m_loci[i].controlPointIndex, m_loci[i].controlPointCount, m_loci[i].matrixIndex, 0));
+
+			// Evaluate local surfaces and load them as textures.
+			auto res = m_localSurfaceTextures.find(m_loci[i].controlPointIndex);
+			if (res == m_localSurfaceTextures.end()) {
+				auto it = m_localSurfaceTextures.insert({ m_loci[i].controlPointIndex,
+					LocalSurfaceTexture(m_device, m_vulkanDevice, m_commandPool, m_queue, m_allocator) }).first;
+				std::vector<glm::vec3> controlPoints(m_loci[i].controlPointCount);
+				for (size_t j = 0; j < controlPoints.size(); j++)
+				{
+					controlPoints[j] = glm::vec3(m_controlPoints[m_loci[i].controlPointIndex + j]);
+				}
+				it->second.loadBezier3x3(controlPoints, 10, 10);
+			}
 		}
+
+		auto end = std::chrono::high_resolution_clock::now();
+		auto time = std::chrono::duration<double, std::milli>(end - start).count();
+
+		std::cout << "Loading images time: " << time << "ms" << std::endl;
 
 		// Set up patch vertices
 		m_patchVertices.resize(0);
@@ -564,6 +621,8 @@ namespace SWVL
 			OML::Locus& locus01 = m_loci[m_patches[i].lociIndices[2]];
 			OML::Locus& locus11 = m_loci[m_patches[i].lociIndices[3]];
 
+			PatchSamplerInfo sampler;
+
 			LocalSurfaceVertex localVert00;
 			localVert00.controlPointIndex = locus00.controlPointIndex;
 			localVert00.controlPointCount = locus00.controlPointCount;
@@ -571,6 +630,7 @@ namespace SWVL
 			localVert00.boundaryIndex = locus00.boundaryIndices[m_patches[i].faceIdx];
 			localVert00.color = m_patches[i].color;
 			m_patchVertices.push_back(localVert00);
+			sampler.p00Sampler = &m_localSurfaceTextures[locus00.controlPointIndex];
 
 			LocalSurfaceVertex localVert10;
 			localVert10.controlPointIndex = locus10.controlPointIndex;
@@ -579,6 +639,7 @@ namespace SWVL
 			localVert10.boundaryIndex = locus10.boundaryIndices[m_patches[i].faceIdx];
 			localVert10.color = m_patches[i].color;
 			m_patchVertices.push_back(localVert10);
+			sampler.p10Sampler = &m_localSurfaceTextures[locus10.controlPointIndex];
 
 			LocalSurfaceVertex localVert01;
 			localVert01.controlPointIndex = locus01.controlPointIndex;
@@ -587,6 +648,7 @@ namespace SWVL
 			localVert01.boundaryIndex = locus01.boundaryIndices[m_patches[i].faceIdx];
 			localVert01.color = m_patches[i].color;
 			m_patchVertices.push_back(localVert01);
+			sampler.p01Sampler = &m_localSurfaceTextures[locus01.controlPointIndex];
 
 			LocalSurfaceVertex localVert11;
 			localVert11.controlPointIndex = locus11.controlPointIndex;
@@ -595,7 +657,13 @@ namespace SWVL
 			localVert11.boundaryIndex = locus11.boundaryIndices[m_patches[i].faceIdx];
 			localVert11.color = m_patches[i].color;
 			m_patchVertices.push_back(localVert11);
+			sampler.p11Sampler = &m_localSurfaceTextures[locus11.controlPointIndex];
+
+			m_patchSamplers.push_back(std::move(sampler));
 		}
+
+		m_samplerDescriptorSets.resize(m_patchSamplers.size());
+		m_localSamplerDescriptorSets.resize(m_localSurfaceVertices.size());
 	}
 
 	void SWVulkanLatticePre::createBuffers()
@@ -721,6 +789,42 @@ namespace SWVL
 		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(*m_device, &descriptorLayout,
 			m_allocator, &m_descriptorSetLayout));
 		descriptorLayouts.push_back(m_descriptorSetLayout);
+
+		setLayoutBindings = {
+			vks::initializers::descriptorSetLayoutBinding(
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+				0),
+			vks::initializers::descriptorSetLayoutBinding(
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+				1),
+			vks::initializers::descriptorSetLayoutBinding(
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+				2),
+			vks::initializers::descriptorSetLayoutBinding(
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+				3)
+		};
+		descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(
+			setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
+		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(*m_device, &descriptorLayout,
+			m_allocator, &m_samplerDescriptorSetLayout));
+		descriptorLayouts.push_back(m_samplerDescriptorSetLayout);
+
+		setLayoutBindings = {
+			vks::initializers::descriptorSetLayoutBinding(
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+				0)
+		};
+		descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(
+			setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
+		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(*m_device, &descriptorLayout,
+			m_allocator, &m_localSamplerDescSetLayout));
+		descriptorLayouts.push_back(m_localSamplerDescSetLayout);
 
 		// Pipeline Layout
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo =
@@ -897,11 +1001,11 @@ namespace SWVL
 		specializationInfo.pMapEntries = specializationMapEntries.data();
 		specializationInfo.pData = &specializationData;
 
-		localShaderStages[0] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		localShaderStages[1] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		localShaderStages[2] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		localShaderStages[0] = loadShader("./shaders/LatticeHelpers/localsurfaces/local_sampled.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		localShaderStages[1] = loadShader("./shaders/LatticeHelpers/localsurfaces/local_sampled.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		localShaderStages[2] = loadShader("./shaders/LatticeHelpers/localsurfaces/local_sampled.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		localShaderStages[2].pSpecializationInfo = &specializationInfo;
-		localShaderStages[3] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		localShaderStages[3] = loadShader("./shaders/LatticeHelpers/localsurfaces/local_sampled.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(localShaderStages.size());
 		pipelineCreateInfo.pStages = localShaderStages.data();
 
@@ -918,7 +1022,7 @@ namespace SWVL
 		std::array<VkPipelineShaderStageCreateInfo, 4> bsShaderStages;
 		bsShaderStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		bsShaderStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		bsShaderStages[2] = loadShader("./shaders/Lattice/lattice.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		bsShaderStages[2] = loadShader("./shaders/Lattice/lattice_sampled.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		bsShaderStages[2].pSpecializationInfo = &specializationInfo;
 		bsShaderStages[3] = loadShader("./shaders/Lattice/lattice.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(bsShaderStages.size());
@@ -933,7 +1037,7 @@ namespace SWVL
 		std::array<VkPipelineShaderStageCreateInfo, 4> surfaceAccuractStages;
 		surfaceAccuractStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		surfaceAccuractStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		surfaceAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		surfaceAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy_sampled.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		surfaceAccuractStages[2].pSpecializationInfo = &specializationInfo;
 		surfaceAccuractStages[3] = loadShader("./shaders/Lattice/surf_accuracy.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		surfaceAccuractStages[3].pSpecializationInfo = &specializationInfo;
@@ -945,7 +1049,7 @@ namespace SWVL
 		std::array<VkPipelineShaderStageCreateInfo, 4> pixelAccuractStages;
 		pixelAccuractStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		pixelAccuractStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		pixelAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		pixelAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy_sampled.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		pixelAccuractStages[2].pSpecializationInfo = &specializationInfo;
 		pixelAccuractStages[3] = loadShader("./shaders/Lattice/pixel_accuracy.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		pixelAccuractStages[3].pSpecializationInfo = &specializationInfo;
@@ -957,7 +1061,7 @@ namespace SWVL
 		std::array<VkPipelineShaderStageCreateInfo, 5> normalShaderStages;
 		normalShaderStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		normalShaderStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		normalShaderStages[2] = loadShader("./shaders/Lattice/normals.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		normalShaderStages[2] = loadShader("./shaders/Lattice/normals_sampled.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		normalShaderStages[2].pSpecializationInfo = &specializationInfo;
 		normalShaderStages[3] = loadShader("./shaders/Lattice/normals.geom.spv", VK_SHADER_STAGE_GEOMETRY_BIT);
 		normalShaderStages[4] = loadShader("./shaders/Lattice/normals.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -982,6 +1086,32 @@ namespace SWVL
 				1);
 
 		VK_CHECK_RESULT(vkCreateDescriptorPool(*m_device, &descriptorPoolInfo, m_allocator, m_descriptorPool));
+
+		poolSizes =
+		{
+			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 * m_samplerDescriptorSets.size())
+		};
+
+		descriptorPoolInfo = 
+			vks::initializers::descriptorPoolCreateInfo(
+				static_cast<uint32_t>(poolSizes.size()),
+				poolSizes.data(),
+				m_samplerDescriptorSets.size());
+
+		VK_CHECK_RESULT(vkCreateDescriptorPool(*m_device, &descriptorPoolInfo, m_allocator, &m_samplerPool));
+
+		poolSizes =
+		{
+			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, m_localSamplerDescriptorSets.size())
+		};
+
+		descriptorPoolInfo = 
+			vks::initializers::descriptorPoolCreateInfo(
+				static_cast<uint32_t>(poolSizes.size()),
+				poolSizes.data(),
+				m_localSamplerDescriptorSets.size());
+
+		VK_CHECK_RESULT(vkCreateDescriptorPool(*m_device, &descriptorPoolInfo, m_allocator, &m_localSamplerPool));
 	}
 
 	void SWVulkanLatticePre::setupDescriptorSets()
@@ -1017,6 +1147,53 @@ namespace SWVL
 		};
 
 		vkUpdateDescriptorSets(*m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+
+		for (size_t i = 0; i < m_samplerDescriptorSets.size(); i++)
+		{
+			allocInfo = vks::initializers::descriptorSetAllocateInfo(m_samplerPool, &m_samplerDescriptorSetLayout, 1);
+			VK_CHECK_RESULT(vkAllocateDescriptorSets(*m_device, &allocInfo, &m_samplerDescriptorSets[i]));
+
+			writeDescriptorSets = {
+				vks::initializers::writeDescriptorSet(
+					m_samplerDescriptorSets[i],
+					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+					0,
+					m_patchSamplers[i].p00Sampler->descriptor()),
+				vks::initializers::writeDescriptorSet(
+					m_samplerDescriptorSets[i],
+					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+					1,
+					m_patchSamplers[i].p10Sampler->descriptor()),
+				vks::initializers::writeDescriptorSet(
+					m_samplerDescriptorSets[i],
+					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+					2,
+					m_patchSamplers[i].p01Sampler->descriptor()),
+				vks::initializers::writeDescriptorSet(
+					m_samplerDescriptorSets[i],
+					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+					3,
+					m_patchSamplers[i].p11Sampler->descriptor())
+			};
+
+			vkUpdateDescriptorSets(*m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+		}
+
+		for (size_t i = 0; i < m_localSamplerDescriptorSets.size(); i++)
+		{
+			allocInfo = vks::initializers::descriptorSetAllocateInfo(m_localSamplerPool, &m_localSamplerDescSetLayout, 1);
+			VK_CHECK_RESULT(vkAllocateDescriptorSets(*m_device, &allocInfo, &m_localSamplerDescriptorSets[i]));
+
+			writeDescriptorSets = {
+				vks::initializers::writeDescriptorSet(
+					m_localSamplerDescriptorSets[i],
+					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+					0,
+					m_localSurfaceTextures[m_localSurfaceVertices[i].controlPointIndex].descriptor())
+			};
+
+			vkUpdateDescriptorSets(*m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+		}
 	}
 
 	void SWVulkanLatticePre::updateLatticeUniformBuffer()

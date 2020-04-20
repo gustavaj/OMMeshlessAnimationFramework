@@ -17,12 +17,12 @@
 namespace SWVL
 {
 
-	struct PatchSamplers
+	struct PatchSamplerInfo
 	{
-		VkSampler p00Sampler;
-		VkSampler p10Sampler;
-		VkSampler p01Sampler;
-		VkSampler p11Sampler;
+		LocalSurfaceTexture* p00Sampler;
+		LocalSurfaceTexture* p10Sampler;
+		LocalSurfaceTexture* p01Sampler;
+		LocalSurfaceTexture* p11Sampler;
 	};
 
 	class SWVulkanLatticePre : public OML::Lattice
@@ -142,10 +142,18 @@ namespace SWVL
 		VkPipelineLayout m_pipelineLayout;
 		VkDescriptorSetLayout m_descriptorSetLayout;
 		VkDescriptorSet m_descriptorSet;
-		std::vector<VkDescriptorSet> m_samplerDescriptorSets;
 
-		std::vector<LocalSurfaceTexture> m_localSurfaceTextures;
-		std::vector<PatchSamplers> m_patchSamplers;
+		VkDescriptorSetLayout m_localSamplerDescSetLayout;
+		std::vector<VkDescriptorSet> m_localSamplerDescriptorSets;
+		VkDescriptorPool m_localSamplerPool;
+
+		VkDescriptorSetLayout m_samplerDescriptorSetLayout;
+		std::vector<VkDescriptorSet> m_samplerDescriptorSets;
+		VkDescriptorPool m_samplerPool;
+
+		std::unordered_map<uint32_t, LocalSurfaceTexture> m_localSurfaceTextures;
+		std::vector<PatchSamplerInfo> m_patchSamplers;
+
 
 		// Map for holding the created shader modules.
 		std::unordered_map<std::string, VkShaderModule> m_shaderModules;

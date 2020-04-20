@@ -124,16 +124,16 @@ void main()
 	float error = distance(tePosition, pos);
 	vec3 color;
 	
-	if(error <= 0.05) {
+	if(error <= 0.1) {
 		color = vec3(1.0, 1.0, 1.0);
 	}
-	else if(error <= 0.1) {
+	else if(error <= 0.2) {
 		color = vec3(0.0, 1.0, 0.0);
 	}
-	else if(error <= 0.3) {
+	else if(error <= 0.5) {
 		color = vec3(0.0, 0.0, 1.0);
 	}
-	else if(error <= 0.5) {
+	else if(error <= 1.0) {
 		color = vec3(1.0, 1.0, 0.0);
 	}
 	else {

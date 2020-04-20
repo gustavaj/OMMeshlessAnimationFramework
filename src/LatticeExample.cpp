@@ -20,10 +20,15 @@
 #include "vulkan/VulkanModel.hpp"
 
 #include "lattice/SWVulkanLattice.h"
+#include "lattice/SWVulkanLatticePre.h"
 
 const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "Patches" };
 
+#ifdef PRE_EVALUATE_LOCAL_SURFACES
+using Lattice = SWVL::SWVulkanLatticePre;
+#else
 using Lattice = SWVL::SWVulkanLattice;
+#endif
 
 class LatticeExample : public VulkanExampleBase
 {
@@ -110,7 +115,7 @@ public:
 		VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
 
 		VkClearValue clearValues[2];
-		clearValues[0].color = { 0.025f, 0.025f, 0.025f, 1.0f };
+		clearValues[0].color = { 0.925f, 0.925f, 0.925f, 1.0f };
 		clearValues[1].depthStencil = { 1.0f, 0 };
 
 		VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();

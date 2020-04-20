@@ -29,7 +29,12 @@ layout(location = 4) in vec3[] tcColor;
 
 layout(location = 0) out vec3 teColor;
 layout(location = 1) out vec3 teNormal;
-layout(location = 2) out vec3 tePosition;
+layout(location = 2) out vec4 tePosition;
+layout(location = 3) out vec2 teUVCoords;
+layout(location = 4) out LocalSurfaceInfo ls00Info;
+layout(location = 8) out LocalSurfaceInfo ls10Info;
+layout(location = 12) out LocalSurfaceInfo ls01Info;
+layout(location = 16) out LocalSurfaceInfo ls11Info;
 
 layout(set = 0, binding = 0) uniform LatticeUBO
 {
@@ -92,6 +97,14 @@ float bDerivative(float w)
 	}	
 }
 
+vec3 bezBasis(float t) {
+	return vec3(pow(1-t, 2), 2*t*(1-t), pow(t, 2));
+}
+
+vec3 bezBasisDer(float t) {
+	return vec3(2*t-2, 2-4*t, 2*t);
+}
+
 Sampler evaluateBiquadraticBezier(LocalSurfaceInfo lsInfo, sampler2DArray surfSampler, float u, float v)
 {	
 	BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];
@@ -116,8 +129,6 @@ void main()
 {
 	float u = gl_TessCoord.x;
 	float v = gl_TessCoord.y;
-	
-	vec4 tst = controlPointBuffer.controlPoints[0];
 	
 	// Evaluate local surfaces	
 	Sampler s00 = evaluateBiquadraticBezier(tcLSInfo[0], p00Sampler, u, v);
@@ -145,8 +156,14 @@ void main()
 	vec3 dpdv = Vu1 + (Vu0 - Vu1) * Bv + (Su0 - Su1) * Bv1;
 			  
 	gl_Position = latticeUbo.projection * latticeUbo.modelview * vec4(pos, 1.0f);
-	tePosition = vec3(latticeUbo.modelview * vec4(pos, 1.0f));
 	teNormal = vec3(latticeUbo.normal * vec4(normalize(cross(dpdu, dpdv)), 0.0f));
+	tePosition = gl_Position;
+	teUVCoords = vec2(u, v);
+	
+	ls00Info = tcLSInfo[0];
+	ls10Info = tcLSInfo[1];
+	ls01Info = tcLSInfo[2];
+	ls11Info = tcLSInfo[3];
 	
 	// float fac = gl_PrimitiveID / float(numPatches);
 	// if(fac < 0.5f) {

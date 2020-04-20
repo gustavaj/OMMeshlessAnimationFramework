@@ -5,6 +5,7 @@
 	Some code from prototype
 */
 
+#define PRE_EVALUATE_LOCAL_SURFACES
 #include "LatticeExample.cpp"
 
 LatticeExample* example;
@@ -26,7 +27,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	//example = new LatticeExample(true);
 	
 	// Grid example
-	//example = new GridLatticeExample(true, 100.0f, 100.0f, 5, 5);
+	example = new GridLatticeExample(true, 100.0f, 100.0f, 3, 3);
 
 	// Random grid example
 	//example = new RandomGridLatticeExample(true, 100.0f, 100.0f, 10, 10);
@@ -45,7 +46,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 
 	// T-locus example
 	//example = new TLocusExample(true);
-	example = new TLocusx4Example(true);
+	//example = new TLocusx4Example(true);
 
 	// Example with several lattices
 	//example = new MultiLatticeExample(true);

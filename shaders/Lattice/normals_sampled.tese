@@ -92,6 +92,14 @@ float bDerivative(float w)
 	}	
 }
 
+vec3 bezBasis(float t) {
+	return vec3(pow(1-t, 2), 2*t*(1-t), pow(t, 2));
+}
+
+vec3 bezBasisDer(float t) {
+	return vec3(2*t-2, 2-4*t, 2*t);
+}
+
 Sampler evaluateBiquadraticBezier(LocalSurfaceInfo lsInfo, sampler2DArray surfSampler, float u, float v)
 {	
 	BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];
@@ -116,8 +124,6 @@ void main()
 {
 	float u = gl_TessCoord.x;
 	float v = gl_TessCoord.y;
-	
-	vec4 tst = controlPointBuffer.controlPoints[0];
 	
 	// Evaluate local surfaces	
 	Sampler s00 = evaluateBiquadraticBezier(tcLSInfo[0], p00Sampler, u, v);
@@ -146,7 +152,7 @@ void main()
 			  
 	gl_Position = latticeUbo.projection * latticeUbo.modelview * vec4(pos, 1.0f);
 	tePosition = vec3(latticeUbo.modelview * vec4(pos, 1.0f));
-	teNormal = vec3(latticeUbo.normal * vec4(normalize(cross(dpdu, dpdv)), 0.0f));
+	teNormal = normalize(cross(dpdu, dpdv));
 	
 	// float fac = gl_PrimitiveID / float(numPatches);
 	// if(fac < 0.5f) {
