@@ -84,6 +84,12 @@ namespace SWVL
 
 			vkDestroyPipelineLayout(*m_device, m_pipelineLayout, m_allocator);
 			vkDestroyDescriptorSetLayout(*m_device, m_descriptorSetLayout, m_allocator);
+			vkDestroyDescriptorSetLayout(*m_device, m_samplerDescriptorSetLayout, m_allocator);
+			vkDestroyDescriptorSetLayout(*m_device, m_localSamplerDescSetLayout, m_allocator);
+
+			// TODO: Should be destroyed when swapchain is rebuilt (resizing?)
+			vkDestroyDescriptorPool(*m_device, m_samplerPool, m_allocator);
+			vkDestroyDescriptorPool(*m_device, m_localSamplerPool, m_allocator);
 		}
 
 		m_latticeUniformBuffer.destroy();
@@ -603,7 +609,7 @@ namespace SWVL
 				{
 					controlPoints[j] = glm::vec3(m_controlPoints[m_loci[i].controlPointIndex + j]);
 				}
-				it->second.loadBezier3x3(controlPoints, 10, 10);
+				it->second.loadBezier3x3(controlPoints, 16, 16);
 			}
 		}
 
@@ -1037,9 +1043,9 @@ namespace SWVL
 		std::array<VkPipelineShaderStageCreateInfo, 4> surfaceAccuractStages;
 		surfaceAccuractStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		surfaceAccuractStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		surfaceAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy_sampled.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		surfaceAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		surfaceAccuractStages[2].pSpecializationInfo = &specializationInfo;
-		surfaceAccuractStages[3] = loadShader("./shaders/Lattice/surf_accuracy.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		surfaceAccuractStages[3] = loadShader("./shaders/LatticeHelpers/localsurfaces/local_sampled.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		surfaceAccuractStages[3].pSpecializationInfo = &specializationInfo;
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(surfaceAccuractStages.size());
 		pipelineCreateInfo.pStages = surfaceAccuractStages.data();
@@ -1049,7 +1055,7 @@ namespace SWVL
 		std::array<VkPipelineShaderStageCreateInfo, 4> pixelAccuractStages;
 		pixelAccuractStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		pixelAccuractStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		pixelAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy_sampled.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		pixelAccuractStages[2] = loadShader("./shaders/Lattice/pixel_accuracy_sampled.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		pixelAccuractStages[2].pSpecializationInfo = &specializationInfo;
 		pixelAccuractStages[3] = loadShader("./shaders/Lattice/pixel_accuracy.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		pixelAccuractStages[3].pSpecializationInfo = &specializationInfo;

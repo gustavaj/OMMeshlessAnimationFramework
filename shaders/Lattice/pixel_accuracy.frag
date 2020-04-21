@@ -130,7 +130,7 @@ void main()
 	vec3 color;
 	
 	if(error <= 0.5) {
-		color = vec3(1.0, 1.0, 1.0);
+		color = vec3(0.7, 0.7, 0.7);
 	}
 	else if(error <= 1.0) {
 		color = vec3(0.0, 1.0, 0.0);

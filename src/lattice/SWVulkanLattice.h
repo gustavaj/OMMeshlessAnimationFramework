@@ -210,7 +210,6 @@ namespace SWVL
 		VkPipeline m_patchPipeline;
 		VkPipeline m_patchWireframePipeline;
 		VkPipeline m_normalPipeline;
-		VkPipeline m_displaySurfaceAccuracyPipeline;
 		VkPipeline m_displayPixelAccuracyPipeline;
 
 		VkPipelineLayout m_pipelineLayout;

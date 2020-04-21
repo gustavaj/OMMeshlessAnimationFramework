@@ -28,6 +28,13 @@ layout(location = 0) in LocalSurfaceInfo tcLSInfo[];
 layout(location = 4) in vec3[] tcColor;
 
 layout(location = 0) out vec3 teColor;
+layout(location = 1) out vec3 teNormal;
+layout(location = 2) out vec4 tePosition;
+layout(location = 3) out vec2 teUVCoords;
+layout(location = 4) out LocalSurfaceInfo ls00Info;
+layout(location = 8) out LocalSurfaceInfo ls10Info;
+layout(location = 12) out LocalSurfaceInfo ls01Info;
+layout(location = 16) out LocalSurfaceInfo ls11Info;
 
 layout(set = 0, binding = 0) uniform LatticeUBO
 {
@@ -58,11 +65,6 @@ layout(set = 0, binding = 3) buffer BoundaryBuffer
 {
 	BoundaryInfo boundaries[numPatches * 4];
 } boundaryBuffer;
-
-layout(set = 1, binding = 0) uniform sampler2DArray p00Sampler;
-layout(set = 1, binding = 1) uniform sampler2DArray p10Sampler;
-layout(set = 1, binding = 2) uniform sampler2DArray p01Sampler;
-layout(set = 1, binding = 3) uniform sampler2DArray p11Sampler;
 
 float bFunction(float w)
 {
@@ -98,7 +100,7 @@ vec3 bezBasisDer(float t) {
 	return vec3(2*t-2, 2-4*t, 2*t);
 }
 
-Sampler evaluateBiquadraticBezierDirect(LocalSurfaceInfo lsInfo, float u, float v)
+Sampler evaluateBiquadraticBezier(LocalSurfaceInfo lsInfo, float u, float v)
 {	
 	BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];
 	float local_u = mix(bi.us, bi.ue, u);
@@ -138,36 +140,16 @@ Sampler evaluateBiquadraticBezierDirect(LocalSurfaceInfo lsInfo, float u, float 
 	return Sampler(pos.xyz, dpdu.xyz, dpdv.xyz);
 }
 
-Sampler evaluateBiquadraticBezierSampled(LocalSurfaceInfo lsInfo, sampler2DArray surfSampler, float u, float v)
-{	
-	BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];
-	
-	vec2 coords = vec2(mix(bi.us, bi.ue, u), mix(bi.vs, bi.ve, v));
-	
-	vec3 pos = texture(surfSampler, vec3(coords, 0)).xyz;
-	vec3 dpdu = texture(surfSampler, vec3(coords, 1)).xyz;
-	vec3 dpdv = texture(surfSampler, vec3(coords, 2)).xyz;
-			 
-	mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];
-	
-	pos  = vec3(matrix * vec4(pos, 1.0f));
-	//mat4 normalMat = transpose(inverse(matrix));
-	dpdu = vec3(matrix * vec4(dpdu, 0.0f));
-	dpdv = vec3(matrix * vec4(dpdv, 0.0f));
-	
-	return Sampler(pos.xyz, dpdu.xyz, dpdv.xyz);
-}
-
 void main()
 {
 	float u = gl_TessCoord.x;
 	float v = gl_TessCoord.y;
 	
-	// Sample local surfaces
-	Sampler s00_samp = evaluateBiquadraticBezierSampled(tcLSInfo[0], p00Sampler, u, v);
-	Sampler s10_samp = evaluateBiquadraticBezierSampled(tcLSInfo[1], p10Sampler, u, v);
-	Sampler s01_samp = evaluateBiquadraticBezierSampled(tcLSInfo[2], p01Sampler, u, v);
-	Sampler s11_samp = evaluateBiquadraticBezierSampled(tcLSInfo[3], p11Sampler, u, v);
+	// Evaluate local surfaces
+	Sampler s00 = evaluateBiquadraticBezier(tcLSInfo[0], u, v);
+	Sampler s10 = evaluateBiquadraticBezier(tcLSInfo[1], u, v);
+	Sampler s01 = evaluateBiquadraticBezier(tcLSInfo[2], u, v);
+	Sampler s11 = evaluateBiquadraticBezier(tcLSInfo[3], u, v);
 	
 	// Evaluate tensor product blending spline surface
 	float Bu = 1.0 - bFunction(u);
@@ -175,57 +157,38 @@ void main()
 	float Bu1 = -bDerivative(u);
 	float Bv1 = -bDerivative(v);
 	
-	// Evaluate from the sampled data
-	vec3 Su0_samp = s10_samp.p + (s00_samp.p - s10_samp.p) * Bu;
-	vec3 Su1_samp = s11_samp.p + (s01_samp.p - s11_samp.p) * Bu;
+	vec3 Su0 = s10.p + (s00.p - s10.p) * Bu;
+	vec3 Su1 = s11.p + (s01.p - s11.p) * Bu;
 
-	vec3 Uu0_samp = s10_samp.u + (s00_samp.u - s10_samp.u) * Bu + (s00_samp.p - s10_samp.p) * Bu1;
-	vec3 Uu1_samp = s11_samp.u + (s01_samp.u - s11_samp.u) * Bu + (s01_samp.p - s11_samp.p) * Bu1;
+	vec3 Uu0 = s10.u + (s00.u - s10.u) * Bu + (s00.p - s10.p) * Bu1;
+	vec3 Uu1 = s11.u + (s01.u - s11.u) * Bu + (s01.p - s11.p) * Bu1;
 
-	vec3 Vu0_samp = s10_samp.v + (s00_samp.v - s10_samp.v) * Bu;
-	vec3 Vu1_samp = s11_samp.v + (s01_samp.v - s11_samp.v) * Bu;
+	vec3 Vu0 = s10.v + (s00.v - s10.v) * Bu;
+	vec3 Vu1 = s11.v + (s01.v - s11.v) * Bu;
 	
-	vec3 pos_samp  = Su1_samp + (Su0_samp - Su1_samp) * Bv;
-	vec3 dpdu = Uu1_samp + (Uu0_samp - Uu1_samp) * Bv;
-	vec3 dpdv = Vu1_samp + (Vu0_samp - Vu1_samp) * Bv + (Su0_samp - Su1_samp) * Bv1;
+	vec3 pos  = Su1 + (Su0 - Su1) * Bv;
+	vec3 dpdu = Uu1 + (Uu0 - Uu1) * Bv;
+	vec3 dpdv = Vu1 + (Vu0 - Vu1) * Bv + (Su0 - Su1) * Bv1;
 			  
-	gl_Position = latticeUbo.projection * latticeUbo.modelview * vec4(pos_samp, 1.0f);
+	gl_Position = latticeUbo.projection * latticeUbo.modelview * vec4(pos, 1.0f);
+	teNormal = vec3(latticeUbo.normal * vec4(normalize(cross(dpdu, dpdv)), 0.0f));
+	tePosition = gl_Position;
+	teUVCoords = vec2(u, v);
 	
-	// Evaluate local surfaces direct
-	Sampler s00_dir = evaluateBiquadraticBezierDirect(tcLSInfo[0], u, v);
-	Sampler s10_dir = evaluateBiquadraticBezierDirect(tcLSInfo[1], u, v);
-	Sampler s01_dir = evaluateBiquadraticBezierDirect(tcLSInfo[2], u, v);
-	Sampler s11_dir = evaluateBiquadraticBezierDirect(tcLSInfo[3], u, v);
+	ls00Info = tcLSInfo[0];
+	ls10Info = tcLSInfo[1];
+	ls01Info = tcLSInfo[2];
+	ls11Info = tcLSInfo[3];
 	
-	// Evaluate from the direct data
-	vec3 Su0_dir = s10_dir.p + (s00_dir.p - s10_dir.p) * Bu;
-	vec3 Su1_dir = s11_dir.p + (s01_dir.p - s11_dir.p) * Bu;
+	// float fac = gl_PrimitiveID / float(numPatches);
+	// if(fac < 0.5f) {
+		// fac = fac * 2.0f;
+		// teColor = vec3(1.0f - fac, fac, 0.0f);
+	// }
+	// else if (fac < 1.0f){
+		// fac = (fac - 0.5f) * 2.0f;
+		// teColor = vec3(1.0f - fac, 1.0f - fac, fac);
+	// }
 	
-	vec3 pos_dir  = Su1_dir + (Su0_dir - Su1_dir) * Bv;
-	
-	// Longest side
-	// Sampler topLeft = evaluateBiquadraticBezierDirect(tcLSInfo[0], 0.0, 0.0);
-	// Sampler topRight = evaluateBiquadraticBezierDirect(tcLSInfo[1], 1.0, 0.0);
-	// Sampler bottomLeft = evaluateBiquadraticBezierDirect(tcLSInfo[2], 0.0, 1.0);
-	// float longestSide = max(distance(topLeft.p, topRight.p), distance(topLeft.p, bottomLeft.p));
-	
-	// Difference between the two
-	float diff = distance(pos_samp, pos_dir);
-	float maxError = 1.0f;
-	
-	if(diff <= maxError * 0.1) {
-		teColor = vec3(0.5, 0.5, 0.5);
-	}
-	else if(diff <= maxError * 0.2) {
-		teColor = vec3(0.0, 1.0, 0.0);
-	}
-	else if(diff <= maxError * 0.5) {
-		teColor = vec3(0.0, 0.0, 1.0);
-	}
-	else if(diff <= maxError) {
-		teColor = vec3(1.0, 1.0, 0.0);
-	}
-	else {
-		teColor = vec3(1.0, 0.0, 0.0);
-	}
+	teColor = tcColor[0];
 }

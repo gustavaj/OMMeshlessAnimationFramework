@@ -75,7 +75,6 @@ namespace SWVL
 			vkDestroyPipeline(*m_device, m_patchPipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_patchWireframePipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_normalPipeline, m_allocator);
-			vkDestroyPipeline(*m_device, m_displaySurfaceAccuracyPipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_displayPixelAccuracyPipeline, m_allocator);
 
 			vkDestroyPipelineLayout(*m_device, m_pipelineLayout, m_allocator);
@@ -146,9 +145,7 @@ namespace SWVL
 
 		if (m_drawSurface)
 		{
-			if (m_displaySurfaceAccuracy)
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_displaySurfaceAccuracyPipeline);
-			else if (m_displayPixelAccuracy)
+			if (m_displayPixelAccuracy)
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_displayPixelAccuracyPipeline);
 			else if (m_wireframe)
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_patchWireframePipeline);
@@ -156,6 +153,11 @@ namespace SWVL
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_patchPipeline);
 			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_patchVertexBuffer.buffer, offsets);
 			vkCmdDraw(commandBuffer, m_patchVertexBuffer.count, 1, 0, 0);
+			/*for (size_t i = 0; i < m_patchVertices.size() / 4; i++)
+			{
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, NULL);
+				vkCmdDraw(commandBuffer, 4, 1, i * 4, 0);
+			}*/
 
 			if (m_drawNormals)
 			{
@@ -929,23 +931,11 @@ namespace SWVL
 
 		rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_patchPipeline));
-
-		std::array<VkPipelineShaderStageCreateInfo, 4> surfaceAccuractStages;
-		surfaceAccuractStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		surfaceAccuractStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		surfaceAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		surfaceAccuractStages[2].pSpecializationInfo = &specializationInfo;
-		surfaceAccuractStages[3] = loadShader("./shaders/Lattice/surf_accuracy.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-		surfaceAccuractStages[3].pSpecializationInfo = &specializationInfo;
-		pipelineCreateInfo.stageCount = static_cast<uint32_t>(surfaceAccuractStages.size());
-		pipelineCreateInfo.pStages = surfaceAccuractStages.data();
-
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_displaySurfaceAccuracyPipeline));
 		
 		std::array<VkPipelineShaderStageCreateInfo, 4> pixelAccuractStages;
 		pixelAccuractStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		pixelAccuractStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		pixelAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		pixelAccuractStages[2] = loadShader("./shaders/Lattice/pixel_accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		pixelAccuractStages[2].pSpecializationInfo = &specializationInfo;
 		pixelAccuractStages[3] = loadShader("./shaders/Lattice/pixel_accuracy.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 		pixelAccuractStages[3].pSpecializationInfo = &specializationInfo;

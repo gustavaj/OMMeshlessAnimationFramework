@@ -27,7 +27,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	//example = new LatticeExample(true);
 	
 	// Grid example
-	example = new GridLatticeExample(true, 100.0f, 100.0f, 3, 3);
+	example = new GridLatticeExample(true, 200.0f, 200.0f, 4, 4);
 
 	// Random grid example
 	//example = new RandomGridLatticeExample(true, 100.0f, 100.0f, 10, 10);
