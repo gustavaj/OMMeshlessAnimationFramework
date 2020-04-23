@@ -21,14 +21,21 @@
 
 #include "lattice/SWVulkanLattice.h"
 #include "lattice/SWVulkanLatticePre.h"
+#include "lattice/SWVulkanLatticePreBuffer.h"
 
 const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "Patches" };
 
-#ifdef PRE_EVALUATE_LOCAL_SURFACES
-using Lattice = SWVL::SWVulkanLatticePre;
-#else
-using Lattice = SWVL::SWVulkanLattice;
-#endif
+//#ifdef PRE_EVALUATE_LOCAL_SURFACES
+//using Lattice = SWVL::SWVulkanLatticePre;
+//#elseif PRE_EVALUATE_LOCAL_SURFACES_BUFFER
+//using Lattice = SWVL::SWVulkanLatticePreBuffer;
+//#else
+//using Lattice = SWVL::SWVulkanLattice;
+//#endif
+
+using Lattice = SWVL::SWVulkanLatticePreBuffer;
+//using Lattice = SWVL::SWVulkanLatticePre;
+//using Lattice = SWVL::SWVulkanLattice;
 
 class LatticeExample : public VulkanExampleBase
 {

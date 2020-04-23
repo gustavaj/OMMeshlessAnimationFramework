@@ -144,9 +144,6 @@ namespace SWVL
 		// Boolean to prevent vulkan stuff from being destroyed if it has not been initiated first.
 		bool m_destroyed = true;
 
-		// Index counting the number fo lattices created
-		static size_t Index;
-
 		// Menu variables collected here--
 		// Suffix to use on all menu items to make their id unique
 		std::string m_menuSuffix;

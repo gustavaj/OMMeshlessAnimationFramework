@@ -17,10 +17,10 @@
 
 /*
 	In general, all local surface and patch orderings are left to right, top to bottom i.e.
-		p00 - p10
-	^ v	 |     | 
-	|	p01 - p11
 	 --> u
+	|	p00 - p10
+	v v	 |     | 
+		p01 - p11
 	Where the first number indicates u, and the second v.
 
 
@@ -30,12 +30,8 @@
 
 		Simulators:
 		-Fix RandomSphereSimulator
-		-Add a RotationSimulator(maxAngle, axis)
-		-Make it possible to use more than one simulator
 
 		Pre-evaluation:
-		-Evaluate local surfaces on the CPU. (pos and first partial derivatives)
-		-In vulkan implementation, save results to buffer/texture
 		-Use in TES to improve(?) evaluation time.
 		-Look at memory usage with respect to large lattices.
 		-Experiment with different buffer/texture dimensions.
@@ -183,7 +179,7 @@ namespace OML {
 		void addXYScalingSimulation();
 		/* Removes a simulator */
 		void removeSimulator(SimulatorTypes simulatorType);
-		/* Used for simulation. */
+		/* Used for simulation. Should be called in the rendering loop(?) */
 		void update(double dt);
 
 		/* Finalize lattice creation */
@@ -224,10 +220,13 @@ namespace OML {
 		std::string name() { return m_name; }
 
 	protected:
+		// Index counting the number fo lattices created
+		static size_t Index;
+
 		// Called by the update function, can be used in implementations
 		virtual void localUpdate(double dt) = 0;
 
-		// Resets all the matrices to their initial matrices. Used to remove any simulation.
+		// Resets all the matrices to their initial matrices. Used to remove any simulation. Could be private)
 		void resetMatrices();
 
 		std::string m_name;
@@ -349,7 +348,7 @@ namespace OML {
 			Vec3f middleLeft, Vec3f middle, Vec3f middleRight,
 			Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight);
 
-		// New way of adding local surfaces.
+		// New way of adding local surfaces. Rename this stuff.
 		void addLocalSurfaceOnLoci(OpenMesh::VertexHandle vh, Vec3f L2RDir, Vec3f T2BDir);
 		void getCornerPointsOfFaceL2RT2B(
 			OpenMesh::FaceHandle& fh, std::vector<Vec3f>& points);

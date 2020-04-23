@@ -2,7 +2,6 @@
 
 namespace SWVL
 {
-	size_t SWVulkanLattice::Index = 0;
 
 	SWVulkanLattice::SWVulkanLattice()
 		: SWVulkanLattice("")
@@ -16,7 +15,7 @@ namespace SWVL
 		  m_device(nullptr), m_vulkanDevice(nullptr), m_descriptorPool(nullptr), m_renderPass(nullptr),
 		  m_queue(nullptr), m_commandPool(nullptr), m_allocator(nullptr), m_selectedSurface(0)
 	{
-		m_menuSuffix = "##" + std::to_string(SWVulkanLattice::Index++);
+		m_menuSuffix = "##" + std::to_string(OML::Lattice::Index++);
 	}
 
 	SWVulkanLattice::~SWVulkanLattice()

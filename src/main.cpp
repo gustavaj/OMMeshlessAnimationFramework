@@ -5,8 +5,11 @@
 	Some code from prototype
 */
 
-#define PRE_EVALUATE_LOCAL_SURFACES
+//#define PRE_EVALUATE_LOCAL_SURFACES
+//#define PRE_EVALUATE_LOCAL_SURFACES_BUFFER
 #include "LatticeExample.cpp"
+
+const bool debug = true;
 
 LatticeExample* example;
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -24,32 +27,32 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	for (size_t i = 0; i < __argc; i++) { LatticeExample::args.push_back(__argv[i]); };
 	
 	// Base example
-	//example = new LatticeExample(true);
+	//example = new LatticeExample(debug);
 	
 	// Grid example
-	example = new GridLatticeExample(true, 200.0f, 200.0f, 4, 4);
+	example = new GridLatticeExample(debug, 200.0f, 200.0f, 10, 10);
 
 	// Random grid example
-	//example = new RandomGridLatticeExample(true, 100.0f, 100.0f, 10, 10);
+	//example = new RandomGridLatticeExample(debug, 100.0f, 100.0f, 10, 10);
 	
 	// Cylinder Example
-	//example = new CylinderLatticeExample(true, 20.0f, 50.0f, 8, 12);
+	//example = new CylinderLatticeExample(debug, 20.0f, 50.0f, 8, 12);
 	
 	// Sphere Example
-	//example = new SphereLatticeExample(true, 20.0f, 8, 8);
+	//example = new SphereLatticeExample(debug, 20.0f, 8, 8);
 
 	// Non-uniform grid example
-	//example = new NonUniformGridExample(true);
+	//example = new NonUniformGridExample(debug);
 
 	// Grid where quads have angles != 90
-	//example = new NonRectangularExample(true);
+	//example = new NonRectangularExample(debug);
 
 	// T-locus example
-	//example = new TLocusExample(true);
-	//example = new TLocusx4Example(true);
+	//example = new TLocusExample(debug);
+	//example = new TLocusx4Example(debug);
 
 	// Example with several lattices
-	//example = new MultiLatticeExample(true);
+	//example = new MultiLatticeExample(debug);
 
 	example->initVulkan();
 	example->setupWindow(hInstance, WndProc);

@@ -2,34 +2,19 @@
 
 #include "SWVulkanLattice.h"
 
-
-#include "LocalSurfaceTexture.h"
-
-/*
-	If running with debug layers turned on there will be a large CPU overhead from
-	the layer checking if the images are in the correct layout.
-*/
+#include "LocalSurfaceBuffer.h"
 
 namespace SWVL
 {
+	const int NUM_SAMPLES_U = 16;
+	const int NUM_SAMPLES_V = 16;
 
-	const int NUM_SAMPLES_U_IMG = 16;
-	const int NUM_SAMPLES_V_IMG = 16;
-
-	struct PatchSamplerInfo
-	{
-		LocalSurfaceTexture* p00Sampler;
-		LocalSurfaceTexture* p10Sampler;
-		LocalSurfaceTexture* p01Sampler;
-		LocalSurfaceTexture* p11Sampler;
-	};
-
-	class SWVulkanLatticePre : public OML::Lattice
+	class SWVulkanLatticePreBuffer : public OML::Lattice
 	{
 	public:
-		SWVulkanLatticePre();
-		SWVulkanLatticePre(std::string name);
-		~SWVulkanLatticePre();
+		SWVulkanLatticePreBuffer();
+		SWVulkanLatticePreBuffer(std::string name);
+		~SWVulkanLatticePreBuffer();
 
 		// Vulkan framework
 		/* Create buffers and pipelines and stuff for Vulkan */
@@ -123,6 +108,7 @@ namespace SWVL
 		vks::Buffer m_matrixUniformBuffer;
 		vks::Buffer m_controlPointBuffer;
 		vks::Buffer m_boundariesBuffer;
+		vks::Buffer m_localSurfaceDataBuffer;
 
 		// Pipelines and descriptor set stuff
 		VkPipeline m_pointsPipeline;
@@ -139,16 +125,8 @@ namespace SWVL
 		VkDescriptorSetLayout m_descriptorSetLayout;
 		VkDescriptorSet m_descriptorSet;
 
-		VkDescriptorSetLayout m_localSamplerDescSetLayout;
-		std::vector<VkDescriptorSet> m_localSamplerDescriptorSets;
-		VkDescriptorPool m_localSamplerPool;
-
-		VkDescriptorSetLayout m_samplerDescriptorSetLayout;
-		std::vector<VkDescriptorSet> m_samplerDescriptorSets;
-		VkDescriptorPool m_samplerPool;
-
-		std::unordered_map<uint32_t, LocalSurfaceTexture> m_localSurfaceTextures;
-		std::vector<PatchSamplerInfo> m_patchSamplers;
+		LocalSurfaceBuffer m_LSBuffer;
+		std::unordered_map<uint32_t, uint32_t> m_LSIdxToLSBufferMap;
 
 
 		// Map for holding the created shader modules.

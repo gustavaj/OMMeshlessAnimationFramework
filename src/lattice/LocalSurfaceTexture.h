@@ -11,6 +11,12 @@
 
 // https://github.com/SaschaWillems/Vulkan/blob/master/examples/texturearray/texturearray.cpp
 
+/*
+	TODO:
+	-Make texture much bigger, like 4096x4096 or something
+	-Add several local surfaces to the same image
+*/
+
 namespace SWVL {
 
 	class LocalSurfaceTexture

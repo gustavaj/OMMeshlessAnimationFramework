@@ -5,6 +5,8 @@
 
 namespace OML
 {
+	size_t Lattice::Index = 0;
+
 	Lattice::Lattice()
 		: Lattice("Lattice")
 	{
