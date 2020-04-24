@@ -1,24 +1,73 @@
-#include "LocalSurfaceTexture.h"
+#include "LocalSurfaceTextureBatch.h"
 
 namespace SWVL {
 
-	LocalSurfaceTexture::LocalSurfaceTexture()
-		: LocalSurfaceTexture(VK_NULL_HANDLE, nullptr, VK_NULL_HANDLE, VK_NULL_HANDLE, nullptr)
+	LocalSurfaceTextureBatch::LocalSurfaceTextureBatch()
+		: LocalSurfaceTextureBatch(10, 10, 10, 10, VK_NULL_HANDLE, nullptr, VK_NULL_HANDLE, VK_NULL_HANDLE, nullptr)
 	{
 	}
 
-	LocalSurfaceTexture::LocalSurfaceTexture(VkDevice* device, vks::VulkanDevice* vulkanDevice,
+	LocalSurfaceTextureBatch::LocalSurfaceTextureBatch(
+		uint32_t rows, uint32_t cols, uint32_t numSamplesU, uint32_t numSamplesV,
+		VkDevice* device, vks::VulkanDevice* vulkanDevice, 
 		VkCommandPool* commandPool, VkQueue* queue, VkAllocationCallbacks* allocator)
-		: m_device(device), m_vulkanDevice(vulkanDevice), m_commandPool(commandPool),
-		m_queue(queue), m_allocator(allocator)
+		: m_rows(rows), m_cols(cols), m_numSamplesU(numSamplesU), m_numSamplesV(numSamplesV),
+		m_device(device), m_vulkanDevice(vulkanDevice), m_commandPool(commandPool), 
+		m_queue(queue), m_allocator(allocator), m_data(rows* cols* numSamplesU* numSamplesV * 12)
 	{
 	}
 
-	LocalSurfaceTexture::~LocalSurfaceTexture()
+	LocalSurfaceTextureBatch::~LocalSurfaceTextureBatch()
 	{
 	}
 
-	void LocalSurfaceTexture::destroy()
+	std::pair<uint32_t, uint32_t> LocalSurfaceTextureBatch::addPatch(
+		std::vector<glm::vec3> p00Points, OML::BoundaryInfo& p00Boundary, 
+		std::vector<glm::vec3> p10Points, OML::BoundaryInfo& p10Boundary, 
+		std::vector<glm::vec3> p01Points, OML::BoundaryInfo& p01Boundary, 
+		std::vector<glm::vec3> p11Points, OML::BoundaryInfo& p11Boundary, 
+		TextureLocalSurfaceType type)
+	{
+		if (isFull()) {
+			return { 0, 0 };
+		}
+
+		// Add new element in m_data matrix based on type.
+		switch (type)
+		{
+		case TextureLocalSurfaceType::Bezier3x3:
+		{
+			loadBezier3x3(p00Points, p00Boundary, 0);
+			loadBezier3x3(p10Points, p10Boundary, 3);
+			loadBezier3x3(p01Points, p01Boundary, 6);
+			loadBezier3x3(p11Points, p11Boundary, 9);
+			break;
+		}
+		}
+
+		std::pair<uint32_t, uint32_t> coords{m_curX * m_numSamplesU, m_curY * m_numSamplesV};
+
+		// Increment rows/cols
+		m_curX++;
+		if (m_curX == m_rows && m_curY != m_cols) {
+			m_curY++;
+			if (m_curY != m_cols)
+			{
+				m_curX = 0;
+			}
+		}
+
+		return coords;
+	}
+
+	void LocalSurfaceTextureBatch::allocateMemory()
+	{
+		createImage();
+
+		m_data.clear();
+	}
+
+	void LocalSurfaceTextureBatch::destroy()
 	{
 		if (m_device != VK_NULL_HANDLE)
 		{
@@ -30,31 +79,34 @@ namespace SWVL {
 		}
 	}
 
-	void LocalSurfaceTexture::loadBezier3x3(
-		std::vector<glm::vec3> controlPoints, uint32_t numSamplesU, uint32_t numSamplesV)
+	void LocalSurfaceTextureBatch::loadBezier3x3(std::vector<glm::vec3>& controlPoints, 
+		OML::BoundaryInfo& boundary, uint32_t baseLayer)
 	{
-		m_width = numSamplesU;
-		m_height = numSamplesV;
-		m_layers = 3;
-
 		glm::vec3& p00 = controlPoints[0], p10 = controlPoints[1], p20 = controlPoints[2];
 		glm::vec3& p01 = controlPoints[3], p11 = controlPoints[4], p21 = controlPoints[5];
 		glm::vec3& p02 = controlPoints[6], p12 = controlPoints[7], p22 = controlPoints[8];
 
-		int numSamples = numSamplesU * numSamplesV;
-		std::vector<glm::vec4> samples(numSamples * 3);
+		float du = 1.0f / (float)(m_numSamplesU - 1);
+		float dv = 1.0f / (float)(m_numSamplesV - 1);
 
-		float du = 1.0f / (float)(numSamplesU - 1);
-		float dv = 1.0f / (float)(numSamplesV - 1);
+		uint32_t layerWidth = m_numSamplesU * m_cols;
+		uint32_t layerSize = layerWidth * m_numSamplesV * m_rows;
+		uint32_t tileSize = m_numSamplesU * m_numSamplesV;
+		uint32_t rowSize = tileSize * m_cols;
 
-		for (size_t j = 0; j < numSamplesV; j++)
+		uint32_t posLayerTileStart = baseLayer * layerSize + m_curY * rowSize + m_curX * m_numSamplesU;
+		uint32_t duLayerTileStart = posLayerTileStart + layerSize;
+		uint32_t dvLayerTileStart = duLayerTileStart + layerSize;
+
+#pragma omp parallel for
+		for (int j = 0; j < m_numSamplesV; j++)
 		{
-			float v = dv * j;
+			float v = mix(boundary.vs, boundary.ve, dv * j);
 			glm::vec3 bv = bezBasis(v);
 			glm::vec3 bvd = bezBasisDer(v);
-			for (size_t i = 0; i < numSamplesU; i++)
+			for (size_t i = 0; i < m_numSamplesU; i++)
 			{
-				float u = du * i;
+				float u = mix(boundary.us, boundary.ue, du * i);
 				glm::vec3 bu = bezBasis(u);
 				glm::vec3 bud = bezBasisDer(u);
 
@@ -73,33 +125,30 @@ namespace SWVL {
 					p10 * bu[1] * bvd[0] + p11 * bu[1] * bvd[1] + p12 * bu[1] * bvd[2] +
 					p20 * bu[2] * bvd[0] + p21 * bu[2] * bvd[1] + p22 * bu[2] * bvd[2];
 
-				samples[j * numSamplesV + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
-				samples[1 * numSamples + j * numSamplesV + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
-				samples[2 * numSamples + j * numSamplesV + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
-				//samples[1 * numSamples + i * numSamplesU + j] = glm::normalize(glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f));
-				//samples[2 * numSamples + i * numSamplesU + j] = glm::normalize(glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f));
+				m_data[posLayerTileStart + j * layerWidth + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
+				m_data[duLayerTileStart  + j * layerWidth + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
+				m_data[dvLayerTileStart  + j * layerWidth + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
 			}
 		}
-
-		createImage(samples);
 	}
 
-	glm::vec3 LocalSurfaceTexture::bezBasis(float t)
+	glm::vec3 LocalSurfaceTextureBatch::bezBasis(float t)
 	{
 		return glm::vec3(std::pow(1 - t, 2), 2 * t * (1 - t), std::pow(t, 2));
 	}
 
-	glm::vec3 LocalSurfaceTexture::bezBasisDer(float t)
+	glm::vec3 LocalSurfaceTextureBatch::bezBasisDer(float t)
 	{
 		return glm::vec3(2 * t - 2, 2 - 4 * t, 2 * t);
 	}
 
-	void LocalSurfaceTexture::createImage(std::vector<glm::vec4> samples)
+	void LocalSurfaceTextureBatch::createImage()
 	{
 		//VkDeviceSize imageSize = m_width * m_height * sizeof(glm::vec4) * m_layers;
 
 		//m_texture.loadData(samples, m_width, m_height, VK_FORMAT_R32G32B32A32_SFLOAT, m_vulkanDevice, *m_queue);
-		m_texture.loadData(samples, m_width, m_height, m_layers, VK_FORMAT_R32G32B32A32_SFLOAT, m_vulkanDevice, *m_queue);
+		m_texture.loadData(m_data, m_rows * m_numSamplesU, m_cols * m_numSamplesV, 
+			m_layers, VK_FORMAT_R32G32B32A32_SFLOAT, m_vulkanDevice, *m_queue);
 
 		//VkMemoryAllocateInfo memAllocInfo = vks::initializers::memoryAllocateInfo();
 		//VkMemoryRequirements memReqs;

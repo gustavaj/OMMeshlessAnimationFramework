@@ -24,7 +24,12 @@ layout(location = 4) in vec3[] tcColor;
 
 layout(location = 0) out vec3 teColor;
 layout(location = 1) out vec3 teNormal;
-layout(location = 2) out vec3 tePosition;
+layout(location = 2) out vec4 tePosition;
+layout(location = 3) out vec2 teUVCoords;
+layout(location = 4) out LocalSurfaceInfo ls00Info;
+layout(location = 8) out LocalSurfaceInfo ls10Info;
+layout(location = 12) out LocalSurfaceInfo ls01Info;
+layout(location = 16) out LocalSurfaceInfo ls11Info;
 
 layout(set = 0, binding = 0) uniform LatticeUBO
 {
@@ -37,16 +42,29 @@ layout(set = 0, binding = 0) uniform LatticeUBO
 	vec2 windowSize;
 } latticeUbo;
 
+layout(constant_id = 0) const int numLocalSurfaceControlPoints = 36000;
 layout(constant_id = 1) const int numLocalSurfaces = 1000;
-layout(constant_id = 3) const int numSamplesU = 64;
-layout(constant_id = 4) const int numSamplesV = 64;
+layout(constant_id = 2) const int numPatches = 1000;
 
 layout(set = 0, binding = 1) buffer MatrixBuffer
 {
 	mat4 matrices[numLocalSurfaces];
 } matrixBuffer;
 
-layout(set = 1, binding = 0) uniform sampler2DArray surfSampler;
+layout(set = 0, binding = 2) buffer ControlPointBuffer
+{
+	vec4 controlPoints[numLocalSurfaceControlPoints];
+} controlPointBuffer;
+
+layout(set = 0, binding = 3) buffer BoundaryBuffer
+{
+	BoundaryInfo boundaries[numPatches * 4];
+} boundaryBuffer;
+
+layout(set = 1, binding = 0) uniform sampler2DArray p00Sampler;
+layout(set = 1, binding = 1) uniform sampler2DArray p10Sampler;
+layout(set = 1, binding = 2) uniform sampler2DArray p01Sampler;
+layout(set = 1, binding = 3) uniform sampler2DArray p11Sampler;
 
 float bFunction(float w)
 {
@@ -74,19 +92,23 @@ float bDerivative(float w)
 	}	
 }
 
-Sampler evaluateBiquadraticBezier(LocalSurfaceInfo lsInfo, float u, float v, int layer)
-{
-	ivec3 dim = textureSize(surfSampler, 0);
-	float ss = float(lsInfo.s + 0.5);
-	float se = float(lsInfo.s + lsInfo.w - 0.5);
-	float ts = float(lsInfo.t + 0.5);
-	float te = float(lsInfo.t + lsInfo.w - 0.5);
-	float s = mix(ss, se, u) / float(dim.x);
-	float t = mix(ts, te, v) / float(dim.y);
+vec3 bezBasis(float t) {
+	return vec3(pow(1-t, 2), 2*t*(1-t), pow(t, 2));
+}
 
-	vec3 pos  = texture(surfSampler, vec3(s, t, layer)).xyz;
-	vec3 dpdu = texture(surfSampler, vec3(s, t, layer + 1)).xyz;
-	vec3 dpdv = texture(surfSampler, vec3(s, t, layer + 2)).xyz;
+vec3 bezBasisDer(float t) {
+	return vec3(2*t-2, 2-4*t, 2*t);
+}
+
+Sampler evaluateBiquadraticBezier(LocalSurfaceInfo lsInfo, sampler2DArray surfSampler, float u, float v)
+{	
+	BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];
+	
+	vec2 coords = vec2(mix(bi.us, bi.ue, u), mix(bi.vs, bi.ve, v));
+	
+	vec3 pos = texture(surfSampler, vec3(coords, 0)).xyz;
+	vec3 dpdu = texture(surfSampler, vec3(coords, 1)).xyz;
+	vec3 dpdv = texture(surfSampler, vec3(coords, 2)).xyz;
 			 
 	mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];
 	
@@ -104,10 +126,10 @@ void main()
 	float v = gl_TessCoord.y;
 	
 	// Evaluate local surfaces	
-	Sampler s00 = evaluateBiquadraticBezier(tcLSInfo[0], u, v, 0);
-	Sampler s10 = evaluateBiquadraticBezier(tcLSInfo[1], u, v, 3);
-	Sampler s01 = evaluateBiquadraticBezier(tcLSInfo[2], u, v, 6);
-	Sampler s11 = evaluateBiquadraticBezier(tcLSInfo[3], u, v, 9);
+	Sampler s00 = evaluateBiquadraticBezier(tcLSInfo[0], p00Sampler, u, v);
+	Sampler s10 = evaluateBiquadraticBezier(tcLSInfo[1], p10Sampler, u, v);
+	Sampler s01 = evaluateBiquadraticBezier(tcLSInfo[2], p01Sampler, u, v);
+	Sampler s11 = evaluateBiquadraticBezier(tcLSInfo[3], p11Sampler, u, v);
 	
 	// Evaluate tensor product blending spline surface
 	float Bu = 1.0 - bFunction(u);
@@ -129,8 +151,14 @@ void main()
 	vec3 dpdv = Vu1 + (Vu0 - Vu1) * Bv + (Su0 - Su1) * Bv1;
 			  
 	gl_Position = latticeUbo.projection * latticeUbo.modelview * vec4(pos, 1.0f);
-	tePosition = vec3(latticeUbo.modelview * vec4(pos, 1.0f));
 	teNormal = vec3(latticeUbo.normal * vec4(normalize(cross(dpdu, dpdv)), 0.0f));
+	tePosition = gl_Position;
+	teUVCoords = vec2(u, v);
+	
+	ls00Info = tcLSInfo[0];
+	ls10Info = tcLSInfo[1];
+	ls01Info = tcLSInfo[2];
+	ls11Info = tcLSInfo[3];
 	
 	// float fac = gl_PrimitiveID / float(numPatches);
 	// if(fac < 0.5f) {

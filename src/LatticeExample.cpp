@@ -21,6 +21,7 @@
 
 #include "lattice/SWVulkanLattice.h"
 #include "lattice/SWVulkanLatticePre.h"
+#include "lattice/SWVulkanLatticePreBatched.h"
 #include "lattice/SWVulkanLatticePreBuffer.h"
 
 const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "Patches" };
@@ -35,7 +36,8 @@ const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "
 
 //using Lattice = SWVL::SWVulkanLatticePreBuffer;
 //using Lattice = SWVL::SWVulkanLatticePre;
-using Lattice = SWVL::SWVulkanLattice;
+//using Lattice = SWVL::SWVulkanLattice;
+using Lattice = SWVL::SWVulkanLatticePreBatched;
 
 class LatticeExample : public VulkanExampleBase
 {

@@ -338,3 +338,18 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+/shaders/Mod/compile-normals.bat
+/shaders/Mod/compile-local-pre.bat
+/shaders/Mod/compile-local-bez3x3.bat
+/shaders/Mod/compile-lattice.bat
+/shaders/Mod/compile-lattice-sampled.bat
+/shaders/Mod/compile-lattice-pre-buffer.bat
+/shaders/Mod/compile-grid.bat
+/shaders/Mod/compile-all.bat
+/shaders/Mod/common/Uniforms.txt
+/shaders/Mod/common/SurfBlending.txt
+/shaders/Mod/common/Structs.txt
+/shaders/Mod/common/SpecializationConsts.txt
+/shaders/Mod/common/Consts.txt
+/shaders/Mod/common/Buffers.txt
+/shaders/Mod/common/BFunctions.txt
