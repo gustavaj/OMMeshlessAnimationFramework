@@ -555,7 +555,7 @@ namespace SWVL
 		m_LSBuffer = LocalSurfaceBuffer(NUM_SAMPLES_U, NUM_SAMPLES_V);
 
 		// Set up local surface vertices
-		m_localSurfaceVertices.resize(0);
+		m_localSurfaceVertices.resize(m_loci.size());
 		for (size_t i = 0; i < m_loci.size(); i++)
 		{
 			// Evaluate local surfaces and load them as textures.
@@ -570,8 +570,8 @@ namespace SWVL
 					m_LSBuffer.addBezier3x3(controlPoints) });
 			}
 
-			m_localSurfaceVertices.push_back(LocalSurfaceVertex(
-				m_LSIdxToLSBufferMap[m_loci[i].controlPointIndex], m_loci[i].controlPointCount, m_loci[i].matrixIndex, 0));
+			m_localSurfaceVertices[i] = LocalSurfaceVertex(
+				m_LSIdxToLSBufferMap[m_loci[i].controlPointIndex], m_loci[i].controlPointCount, m_loci[i].matrixIndex, 0);
 		}
 
 		auto end = std::chrono::high_resolution_clock::now();

@@ -33,9 +33,9 @@ const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "
 //using Lattice = SWVL::SWVulkanLattice;
 //#endif
 
-using Lattice = SWVL::SWVulkanLatticePreBuffer;
+//using Lattice = SWVL::SWVulkanLatticePreBuffer;
 //using Lattice = SWVL::SWVulkanLatticePre;
-//using Lattice = SWVL::SWVulkanLattice;
+using Lattice = SWVL::SWVulkanLattice;
 
 class LatticeExample : public VulkanExampleBase
 {

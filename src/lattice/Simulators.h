@@ -4,6 +4,10 @@
 
 #include <random>
 
+/*
+	Add a NormalScale simulator?
+*/
+
 namespace OML {
 
 	struct Random {

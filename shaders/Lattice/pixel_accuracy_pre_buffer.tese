@@ -107,34 +107,35 @@ Sampler sampleBuffer(int idx, float u, float v) {
 	float fi = u * (numSamplesU - 1);
 	float fj = v * (numSamplesV - 1);
 	int i = int(floor(fi));
-	int i_1 = int(ceil(fi));
-	int j = int(floor(fj));
-	int j_1 = int(ceil(fj));
-	
-	// Dont interpolate if the values are close to being integers?
-	
-	float factorU = fi - i;
-	float factorV = fj - j;
+	int j = int(floor(fj));	
+	float fu = fract(fi);
+	float fv = fract(fj);
 	
 	int c00 = j * numSamplesU + i;
-	int c10 = j * numSamplesU + i_1;
-	int c01 = j_1 * numSamplesU + i;
-	int c11 = j_1 * numSamplesU + i_1;
+	int c10 = j * numSamplesU + i + 1;
+	int c01 = (j + 1) * numSamplesU + i;
+	int c11 = (j + 1) * numSamplesU + i + 1;
 	
-	// Step two, linearly interpolate between neighbouring values
-	vec4 p0 = mix(lsDataBuffer.localSurfaceData[idx + c00], lsDataBuffer.localSurfaceData[idx + c10], factorU);
-	vec4 p1 = mix(lsDataBuffer.localSurfaceData[idx + c01], lsDataBuffer.localSurfaceData[idx + c11], factorU);
-	res.p = mix(p0, p1, factorV).xyz;
+	// Step two, linearly interpolate between neighbouring values	
+	vec3 p00 = lsDataBuffer.localSurfaceData[idx + c00].xyz;
+	vec3 p10 = lsDataBuffer.localSurfaceData[idx + c10].xyz;
+	vec3 p01 = lsDataBuffer.localSurfaceData[idx + c01].xyz;
+	vec3 p11 = lsDataBuffer.localSurfaceData[idx + c11].xyz;
+	res.p = (((1-fu)*p00+fu*p10)*(1-fv)+((1-fu)*p01+fu*p11)*fv);
 	
-	int offsetU = numSamplesU * numSamplesV;
-	vec4 u0 = mix(lsDataBuffer.localSurfaceData[idx + c00 + offsetU], lsDataBuffer.localSurfaceData[idx + c10 + offsetU], factorU);
-	vec4 u1 = mix(lsDataBuffer.localSurfaceData[idx + c01 + offsetU], lsDataBuffer.localSurfaceData[idx + c11 + offsetU], factorU);
-	res.u = mix(u0, u1, factorV).xyz;
+	int offsetU = numSamplesU * numSamplesV;	
+	vec3 u00 = lsDataBuffer.localSurfaceData[idx + c00 + offsetU].xyz;
+	vec3 u10 = lsDataBuffer.localSurfaceData[idx + c10 + offsetU].xyz;
+	vec3 u01 = lsDataBuffer.localSurfaceData[idx + c01 + offsetU].xyz;
+	vec3 u11 = lsDataBuffer.localSurfaceData[idx + c11 + offsetU].xyz;
+	res.u = (((1-fu)*u00+fu*u10)*(1-fv)+((1-fu)*u01+fu*u11)*fv);
 	
-	int offsetV = offsetU * 2;
-	vec4 v0 = mix(lsDataBuffer.localSurfaceData[idx + c00 + offsetV], lsDataBuffer.localSurfaceData[idx + c10 + offsetV], factorU);
-	vec4 v1 = mix(lsDataBuffer.localSurfaceData[idx + c01 + offsetV], lsDataBuffer.localSurfaceData[idx + c11 + offsetV], factorU);
-	res.v = mix(v0, v1, factorV).xyz;
+	int offsetV = offsetU * 2;	
+	vec3 v00 = lsDataBuffer.localSurfaceData[idx + c00 + offsetV].xyz;
+	vec3 v10 = lsDataBuffer.localSurfaceData[idx + c10 + offsetV].xyz;
+	vec3 v01 = lsDataBuffer.localSurfaceData[idx + c01 + offsetV].xyz;
+	vec3 v11 = lsDataBuffer.localSurfaceData[idx + c11 + offsetV].xyz;
+	res.v = (((1-fu)*v00+fu*v10)*(1-fv)+((1-fu)*v01+fu*v11)*fv);
 	
 	// Return the sampled values
 	return res;
