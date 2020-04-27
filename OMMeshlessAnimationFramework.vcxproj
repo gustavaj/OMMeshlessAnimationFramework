@@ -99,19 +99,20 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_WINDOWS;VK_USE_PLATFORM_WIN32_KHR;NOMINMAX;_USE_MATH_DEFINES;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>P:\Projects\master\VulkanSascha\Vulkan\external\imgui;P:\Projects\ExternalLibs\vcpkg\installed\x64-windows\include;C:\VulkanSDK\1.1.121.2\Include;C:\Users\Gustav\Desktop\OpenMesh-8.0\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>P:\Projects\master\VulkanSascha\Vulkan\external\imgui;P:\Projects\ExternalLibs\vcpkg\installed\x64-windows\include;C:\VulkanSDK\1.1.121.2\Include\shaderc;C:\VulkanSDK\1.1.121.2\Include;C:\Users\Gustav\Desktop\OpenMesh-8.0\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <EnableModules>false</EnableModules>
       <CompileAs>CompileAsCpp</CompileAs>
       <UseFullPaths>false</UseFullPaths>
       <OpenMPSupport>true</OpenMPSupport>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\Gustav\Desktop\OpenMesh-8.0\BUILD\Build\lib;P:\Projects\ExternalLibs\vcpkg\packages\glfw3_x64-windows\lib;C:\VulkanSDK\1.1.121.2\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3dll.lib;OpenMeshCored.lib;OpenMeshToolsd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.1.121.2\shaderc\BUILD\debug\libshaderc;C:\Users\Gustav\Desktop\OpenMesh-8.0\BUILD\debug\Build\lib;P:\Projects\ExternalLibs\vcpkg\packages\glfw3_x64-windows\lib;C:\VulkanSDK\1.1.121.2\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3dll.lib;OpenMeshCored.lib;OpenMeshToolsd.lib;shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
@@ -173,6 +174,7 @@
     <ClCompile Include="src\lattice\LocalSurfaceTexture.cpp" />
     <ClCompile Include="src\lattice\LocalSurfaceTextureBatch.cpp" />
     <ClCompile Include="src\lattice\Patch.cpp" />
+    <ClCompile Include="src\lattice\Shaders.cpp" />
     <ClCompile Include="src\lattice\Simulators.cpp" />
     <ClCompile Include="src\lattice\SWVulkanLattice.cpp" />
     <ClCompile Include="src\lattice\SWVulkanLatticePre.cpp" />
@@ -197,6 +199,7 @@
     <ClInclude Include="src\lattice\LocalSurfaceTexture.h" />
     <ClInclude Include="src\lattice\LocalSurfaceTextureBatch.h" />
     <ClInclude Include="src\lattice\Patch.h" />
+    <ClInclude Include="src\lattice\Shaders.h" />
     <ClInclude Include="src\lattice\Simulators.h" />
     <ClInclude Include="src\lattice\SWVulkanLattice.h" />
     <ClInclude Include="src\lattice\SWVulkanLatticePre.h" />

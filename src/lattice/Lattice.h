@@ -12,8 +12,12 @@
 #include "LatticeUtility.h"
 #include "Simulators.h"
 
+// Use the old way of creating local surface control points.
+// The new way works for T-junctions, but not well when its non planar
 //#define USE_OLD_LOCAL_SURFACE_METHOD
-#define TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+
+// Randomly move the middle controlpoint along the patch normal.
+//#define TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
 
 /*
 	In general, all local surface and patch orderings are left to right, top to bottom i.e.

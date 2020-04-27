@@ -8,6 +8,7 @@
 #include "../vulkan/VulkanUIOverlay.h"
 
 #include "Lattice.h"
+#include "Shaders.h"
 
 // TODO: Remove all dependencies on Sascha Willems' framework. Then rename.. Maybe not.
 
@@ -166,6 +167,7 @@ namespace SWVL
 		void setupDescriptorSetLayouts();
 		// Helper function to load a shader.
 		VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage);
+		VkPipelineShaderStageCreateInfo loadShader(std::string name, std::vector<uint32_t>& src, VkShaderStageFlagBits stage);
 		void preparePipelines();
 		void setupDescriptorPool();
 		void setupDescriptorSets();

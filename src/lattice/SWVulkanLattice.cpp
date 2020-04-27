@@ -744,6 +744,27 @@ namespace SWVL
 		return shaderStage;
 	}
 
+	VkPipelineShaderStageCreateInfo SWVulkanLattice::loadShader(std::string name, std::vector<uint32_t>& src, VkShaderStageFlagBits stage)
+	{
+		VkPipelineShaderStageCreateInfo shaderStage = {};
+		shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shaderStage.stage = stage;
+		if (m_shaderModules.find(name) == m_shaderModules.end()) {
+			VkShaderModule shaderModule;
+			VkShaderModuleCreateInfo moduleCreateInfo{};
+			moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			moduleCreateInfo.codeSize = src.size() * sizeof(uint32_t);
+			moduleCreateInfo.pCode = src.data();
+
+			VK_CHECK_RESULT(vkCreateShaderModule(*m_device, &moduleCreateInfo, NULL, &shaderModule));
+			m_shaderModules.insert({ name, shaderModule });
+		}
+		shaderStage.module = m_shaderModules[name];
+		shaderStage.pName = "main";
+		assert(shaderStage.module != VK_NULL_HANDLE);
+		return shaderStage;
+	}
+
 	void SWVulkanLattice::preparePipelines()
 	{
 		// Input Assembly States
@@ -830,8 +851,10 @@ namespace SWVL
 		vertexInputState.pVertexAttributeDescriptions = vertexInputAttributes.data();
 
 		std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
-		shaderStages[0] = loadShader("./shaders/LatticeHelpers/poscolorpass/poscolorpass.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		shaderStages[1] = loadShader("./shaders/LatticeHelpers/poscolorpass/poscolorpass.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		//shaderStages[0] = loadShader("./shaders/LatticeHelpers/poscolorpass/poscolorpass.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		//shaderStages[1] = loadShader("./shaders/LatticeHelpers/poscolorpass/poscolorpass.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		shaderStages[0] = loadShader(OML::Shaders::PosColorPassVertName, OML::Shaders::GetPosColorPassVert(), VK_SHADER_STAGE_VERTEX_BIT);
+		shaderStages[1] = loadShader(OML::Shaders::PosColorPassFragName, OML::Shaders::GetPosColorPassFrag(), VK_SHADER_STAGE_FRAGMENT_BIT);
 
 		VkGraphicsPipelineCreateInfo pipelineCreateInfo =
 			vks::initializers::pipelineCreateInfo(m_pipelineLayout, *m_renderPass, 0);

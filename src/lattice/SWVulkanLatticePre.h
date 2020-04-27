@@ -8,13 +8,6 @@
 /*
 	If running with debug layers turned on there will be a large CPU overhead from
 	the layer checking if the images are in the correct layout.
-
-
-	NEW PLAN:
-	-Bigger textures!
-	-Do something like 100(1000?) patches per texture (3 layers), batch draw calls
-	-For every patch, evaluate the local surfaces for that patch, i.e. ls1 from [0-0.5]^2
-	-Only buffer needed is matrices, maybe add normal matrices too?
 */
 
 namespace SWVL

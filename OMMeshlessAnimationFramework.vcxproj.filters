@@ -100,6 +100,9 @@
     <ClCompile Include="src\lattice\LocalSurfaceTexture.cpp">
       <Filter>lattice</Filter>
     </ClCompile>
+    <ClCompile Include="src\lattice\Shaders.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\lattice\Lattice.h">
@@ -193,6 +196,9 @@
       <Filter>lattice</Filter>
     </ClInclude>
     <ClInclude Include="src\lattice\LocalSurfaceTexture.h">
+      <Filter>lattice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\lattice\Shaders.h">
       <Filter>lattice</Filter>
     </ClInclude>
   </ItemGroup>

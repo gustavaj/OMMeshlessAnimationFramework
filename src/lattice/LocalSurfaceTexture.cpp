@@ -73,9 +73,9 @@ namespace SWVL {
 					p10 * bu[1] * bvd[0] + p11 * bu[1] * bvd[1] + p12 * bu[1] * bvd[2] +
 					p20 * bu[2] * bvd[0] + p21 * bu[2] * bvd[1] + p22 * bu[2] * bvd[2];
 
-				samples[j * numSamplesV + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
-				samples[1 * numSamples + j * numSamplesV + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
-				samples[2 * numSamples + j * numSamplesV + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
+				samples[j * numSamplesU + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
+				samples[1 * numSamples + j * numSamplesU + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
+				samples[2 * numSamples + j * numSamplesU + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
 				//samples[1 * numSamples + i * numSamplesU + j] = glm::normalize(glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f));
 				//samples[2 * numSamples + i * numSamplesU + j] = glm::normalize(glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f));
 			}
