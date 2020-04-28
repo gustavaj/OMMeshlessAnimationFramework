@@ -24,6 +24,8 @@
 #include "lattice/SWVulkanLatticePreBatched.h"
 #include "lattice/SWVulkanLatticePreBuffer.h"
 
+#include "lattice/Shaders.h"
+
 const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "Patches" };
 
 //#ifdef PRE_EVALUATE_LOCAL_SURFACES
@@ -71,6 +73,43 @@ public:
 	std::vector<OML::Vec2f> patchInputs;
 	std::vector<std::string> patchInputStrings;
 	std::vector<const char*> patchInputChars;
+
+	bool ShaderWindowOpen = false;
+	int ShaderItemIndex = 0;
+
+	std::vector<ImVec4> ShaderWordColors = {
+		ImVec4(1.0, 1.0, 1.0, 1.0),
+		ImVec4(0.6, 0.6, 0.6, 1.0),
+		ImVec4(1.0, 0.3, 0.2, 1.0),
+		ImVec4(1.0, 0.6, 0.2, 1.0),
+		ImVec4(0.7, 0.0, 1.0, 1.0),
+		ImVec4(0.0, 0.7, 0.7, 1.0),
+		ImVec4(0.0, 1.0, 0.0, 1.0)
+	};
+	std::unordered_map<std::string, size_t> GLSLWordMap = {
+		// Data types
+		{"bool", 2}, {"uint", 2}, {"uvec2", 2}, {"uvec3", 2}, {"uvec4", 2}, {"int", 2}, {"void", 2}, {"vec2", 2}, {"vec3", 2},
+		{"vec4", 2}, {"sampler2D", 2}, {"sampler2DArray", 2}, {"mat2", 2}, {"mat3", 2}, {"mat4", 2}, {"float", 2}, {"double", 2},
+
+		// built-in functions
+		{"radians", 3}, {"degrees", 3}, {"sin", 3}, {"cos", 3}, {"tan", 3}, {"pow", 3}, {"exp", 3}, {"sqrt", 3}, {"abs", 3},
+		{"sign", 3}, {"floor", 3}, {"round", 3}, {"ceil", 3}, {"fract", 3}, {"mod", 3}, {"min", 3}, {"max", 3}, {"clamp", 3},
+		{"mix", 3}, {"step", 3}, {"length", 3}, {"distance", 3}, {"dot", 3}, {"cross", 3}, {"normalize", 3}, {"reflect", 3},
+		{"transpose", 3}, {"determinant", 3}, {"inverse", 3}, {"texture", 3}, {"textureSize", 3}, {"texture2D", 3}, {"EmitVertex", 3},
+		{"EndPrimitive", 3},
+
+		// Macros
+		{"#", 4}, {"#define", 4}, {"#if", 4}, {"#ifdef", 4}, {"#ifndef", 4}, {"#else", 4}, {"#elif", 4}, {"#endif", 4}, {"#pragma", 4}, {"#version", 4},
+
+		// Something
+		{"attribute", 5}, {"const", 5}, {"uniform", 5}, {"varying", 5}, {"buffer", 5}, {"readonly", 5}, {"writeonly", 5}, {"struct", 5},
+		{"layout", 5}, {"flat", 5}, {"smooth", 5}, {"patch", 5}, {"sample", 5}, {"break", 5}, {"continue", 5}, {"do", 5}, {"for", 5},
+		{"while", 5}, {"switch", 5}, {"case", 5}, {"default", 5}, {"if", 5}, {"else", 5}, {"in", 5}, {"out", 5}, {"inout", 5}, {"true", 5},
+		{"false", 5}, {"invariant", 5}, {"discard", 5}, {"return", 5},
+
+		// Comments
+		{"//", 6}, {"/*", 6}, {"*/", 6},
+	};
 
 	LatticeExample(bool enableValidation)
 		: VulkanExampleBase(enableValidation)
@@ -381,13 +420,61 @@ public:
 
 			ImGui::PopStyleVar(1);
 		}
-		
+
 		for (auto& lat : lattices)
 		{
 			if (lat.onUpdateUIOverlay(overlay)) {
 				buildCommandBuffers();
 			}
-		}		
+		}
+
+		ImGui::Separator();
+
+		if (ImGui::Button("Shaders"))
+		{
+			ShaderWindowOpen = !ShaderWindowOpen;
+		}
+
+
+
+		if(ShaderWindowOpen) {
+			ImGui::SetNextWindowSize(ImVec2(600, 600));
+
+			ImGui::Begin("Shaders Viewer");
+
+			overlay->comboBox("Shaders##combo", &ShaderItemIndex, OML::Shaders::ShaderNames);
+			std::string code = OML::Shaders::ShaderSources[OML::Shaders::ShaderNames[ShaderItemIndex]];
+
+			int lineNr = 0;
+			std::string lineNrStr;
+			std::string line;
+			std::string word;
+
+			std::stringstream liness(code);
+
+			OML::Random rnd;
+
+			while (std::getline(liness, line, '\n'))
+			{
+				lineNrStr = (lineNr < 10 ? "00" : (lineNr < 100 ? "0" : "")) + std::to_string(++lineNr) + ": ";
+
+				ImGui::TextColored(ShaderWordColors[1], lineNrStr.c_str());
+
+				std::stringstream wordss(line);
+				while (std::getline(wordss, word, ' '))
+				{
+					int colIdx = 0;
+					auto res = GLSLWordMap.find(word);
+					if (res != GLSLWordMap.end()) colIdx = res->second;
+					ImGui::SameLine();
+					ImGui::TextColored(ShaderWordColors[colIdx], word.c_str());
+				}
+			}
+
+			if (ImGui::Button("Close##Shaders")) ShaderWindowOpen = false;
+
+			ImGui::End();
+		}
 	}
 
 };

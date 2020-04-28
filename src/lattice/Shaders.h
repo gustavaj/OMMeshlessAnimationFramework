@@ -88,6 +88,7 @@ namespace OML {
 
 		static std::unordered_map<std::string, std::vector<uint32_t>> SpirvMap;
 		static std::unordered_map<std::string, std::string> ShaderSources;
+		static std::vector<std::string> ShaderNames;
 		/*static shaderc::Compiler Compiler;
 		static shaderc::CompileOptions Options;*/
 
