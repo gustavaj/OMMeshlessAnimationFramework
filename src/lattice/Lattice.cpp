@@ -228,11 +228,9 @@ namespace OML
 			topLeft += dh;
 		}
 
-		Random rng;
-
 		int count = vertices.size();
 		for (size_t i = 0; i < count * 2; i++) {
-			std::swap(vertices[rng.random(0, count)], vertices[rng.random(0, count)]);
+			std::swap(vertices[m_rng.random(0, count)], vertices[m_rng.random(0, count)]);
 		}
 
 		for (size_t i = 0; i < count; i++) {
@@ -745,6 +743,7 @@ namespace OML
 		locus.controlPointCount = controlPointCount;
 		locus.boundaryIndices = boundaryIndices;
 		locus.matrixIndex = m_matrices.size() - 1;
+		locus.color = glm::vec3(m_rng.random(0.2f, 1.0f), m_rng.random(0.2f, 1.0f), m_rng.random(0.2f, 1.0f));
 
 		// Find the average normal vector over all the patches for the locus
 		Vec3f p = point(vertex);

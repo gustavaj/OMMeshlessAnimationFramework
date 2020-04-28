@@ -1,5 +1,8 @@
 #include "SWVulkanLatticePreBatched.h"
 
+#include "Shaders.h"
+#include <chrono>
+
 namespace SWVL
 {
 
@@ -167,15 +170,15 @@ namespace SWVL
 				vkCmdDraw(commandBuffer, m_batchInfo[i].count, 1, m_batchInfo[i].index, 0);
 			}
 
-			/*if (m_drawNormals)
+			if (m_drawNormals)
 			{
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_normalPipeline);
-				for (size_t i = 0; i < m_samplerDescriptorSets.size(); i++)
+				for (size_t i = 0; i < m_batchDescSets.size(); i++)
 				{
-					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 1, 1, &m_samplerDescriptorSets[i], 0, NULL);
-					vkCmdDraw(commandBuffer, 4, 1, i * 4, 0);
+					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 1, 1, &m_batchDescSets[i], 0, NULL);
+					vkCmdDraw(commandBuffer, m_batchInfo[i].count, 1, m_batchInfo[i].index, 0);
 				}
-			}*/
+			}
 		}
 
 		// Draw local surfaces
@@ -570,6 +573,7 @@ namespace SWVL
 		{
 			m_localSurfaceVertices.push_back(LocalSurfaceVertex(
 				m_loci[i].controlPointIndex, m_loci[i].controlPointCount, m_loci[i].matrixIndex, 0));
+			m_localSurfaceVertices.back().color = m_loci[i].color;
 
 			// Evaluate local surfaces and load them as textures.
 			/*auto res = m_localSurfaceTextures.find(m_loci[i].controlPointIndex);
@@ -831,8 +835,32 @@ namespace SWVL
 		return shaderStage;
 	}
 
+	VkPipelineShaderStageCreateInfo SWVulkanLatticePreBatched::loadShader(std::pair<std::string, std::vector<uint32_t>&> src, VkShaderStageFlagBits stage)
+	{
+		VkPipelineShaderStageCreateInfo shaderStage = {};
+		shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shaderStage.stage = stage;
+		if (m_shaderModules.find(src.first) == m_shaderModules.end()) {
+			VkShaderModule shaderModule;
+			VkShaderModuleCreateInfo moduleCreateInfo{};
+			moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			moduleCreateInfo.codeSize = src.second.size() * sizeof(uint32_t);
+			moduleCreateInfo.pCode = src.second.data();
+
+			VK_CHECK_RESULT(vkCreateShaderModule(*m_device, &moduleCreateInfo, NULL, &shaderModule));
+			m_shaderModules.insert({ src.first, shaderModule });
+		}
+		shaderStage.module = m_shaderModules[src.first];
+		shaderStage.pName = "main";
+		assert(shaderStage.module != VK_NULL_HANDLE);
+		return shaderStage;
+	}
+
 	void SWVulkanLatticePreBatched::preparePipelines()
 	{
+		auto start = std::chrono::high_resolution_clock::now();
+		std::cout << "Preparing pipelines" << std::endl;
+
 		// Input Assembly States
 		VkPipelineInputAssemblyStateCreateInfo lineInputAssemblyState =
 			vks::initializers::pipelineInputAssemblyStateCreateInfo(
@@ -917,8 +945,8 @@ namespace SWVL
 		vertexInputState.pVertexAttributeDescriptions = vertexInputAttributes.data();
 
 		std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
-		shaderStages[0] = loadShader("./shaders/LatticeHelpers/poscolorpass/poscolorpass.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		shaderStages[1] = loadShader("./shaders/LatticeHelpers/poscolorpass/poscolorpass.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		shaderStages[0] = loadShader(OML::Shaders::GetPosColorPassVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
+		shaderStages[1] = loadShader(OML::Shaders::GetUintFlatColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
 
 		VkGraphicsPipelineCreateInfo pipelineCreateInfo =
 			vks::initializers::pipelineCreateInfo(m_pipelineLayout, *m_renderPass, 0);
@@ -959,47 +987,24 @@ namespace SWVL
 			vks::initializers::pipelineTessellationStateCreateInfo(1);
 		pipelineCreateInfo.pTessellationState = &tessellationState;
 
+		OML::ShaderOptions options = {};
+		options.numControl = m_controlPoints.size();
+		options.numLocal = m_matrices.size();
+		options.numPatches = m_patches.size();
+		options.numSamplesU = NUM_SAMPLES_U_BATCH;
+		options.numSamplesV = NUM_SAMPLES_V_BATCH;
+		options.maxError = 1.0f;
+		options.normalLength = 10.0f;
+
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier;
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Pre_Sampled_Image_Batched;
+
 		std::array<VkPipelineShaderStageCreateInfo, 4> localShaderStages;
-		struct SpecializationData {
-			int numLocalSurfacesControlPoints;
-			int numLocalSurfaces;
-			int numPatches;
-			int numSamplesU;
-			int numSamplesV;
-		} specializationData;
-		specializationData.numLocalSurfacesControlPoints = m_controlPoints.size();
-		specializationData.numLocalSurfaces = m_matrices.size();
-		specializationData.numPatches = m_patches.size();
-		specializationData.numSamplesU = NUM_SAMPLES_U_BATCH;
-		specializationData.numSamplesV = NUM_SAMPLES_V_BATCH;
-		std::array<VkSpecializationMapEntry, 5> specializationMapEntries;
-		specializationMapEntries[0].constantID = 0;
-		specializationMapEntries[0].size = sizeof(specializationData.numLocalSurfacesControlPoints);
-		specializationMapEntries[0].offset = offsetof(SpecializationData, numLocalSurfacesControlPoints);
-		specializationMapEntries[1].constantID = 1;
-		specializationMapEntries[1].size = sizeof(specializationData.numLocalSurfaces);
-		specializationMapEntries[1].offset = offsetof(SpecializationData, numLocalSurfaces);
-		specializationMapEntries[2].constantID = 2;
-		specializationMapEntries[2].size = sizeof(specializationData.numPatches);
-		specializationMapEntries[2].offset = offsetof(SpecializationData, numPatches);
-		specializationMapEntries[3].constantID = 3;
-		specializationMapEntries[3].size = sizeof(specializationData.numSamplesU);
-		specializationMapEntries[3].offset = offsetof(SpecializationData, numSamplesU);
-		specializationMapEntries[4].constantID = 4;
-		specializationMapEntries[4].size = sizeof(specializationData.numSamplesV);
-		specializationMapEntries[4].offset = offsetof(SpecializationData, numSamplesV);
-
-		VkSpecializationInfo specializationInfo = {};
-		specializationInfo.dataSize = sizeof(specializationData);
-		specializationInfo.mapEntryCount = static_cast<uint32_t>(specializationMapEntries.size());
-		specializationInfo.pMapEntries = specializationMapEntries.data();
-		specializationInfo.pData = &specializationData;
-
-		localShaderStages[0] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		localShaderStages[1] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		localShaderStages[2] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		localShaderStages[2].pSpecializationInfo = &specializationInfo;
-		localShaderStages[3] = loadShader("./shaders/LatticeHelpers/localsurfaces/bezier3x3.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		localShaderStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
+		localShaderStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(1), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		localShaderStages[2] = loadShader(OML::Shaders::GetTeseShader(lsType, OML::TeseShaderType::Local, OML::EvaluationMethod::Direct, options), 
+			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		localShaderStages[3] = loadShader(OML::Shaders::GetFlatColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(localShaderStages.size());
 		pipelineCreateInfo.pStages = localShaderStages.data();
 
@@ -1014,11 +1019,11 @@ namespace SWVL
 		pipelineCreateInfo.pTessellationState = &bsTessState;
 
 		std::array<VkPipelineShaderStageCreateInfo, 4> bsShaderStages;
-		bsShaderStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		bsShaderStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		bsShaderStages[2] = loadShader("./shaders/Lattice/lattice_sampled_batched.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		bsShaderStages[2].pSpecializationInfo = &specializationInfo;
-		bsShaderStages[3] = loadShader("./shaders/Lattice/lattice.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		bsShaderStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
+		bsShaderStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		bsShaderStages[2] = loadShader(OML::Shaders::GetTeseShader(lsType, OML::TeseShaderType::Lattice, evalMethod, options), 
+			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		bsShaderStages[3] = loadShader(OML::Shaders::GetShadedColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(bsShaderStages.size());
 		pipelineCreateInfo.pStages = bsShaderStages.data();
 
@@ -1028,41 +1033,45 @@ namespace SWVL
 		rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_patchPipeline));
 
-		/*std::array<VkPipelineShaderStageCreateInfo, 4> surfaceAccuractStages;
-		surfaceAccuractStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		surfaceAccuractStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		surfaceAccuractStages[2] = loadShader("./shaders/Lattice/surf_accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		surfaceAccuractStages[2].pSpecializationInfo = &specializationInfo;
-		surfaceAccuractStages[3] = loadShader("./shaders/LatticeHelpers/localsurfaces/local_sampled.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-		surfaceAccuractStages[3].pSpecializationInfo = &specializationInfo;
+		std::array<VkPipelineShaderStageCreateInfo, 4> surfaceAccuractStages;
+		surfaceAccuractStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
+		surfaceAccuractStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		surfaceAccuractStages[2] = loadShader(OML::Shaders::GetTeseShader(lsType, OML::TeseShaderType::Surf_Accuracy, evalMethod, options), 
+			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		surfaceAccuractStages[3] = loadShader(OML::Shaders::GetFlatColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(surfaceAccuractStages.size());
-		pipelineCreateInfo.pStages = surfaceAccuractStages.data();*/
+		pipelineCreateInfo.pStages = surfaceAccuractStages.data();
 
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_displaySurfaceAccuracyPipeline));
 
 		std::array<VkPipelineShaderStageCreateInfo, 4> pixelAccuractStages;
-		pixelAccuractStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		pixelAccuractStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		pixelAccuractStages[2] = loadShader("./shaders/Lattice/pixel_accuracy.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		pixelAccuractStages[2].pSpecializationInfo = &specializationInfo;
-		pixelAccuractStages[3] = loadShader("./shaders/Lattice/pixel_accuracy.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-		pixelAccuractStages[3].pSpecializationInfo = &specializationInfo;
+		pixelAccuractStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
+		pixelAccuractStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		pixelAccuractStages[2] = loadShader(OML::Shaders::GetTeseShader(lsType, OML::TeseShaderType::Pixel_Accuracy, evalMethod, options), 
+			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		pixelAccuractStages[3] = loadShader(OML::Shaders::GetBiQuadLatticePixelAccuracyFragShader(
+			options.numControl, options.numLocal, options.numPatches), VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(pixelAccuractStages.size());
 		pipelineCreateInfo.pStages = pixelAccuractStages.data();
 
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_displayPixelAccuracyPipeline));
 
 		std::array<VkPipelineShaderStageCreateInfo, 5> normalShaderStages;
-		normalShaderStages[0] = loadShader("./shaders/Lattice/lattice.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		normalShaderStages[1] = loadShader("./shaders/Lattice/lattice.tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-		normalShaderStages[2] = loadShader("./shaders/Lattice/normals.tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		normalShaderStages[2].pSpecializationInfo = &specializationInfo;
-		normalShaderStages[3] = loadShader("./shaders/Lattice/normals.geom.spv", VK_SHADER_STAGE_GEOMETRY_BIT);
-		normalShaderStages[4] = loadShader("./shaders/Lattice/normals.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		normalShaderStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
+		normalShaderStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		normalShaderStages[2] = loadShader(OML::Shaders::GetTeseShader(lsType, OML::TeseShaderType::Normals, evalMethod, options),  
+			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		normalShaderStages[3] = loadShader(OML::Shaders::GetLatticeNormalsGeomShader(8.0f), VK_SHADER_STAGE_GEOMETRY_BIT);
+		normalShaderStages[4] = loadShader(OML::Shaders::GetFlatColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(normalShaderStages.size());
 		pipelineCreateInfo.pStages = normalShaderStages.data();
 
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_normalPipeline));
+
+		auto end = std::chrono::high_resolution_clock::now();
+		auto time = std::chrono::duration<double, std::milli>(end - start).count();
+
+		std::cout << "Preparing pipelines time: " << time << "ms" << std::endl;
 	}
 
 	void SWVulkanLatticePreBatched::setupDescriptorPool()

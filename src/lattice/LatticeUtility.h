@@ -1,6 +1,29 @@
+#pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/hash.hpp>
 
 namespace OML {
+
+
+	/*
+		Not in use, currently only one possible local surface, will probably not change.
+	*/
+	enum class LocalSurfaceType
+	{
+		Quadratic_Bezier = 0,
+		Cubic_Bezier
+	};
+
+	enum class EvaluationMethod
+	{
+		Direct = 0,
+		Pre_Sampled_Image,
+		Pre_Sampled_Image_Batched,
+		Pre_Sampled_Buffer
+	};
 
 	// This does seem to be working..
 	struct GLMVec3KeyFuncs

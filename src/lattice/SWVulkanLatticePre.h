@@ -91,6 +91,7 @@ namespace SWVL
 		void setupDescriptorSetLayouts();
 		// Helper function to load a shader.
 		VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage);
+		VkPipelineShaderStageCreateInfo loadShader(std::pair<std::string, std::vector<uint32_t>&> src, VkShaderStageFlagBits stage);
 		void preparePipelines();
 		void setupDescriptorPool();
 		void setupDescriptorSets();

@@ -2,11 +2,6 @@
 
 #include <OpenMesh/Core/Mesh/PolyMesh_ArrayKernelT.hh>
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/hash.hpp>
-
 #include <unordered_map>
 
 #include "LatticeUtility.h"
@@ -17,7 +12,7 @@
 //#define USE_OLD_LOCAL_SURFACE_METHOD
 
 // Randomly move the middle controlpoint along the patch normal.
-//#define TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+#define TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
 
 /*
 	In general, all local surface and patch orderings are left to right, top to bottom i.e.
@@ -51,14 +46,6 @@ namespace OML {
 	using Col3 = OpenMesh::Vec3uc;
 
 	/*
-		Not in use, currently only one possible local surface, will probably not change.
-	*/
-	enum class LocalSurfaceType
-	{
-		Bezier3x3 = 0
-	};
-
-	/*
 		The loci are located at the knots. At every locus, there is one local surface.
 		This is made up from the points:
 		[m_controlPoints[controlPointIndex], m_controlPoints[controlPointIndex + controlPointCount]]
@@ -76,6 +63,7 @@ namespace OML {
 		uint32_t controlPointCount;
 		uint32_t matrixIndex;
 		Vec3f normal;
+		glm::vec3 color;
 		std::unordered_map<uint32_t, uint32_t> boundaryIndices;
 	};
 

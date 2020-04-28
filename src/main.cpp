@@ -23,7 +23,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow)
 {
-	std::cerr << "asd" << std::endl;
+	std::cerr << "qwe" << std::endl;
 	for (size_t i = 0; i < __argc; i++) { LatticeExample::args.push_back(__argv[i]); };
 	
 	// Base example

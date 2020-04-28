@@ -34,14 +34,14 @@ const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "
 //using Lattice = SWVL::SWVulkanLattice;
 //#endif
 
-// Pre-eval with buffers
-//using Lattice = SWVL::SWVulkanLatticePreBuffer;
-
 // Pre-eval with images, one image per local
 //using Lattice = SWVL::SWVulkanLatticePre;
 
 // Pre-eval with images, multiple patches per image
 //using Lattice = SWVL::SWVulkanLatticePreBatched;
+
+// Pre-eval with buffers
+//using Lattice = SWVL::SWVulkanLatticePreBuffer;
 
 // Direct evaluation
 using Lattice = SWVL::SWVulkanLattice;
