@@ -176,10 +176,7 @@
     <ClCompile Include="src\lattice\Patch.cpp" />
     <ClCompile Include="src\lattice\Shaders.cpp" />
     <ClCompile Include="src\lattice\Simulators.cpp" />
-    <ClCompile Include="src\lattice\SWVulkanLattice.cpp" />
-    <ClCompile Include="src\lattice\SWVulkanLatticePre.cpp" />
-    <ClCompile Include="src\lattice\SWVulkanLatticePreBatched.cpp" />
-    <ClCompile Include="src\lattice\SWVulkanLatticePreBuffer.cpp" />
+    <ClCompile Include="src\lattice\VulkanLattice.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\vulkan\imgui.cpp" />
     <ClCompile Include="src\vulkan\imgui_demo.cpp" />
@@ -201,10 +198,7 @@
     <ClInclude Include="src\lattice\Patch.h" />
     <ClInclude Include="src\lattice\Shaders.h" />
     <ClInclude Include="src\lattice\Simulators.h" />
-    <ClInclude Include="src\lattice\SWVulkanLattice.h" />
-    <ClInclude Include="src\lattice\SWVulkanLatticePre.h" />
-    <ClInclude Include="src\lattice\SWVulkanLatticePreBatched.h" />
-    <ClInclude Include="src\lattice\SWVulkanLatticePreBuffer.h" />
+    <ClInclude Include="src\lattice\VulkanLattice.h" />
     <ClInclude Include="src\vulkan\benchmark.hpp" />
     <ClInclude Include="src\vulkan\camera.hpp" />
     <ClInclude Include="src\vulkan\frustum.hpp" />

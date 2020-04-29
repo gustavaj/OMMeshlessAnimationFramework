@@ -19,40 +19,19 @@
 #include "vulkan/VulkanBuffer.hpp"
 #include "vulkan/VulkanModel.hpp"
 
-#include "lattice/SWVulkanLattice.h"
-#include "lattice/SWVulkanLatticePre.h"
-#include "lattice/SWVulkanLatticePreBatched.h"
-#include "lattice/SWVulkanLatticePreBuffer.h"
+#include "lattice/VulkanLattice.h"
 
 #include "lattice/Shaders.h"
 
 const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "Patches" };
-
-//#ifdef PRE_EVALUATE_LOCAL_SURFACES
-//using Lattice = SWVL::SWVulkanLatticePre;
-//#elseif PRE_EVALUATE_LOCAL_SURFACES_BUFFER
-//using Lattice = SWVL::SWVulkanLatticePreBuffer;
-//#else
-//using Lattice = SWVL::SWVulkanLattice;
-//#endif
-
-// Pre-eval with images, one image per local
-//using Lattice = SWVL::SWVulkanLatticePre;
-
-// Pre-eval with images, multiple patches per image
-//using Lattice = SWVL::SWVulkanLatticePreBatched;
-
-// Pre-eval with buffers
-//using Lattice = SWVL::SWVulkanLatticePreBuffer;
-
-// Direct evaluation
-using Lattice = SWVL::SWVulkanLattice;
+const std::vector<std::string> EVALUATION_METHODS = { "Direct", "PreSampledImg", "PreSampledImgBatched", "PreSampledBuffer" };
+const std::vector<std::string> LOCAL_SURFACE_TYPES = { "Biquadratic Bezier", "Bicubic Bezier" };
 
 class LatticeExample : public VulkanExampleBase
 {
 public:
 
-	std::vector<Lattice> lattices;
+	std::vector<OML::VulkanLattice> lattices;
 
 	// Variables used for lattice creation
 	int latticeCreateTypeIndex = 0;
@@ -66,6 +45,9 @@ public:
 	int latticeDeleteIdx = 0;
 	char latticeName[64] = "Lattice";
 	std::vector<std::string> latticeNames;
+
+	int evalMethodIdx = 0;
+	int lsTypeIdx = 0;
 
 	float patchTopLeftX = 0.0f, patchTopLeftY = 0.0f;
 	float patchWidth = 10.0f, patchHeight = 10.0f;
@@ -84,7 +66,8 @@ public:
 		ImVec4(1.0, 0.6, 0.2, 1.0),
 		ImVec4(0.7, 0.0, 1.0, 1.0),
 		ImVec4(0.0, 0.7, 0.7, 1.0),
-		ImVec4(0.0, 1.0, 0.0, 1.0)
+		ImVec4(0.0, 1.0, 0.0, 1.0),
+		ImVec4(0.7, 0.2, 0.3, 1.0)
 	};
 	std::unordered_map<std::string, size_t> GLSLWordMap = {
 		// Data types
@@ -109,6 +92,9 @@ public:
 
 		// Comments
 		{"//", 6}, {"/*", 6}, {"*/", 6},
+
+		// gl_ stuff
+		{"gl_Position", 7}, {"gl_PointSize", 7}, {"gl_InvocationID", 7}, {"gl_TessLevelInner", 7}, {"gl_TessLevelOuter", 7}, {"gl_TessCoord", 7}, {"gl_FragCoord", 7},
 	};
 
 	LatticeExample(bool enableValidation)
@@ -130,8 +116,9 @@ public:
 
 	~LatticeExample()
 	{
-		for (auto& lat : lattices)
+		for (auto& lat : lattices) {
 			lat.destroyVulkanStuff();
+		}
 	}
 
 	void setupAnimation()
@@ -145,7 +132,7 @@ public:
 	}
 
 	virtual void getEnabledFeatures() override {
-		Lattice::CheckAndSetupRequiredPhysicalDeviceFeatures(deviceFeatures, enabledFeatures);
+		OML::VulkanLattice::CheckAndSetupRequiredPhysicalDeviceFeatures(deviceFeatures, enabledFeatures);
 	}
 
 	void loadAssets() {
@@ -256,9 +243,11 @@ public:
 		}
 	}
 
-	void addLattice(Lattice& lattice) 
+	void addLattice(OML::VulkanLattice& lattice)
 	{
 		lattice.setName(lattice.name() + "##" + std::to_string(latticeIdx));
+		lattice.setLocalSurfaceType(static_cast<OML::LocalSurfaceType>(lsTypeIdx));
+		lattice.setEvaluationMethod(static_cast<OML::EvaluationMethod>(evalMethodIdx));
 		lattice.induceLattice();
 		lattice.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		lattice.onViewChanged(camera.matrices.perspective, camera.matrices.view);
@@ -304,6 +293,8 @@ public:
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(5.0f, 1.0f));
 
 			ImGui::BeginGroup();
+
+			overlay->comboBox("lsType", &lsTypeIdx, LOCAL_SURFACE_TYPES);
 
 			overlay->comboBox("Type", &latticeCreateTypeIndex, LATTICE_TYPES);
 			ImGui::InputText("Name", latticeName, IM_ARRAYSIZE(latticeName));
@@ -365,6 +356,7 @@ public:
 			ImGui::EndGroup();
 			ImGui::SameLine();
 			ImGui::BeginGroup();
+			overlay->comboBox("evalMethod", &evalMethodIdx, EVALUATION_METHODS);
 
 			ImGui::Text("Translate");
 			ImGui::InputFloat("x##t", &c_pos[0], 0.5f, 1.0f, "%.1f");
@@ -380,7 +372,7 @@ public:
 
 			if (overlay->button("Add"))
 			{
-				Lattice lat;
+				OML::VulkanLattice lat;
 				lat.setName(std::string(latticeName));
 				glm::mat4 mat = glm::translate(glm::mat4(1.0f), c_pos);
 				if (c_rot[2] != 0.0f) mat = glm::rotate(mat, c_rot[2], glm::vec3(0, 0, 1));
@@ -492,7 +484,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		Lattice lat("Grid Lattice");
+		OML::VulkanLattice lat("Grid Lattice");
 		lat.setUseRandomPatchColors(true);
 		lat.addGrid(OML::Vec2f(-m_width / 2, -m_height / 2), m_width, m_height, m_rows, m_cols);
 		addLattice(lat);
@@ -512,7 +504,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		Lattice lat("Random Grid Lattice");
+		OML::VulkanLattice lat("Random Grid Lattice");
 		lat.setUseRandomPatchColors(true);
 		lat.addGridRandom(OML::Vec2f(-m_width / 2, -m_height / 2), m_width, m_height, m_rows, m_cols);
 		addLattice(lat);
@@ -532,7 +524,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		Lattice lat("Cylinder Lattice");
+		OML::VulkanLattice lat("Cylinder Lattice");
 		lat.setUseRandomPatchColors(true);
 		lat.addCylinder(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_height, m_rows, m_cols);
 		addLattice(lat);
@@ -552,7 +544,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		Lattice lat("Sphere Lattice");
+		OML::VulkanLattice lat("Sphere Lattice");
 		lat.setUseRandomPatchColors(true);
 		lat.addSphere(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_segments, m_slices);
 		addLattice(lat);
@@ -569,7 +561,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		Lattice lat("Non uniform Lattice");
+		OML::VulkanLattice lat("Non uniform Lattice");
 		lat.setUseRandomPatchColors(true);
 		OML::Vec3f p00(-30, -20, 0), p10(0, -20, 0), p20(10, -20, 0), p30(20, -20, 0);
 		OML::Vec3f p01(-30, 0, 0),	p11(0, 0, 0),	p21(10, 0, 0), p31(20, 0, 0);
@@ -598,7 +590,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		Lattice lat("Non-rectangular Lattice");
+		OML::VulkanLattice lat("Non-rectangular Lattice");
 		lat.setUseRandomPatchColors(true);
 		// Grid where quads have angles != 90
 		lat.addPatch(OML::Vec2f(-6,-15), OML::Vec2f(0,-10), OML::Vec2f(-15,-5), OML::Vec2f(0,0));
@@ -624,7 +616,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		Lattice lat("T-locus Lattice");
+		OML::VulkanLattice lat("T-locus Lattice");
 		lat.setUseRandomPatchColors(true);
 
 		/*lat.addPatch(OML::Vec2f(-20.0f, -20.0f), 10.0f, 10.0f);
@@ -661,7 +653,7 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
-		Lattice lat("T-locus x4 Lattice");
+		OML::VulkanLattice lat("T-locus x4 Lattice");
 		lat.setUseRandomPatchColors(true);
 
 		lat.addPatch(OML::Vec2f(-30, -30), 10, 10);
@@ -716,21 +708,21 @@ public:
 	virtual void createLatticeGeometry() override
 	{
 
-		Lattice lat("Grid Lattice");
+		OML::VulkanLattice lat("Grid Lattice");
 		lat.setUseRandomPatchColors(true);
 		lat.addGrid(OML::Vec2f(-25.0f, -25.0f), 20.0f, 20.0f, 3, 3);
 		lat.induceLattice();
 		lat.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		addLattice(lat);
 
-		Lattice lat2("Cylinder Lattice");
+		OML::VulkanLattice lat2("Cylinder Lattice");
 		lat2.setUseRandomPatchColors(true);
 		lat2.addCylinder(OML::Vec3f(20.0f, 0.0f, -30.0f), 10.0f, 30.0f, 4, 8);
 		lat2.induceLattice();
 		lat2.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		addLattice(lat2);
 
-		Lattice lat3("Sphere Lattice");
+		OML::VulkanLattice lat3("Sphere Lattice");
 		lat3.setUseRandomPatchColors(true);
 		lat3.addSphere(OML::Vec3f(0.0f, -20.0f, 20.0f), 8.0f, 6, 6);
 		lat3.induceLattice();

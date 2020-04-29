@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace SWVL {
+namespace OML {
 
 	struct LocalSurfaceData {
 		std::vector<glm::vec4> positions;

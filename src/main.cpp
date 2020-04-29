@@ -5,9 +5,9 @@
 	Some code from prototype
 */
 
-//#define PRE_EVALUATE_LOCAL_SURFACES
-//#define PRE_EVALUATE_LOCAL_SURFACES_BUFFER
 #include "LatticeExample.cpp"
+
+// TODO: Right now resources are not properly deleted when lattices are added from the menu
 
 const bool debug = true;
 
@@ -23,7 +23,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow)
 {
-	std::cerr << "qwe" << std::endl;
+	std::cerr << "asd" << std::endl;
 	for (size_t i = 0; i < __argc; i++) { LatticeExample::args.push_back(__argv[i]); };
 	
 	// Base example

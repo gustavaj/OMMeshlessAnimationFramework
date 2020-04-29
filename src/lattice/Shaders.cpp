@@ -27,7 +27,7 @@ namespace OML {
 		}
 	}
 
-	void Shaders::PrintShader(std::string name, std::string source)
+	void Shaders::PrintShader(std::string name, std::string& source)
 	{
 		std::cout << "\nShader " << name << " Source:\n";
 		int line = 0;
@@ -614,12 +614,13 @@ namespace OML {
 		return { name, Shaders::SpirvMap[name] };
 	}
 
-	void Shaders::LoadSpirv(std::string name, std::string source, shaderc_shader_kind type)
+	void Shaders::LoadSpirv(std::string name, std::string& source, shaderc_shader_kind type)
 	{
 		shaderc::Compiler compiler;
-		shaderc::CompileOptions options;
-		options.SetSourceLanguage(shaderc_source_language_glsl);
-		shaderc::SpvCompilationResult res = compiler.CompileGlslToSpv(source, type, name.c_str(), options);
+		//shaderc::CompileOptions options;
+		// This optimization thing adds a lot of cpu cost, like 10x, should try to test if it gives any benefit.
+		//options.SetOptimizationLevel(shaderc_optimization_level::shaderc_optimization_level_performance);
+		shaderc::SpvCompilationResult res = compiler.CompileGlslToSpv(source, type, name.c_str()/*, options*/);
 		if (res.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
 			std::cout << "Error when compiling shader " << name << "\n"

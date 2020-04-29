@@ -1,6 +1,6 @@
 #include "LocalSurfaceBuffer.h"
 
-namespace SWVL {
+namespace OML {
 
 	uint32_t LocalSurfaceBuffer::addBezier3x3(std::vector<glm::vec3> controlPoints)
 	{

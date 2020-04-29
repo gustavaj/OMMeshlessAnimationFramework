@@ -1,6 +1,6 @@
 #include "LocalSurfaceTextureBatch.h"
 
-namespace SWVL {
+namespace OML {
 
 	LocalSurfaceTextureBatch::LocalSurfaceTextureBatch()
 		: LocalSurfaceTextureBatch(10, 10, 10, 10, VK_NULL_HANDLE, nullptr, VK_NULL_HANDLE, VK_NULL_HANDLE, nullptr)

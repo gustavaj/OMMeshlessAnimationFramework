@@ -50,9 +50,6 @@
     <ClCompile Include="src\lattice\Simulators.cpp">
       <Filter>lattice</Filter>
     </ClCompile>
-    <ClCompile Include="src\lattice\SWVulkanLattice.cpp">
-      <Filter>lattice</Filter>
-    </ClCompile>
     <ClCompile Include="src\vulkan\imgui.cpp">
       <Filter>vulkan</Filter>
     </ClCompile>
@@ -82,16 +79,7 @@
     </ClCompile>
     <ClCompile Include="src\LatticeExample.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\lattice\SWVulkanLatticePre.cpp">
-      <Filter>lattice</Filter>
-    </ClCompile>
     <ClCompile Include="src\lattice\LocalSurfaceBuffer.cpp">
-      <Filter>lattice</Filter>
-    </ClCompile>
-    <ClCompile Include="src\lattice\SWVulkanLatticePreBuffer.cpp">
-      <Filter>lattice</Filter>
-    </ClCompile>
-    <ClCompile Include="src\lattice\SWVulkanLatticePreBatched.cpp">
       <Filter>lattice</Filter>
     </ClCompile>
     <ClCompile Include="src\lattice\LocalSurfaceTextureBatch.cpp">
@@ -101,6 +89,9 @@
       <Filter>lattice</Filter>
     </ClCompile>
     <ClCompile Include="src\lattice\Shaders.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
+    <ClCompile Include="src\lattice\VulkanLattice.cpp">
       <Filter>lattice</Filter>
     </ClCompile>
   </ItemGroup>
@@ -118,9 +109,6 @@
       <Filter>lattice</Filter>
     </ClInclude>
     <ClInclude Include="src\lattice\Simulators.h">
-      <Filter>lattice</Filter>
-    </ClInclude>
-    <ClInclude Include="src\lattice\SWVulkanLattice.h">
       <Filter>lattice</Filter>
     </ClInclude>
     <ClInclude Include="src\vulkan\benchmark.hpp">
@@ -180,16 +168,7 @@
     <ClInclude Include="src\vulkan\VulkanUIOverlay.h">
       <Filter>vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="src\lattice\SWVulkanLatticePre.h">
-      <Filter>lattice</Filter>
-    </ClInclude>
     <ClInclude Include="src\lattice\LocalSurfaceBuffer.h">
-      <Filter>lattice</Filter>
-    </ClInclude>
-    <ClInclude Include="src\lattice\SWVulkanLatticePreBuffer.h">
-      <Filter>lattice</Filter>
-    </ClInclude>
-    <ClInclude Include="src\lattice\SWVulkanLatticePreBatched.h">
       <Filter>lattice</Filter>
     </ClInclude>
     <ClInclude Include="src\lattice\LocalSurfaceTextureBatch.h">
@@ -199,6 +178,9 @@
       <Filter>lattice</Filter>
     </ClInclude>
     <ClInclude Include="src\lattice\Shaders.h">
+      <Filter>lattice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\lattice\VulkanLattice.h">
       <Filter>lattice</Filter>
     </ClInclude>
   </ItemGroup>

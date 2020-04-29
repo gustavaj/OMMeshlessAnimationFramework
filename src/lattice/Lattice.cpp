@@ -12,8 +12,8 @@ namespace OML
 	{
 	}
 
-	Lattice::Lattice(std::string name)
-		: m_name(name), m_matrix(1.0f), m_color(0.8f, 0.2f, 0.4f)
+	Lattice::Lattice(std::string name, LocalSurfaceType lsType)
+		: m_name(name), m_lsType(lsType), m_matrix(1.0f), m_color(0.8f, 0.2f, 0.4f)
 	{
 		addLatticeProperties();
 	}

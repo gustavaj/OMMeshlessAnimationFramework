@@ -2,17 +2,30 @@
 
 #include <vulkan/vulkan.h>
 
+// TODO: Remove all dependencies on Sascha Willems' framework. Then rename.. Maybe not.
 // Sascha willems
 #include "../vulkan/VulkanDevice.hpp"
 #include "../vulkan/VulkanBuffer.hpp"
 #include "../vulkan/VulkanUIOverlay.h"
 
 #include "Lattice.h"
+#include "LocalSurfaceTexture.h"
+#include "LocalSurfaceTextureBatch.h"
+#include "LocalSurfaceBuffer.h"
 
-// TODO: Remove all dependencies on Sascha Willems' framework. Then rename.. Maybe not.
+namespace OML {
 
-namespace SWVL
-{
+	// Parameters used for pre-evaluation
+	const int NUM_SAMPLES_U = 16;
+	const int NUM_SAMPLES_V = 16;
+	const int NUM_PATCHES_PER_BATCH = 1024;
+	const int BATCH_ROWS = 32;
+	const int BATCH_COLS = 32;
+	const int MAX_BATCHES = 4;
+
+	// Various structs used by the vulkan implementation
+
+	// Simple class holding the data used for a device local vulkan buffer.
 	struct Buffer {
 		Buffer() : buffer(VK_NULL_HANDLE), memory(VK_NULL_HANDLE), count(0) {}
 
@@ -31,40 +44,20 @@ namespace SWVL
 	*/
 	struct LocalSurfaceVertex
 	{
-		LocalSurfaceVertex() : LocalSurfaceVertex(0, 0, 0, 0) {}
-		LocalSurfaceVertex(
-			uint32_t controlPointIndex, uint32_t controlPointCount,
-			uint32_t matrixIndex, uint32_t boundaryIndex)
+		LocalSurfaceVertex() : LocalSurfaceVertex(0, 0, 0, 0, glm::vec3(1.0f)) {}
+		LocalSurfaceVertex(uint32_t controlPointIndex, uint32_t controlPointCount,
+						   uint32_t matrixIndex, uint32_t boundaryIndex, glm::vec3 color)
 			: controlPointIndex(controlPointIndex), controlPointCount(controlPointCount),
-			matrixIndex(matrixIndex), boundaryIndex(boundaryIndex), color(1.0f) {}
-		uint32_t controlPointIndex, controlPointCount, matrixIndex, boundaryIndex;
+			  matrixIndex(matrixIndex), boundaryIndex(boundaryIndex), color(color) {}
+
+		uint32_t controlPointIndex;
+		uint32_t controlPointCount; 
+		uint32_t matrixIndex;
+		uint32_t boundaryIndex;
 		glm::vec3 color;
 
-		static std::vector<VkVertexInputBindingDescription> GetBindingDescriptions()
-		{
-			std::vector<VkVertexInputBindingDescription> bindings;
-			bindings.resize(1);
-			bindings[0].binding = 0;
-			bindings[0].stride = sizeof(LocalSurfaceVertex);
-			bindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-			return bindings;
-		}
-
-		static std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptions()
-		{
-			std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {};
-			attributeDescriptions.resize(2);
-			attributeDescriptions[0].binding = 0;
-			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32B32A32_UINT;
-			attributeDescriptions[0].offset = offsetof(LocalSurfaceVertex, controlPointIndex);
-			attributeDescriptions[1].binding = 0;
-			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[1].offset = offsetof(LocalSurfaceVertex, color);
-
-			return attributeDescriptions;
-		}
+		static std::vector<VkVertexInputBindingDescription> GetBindingDescriptions();
+		static std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptions();
 	};
 
 	// Struct containing info for a vertex used for points and lines in the lattice grid.
@@ -73,41 +66,38 @@ namespace SWVL
 		OML::Vec3f pos;
 		OML::Col3 col;
 
-		static VkVertexInputBindingDescription GetBindingDescription() {
-			VkVertexInputBindingDescription bindingDescription = {};
-			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(GridVertex);
-			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-			return bindingDescription;
-		}
-
-		static std::vector<VkVertexInputAttributeDescription> GetAttributeDesctiptions() {
-			std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {};
-			attributeDescriptions.resize(2);
-
-			attributeDescriptions[0].binding = 0;
-			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[0].offset = offsetof(GridVertex, pos);
-
-			attributeDescriptions[1].binding = 0;
-			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R8G8B8_UINT;
-			attributeDescriptions[1].offset = offsetof(GridVertex, col);
-
-			return attributeDescriptions;
-		}
+		static VkVertexInputBindingDescription GetBindingDescription();
+		static std::vector<VkVertexInputAttributeDescription> GetAttributeDesctiptions();
 	};
 
-	class SWVulkanLattice : public OML::Lattice
+	// Pointers to the four samplers used for the local surfaces of a given patch
+	struct PatchSamplerInfo
+	{
+		LocalSurfaceTexture* p00Sampler;
+		LocalSurfaceTexture* p10Sampler;
+		LocalSurfaceTexture* p01Sampler;
+		LocalSurfaceTexture* p11Sampler;
+	};
+
+
+	struct BatchInfo {
+		uint32_t index;
+		uint32_t count;
+	};
+
+
+
+
+	class VulkanLattice : public OML::Lattice
 	{
 	public:
-		SWVulkanLattice();
-		SWVulkanLattice(std::string name);
-		~SWVulkanLattice();
+		VulkanLattice();
+		VulkanLattice(std::string name, 
+			LocalSurfaceType lsType = LocalSurfaceType::Quadratic_Bezier,
+			EvaluationMethod evalMethod = EvaluationMethod::Direct);
+		~VulkanLattice();
 
 		// Vulkan framework
-		/* Create buffers and pipelines and stuff for Vulkan */
 		void initVulkanStuff(
 			VkDevice* device, vks::VulkanDevice* vulkanDevice,
 			VkQueue* queue, VkCommandPool* commandPool,
@@ -127,8 +117,11 @@ namespace SWVL
 		/* Update UIOverlay with information about the lattice */
 		bool onUpdateUIOverlay(vks::UIOverlay* overlay);
 
-		/* 
-		Takes a VkPhysicalDeviceFeatures structure of the devices' capabilities, and checks if all the 
+		// Sets the evaluation method to be used, must be called before initVulkanStuff() to have any effect
+		void setEvaluationMethod(EvaluationMethod evalMethod) { m_evalMethod = evalMethod; }
+
+		/*
+		Takes a VkPhysicalDeviceFeatures structure of the devices' capabilities, and checks if all the
 		required features are supported. Writes VK_TRUE to all the required features in the enabledFeatures struct.
 		*/
 		static void CheckAndSetupRequiredPhysicalDeviceFeatures(
@@ -139,6 +132,7 @@ namespace SWVL
 		virtual void localUpdate(double dt) override;
 
 	private:
+		EvaluationMethod m_evalMethod;
 		// Boolean to prevent vulkan stuff to be initiated more than once.
 		bool m_vulkanInitiated = false;
 		// Boolean to prevent vulkan stuff from being destroyed if it has not been initiated first.
@@ -146,6 +140,8 @@ namespace SWVL
 
 		// Menu variables collected here--
 		// Suffix to use on all menu items to make their id unique
+		// Used so menu controls are responsive even when multiple Lattices are 
+		// Created
 		std::string m_menuSuffix;
 		// Index of curretn simulator in menu
 		int m_simulatorIndex = 0;
@@ -153,6 +149,7 @@ namespace SWVL
 		std::vector<std::string> m_listItems;
 		// Index of current surface in menu
 		int m_selectedSurface = 0;
+
 
 		// Create a buffer that is local on the GPU
 		void createDeviceLocalBuffer(
@@ -165,7 +162,6 @@ namespace SWVL
 		void uploadStorageBuffers();
 		void setupDescriptorSetLayouts();
 		// Helper function to load a shader.
-		VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage);
 		VkPipelineShaderStageCreateInfo loadShader(std::pair<std::string, std::vector<uint32_t>&> src, VkShaderStageFlagBits stage);
 		void preparePipelines();
 		void setupDescriptorPool();
@@ -199,6 +195,7 @@ namespace SWVL
 		vks::Buffer m_matrixUniformBuffer;
 		vks::Buffer m_controlPointBuffer;
 		vks::Buffer m_boundariesBuffer;
+		vks::Buffer m_localSurfaceDataBuffer;
 
 		// Pipelines and descriptor set stuff
 		VkPipeline m_pointsPipeline;
@@ -208,14 +205,30 @@ namespace SWVL
 		VkPipeline m_patchPipeline;
 		VkPipeline m_patchWireframePipeline;
 		VkPipeline m_normalPipeline;
+		VkPipeline m_displaySurfaceAccuracyPipeline;
 		VkPipeline m_displayPixelAccuracyPipeline;
 
 		VkPipelineLayout m_pipelineLayout;
 		VkDescriptorSetLayout m_descriptorSetLayout;
 		VkDescriptorSet m_descriptorSet;
 
+		// Stuff that is specific to a certain evaluation method
+		struct {
+			VkDescriptorSetLayout setLayout;
+			std::vector<VkDescriptorSet> sets;
+		} m_localSamplerDescriptor, m_samplerDescriptor, m_batchDescriptor;
+
+		std::unordered_map<uint32_t, LocalSurfaceTexture> m_localSurfaceTextures;
+		std::vector<PatchSamplerInfo> m_patchSamplers;
+
+		LocalSurfaceBuffer m_LSBuffer;
+		std::unordered_map<uint32_t, uint32_t> m_LSIdxToLSBufferMap;
+
 		// Map for holding the created shader modules.
 		std::unordered_map<std::string, VkShaderModule> m_shaderModules;
+
+		std::vector<LocalSurfaceTextureBatch> m_batchTextures;
+		std::vector<BatchInfo> m_batchInfo;
 
 		// Stuff passed from class creating the lattice, used for creating vulkan stuff
 		VkDevice* m_device;
@@ -229,4 +242,5 @@ namespace SWVL
 		std::vector<LocalSurfaceVertex> m_localSurfaceVertices;
 		std::vector<LocalSurfaceVertex> m_patchVertices;
 	};
+
 }

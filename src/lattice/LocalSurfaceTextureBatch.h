@@ -22,7 +22,7 @@
 
 */
 
-namespace SWVL {
+namespace OML {
 
 	enum class TextureLocalSurfaceType {
 		Bezier3x3 = 0

@@ -45,7 +45,7 @@ namespace OML {
 		static std::string BiQuadLatticePixelAccuracyFragName;
 
 		static void PrintShader(std::string name);
-		static void PrintShader(std::string name, std::string source);
+		static void PrintShader(std::string name, std::string& source);
 
 		// Shaders
 
@@ -84,7 +84,7 @@ namespace OML {
 			return Shaders::SpirvMap.find(name) == Shaders::SpirvMap.end();
 		}
 
-		static void LoadSpirv(std::string name, std::string source, shaderc_shader_kind type);
+		static void LoadSpirv(std::string name, std::string& source, shaderc_shader_kind type);
 
 		static std::unordered_map<std::string, std::vector<uint32_t>> SpirvMap;
 		static std::unordered_map<std::string, std::string> ShaderSources;

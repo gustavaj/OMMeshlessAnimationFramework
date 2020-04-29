@@ -138,7 +138,7 @@ namespace OML {
 	public:
 		// Framework
 		Lattice();
-		Lattice(std::string name);
+		Lattice(std::string name, LocalSurfaceType lsType = LocalSurfaceType::Quadratic_Bezier);
 		~Lattice();
 
 		// Functions for creating patches
@@ -207,6 +207,8 @@ namespace OML {
 		void setUseRandomPatchColors(bool useRandomPatchColors) { m_useRandomPatchColors = useRandomPatchColors; }
 		/* Set color to be used for every patch, if perPatchColors = false */
 		void setPatchColor(glm::vec3 color) { m_color = color; }
+		// Sets the local surface type, must be called before induceLattice() to have any effect.
+		void setLocalSurfaceType(LocalSurfaceType lsType) { m_lsType = lsType; }
 
 		// Returns the name of the Lattice
 		std::string name() { return m_name; }
@@ -222,6 +224,7 @@ namespace OML {
 		void resetMatrices();
 
 		std::string m_name;
+		LocalSurfaceType m_lsType;
 		// The transformation matrix for the Lattice
 		glm::mat4 m_matrix;
 		glm::mat4 m_view;
