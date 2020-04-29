@@ -709,7 +709,7 @@ namespace OML
 						controlPoints[j] = glm::vec3(m_controlPoints[m_loci[i].controlPointIndex + j]);
 					}
 					auto it = m_LSIdxToLSBufferMap.insert({ m_loci[i].controlPointIndex,
-						m_LSBuffer.addBezier3x3(controlPoints) });
+						m_LSBuffer.addLocalSurface(controlPoints, m_lsType) });
 				}
 
 				m_localSurfaceVertices[i] = LocalSurfaceVertex(m_LSIdxToLSBufferMap[m_loci[i].controlPointIndex],
@@ -733,7 +733,7 @@ namespace OML
 					{
 						controlPoints[j] = glm::vec3(m_controlPoints[m_loci[i].controlPointIndex + j]);
 					}
-					it->second.loadBezier3x3(controlPoints, NUM_SAMPLES_U, NUM_SAMPLES_V);
+					it->second.loadLocalSurface(controlPoints, NUM_SAMPLES_U, NUM_SAMPLES_V, m_lsType);
 				}
 			}
 		}
@@ -806,7 +806,7 @@ namespace OML
 					{ m_controlPoints.begin() + locus11.controlPointIndex,
 					m_controlPoints.begin() + locus11.controlPointIndex + locus11.controlPointCount },
 					m_boundaries[locus11.boundaryIndices[m_patches[i].faceIdx]],
-					TextureLocalSurfaceType::Bezier3x3
+					m_lsType
 				);
 
 				localVert00.controlPointIndex = coords.first;
@@ -1306,7 +1306,7 @@ namespace OML
 		pixelAccuracyStages[2] = loadShader(OML::Shaders::GetTeseShader(m_lsType, OML::TeseShaderType::Pixel_Accuracy, m_evalMethod, options),
 			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		pixelAccuracyStages[3] = loadShader(OML::Shaders::GetBiQuadLatticePixelAccuracyFragShader(
-			options.numControl, options.numLocal, options.numPatches), VK_SHADER_STAGE_FRAGMENT_BIT);
+			m_lsType, options.numControl, options.numLocal, options.numPatches), VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(pixelAccuracyStages.size());
 		pipelineCreateInfo.pStages = pixelAccuracyStages.data();
 
@@ -1318,7 +1318,7 @@ namespace OML
 		normalShaderStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
 		normalShaderStages[2] = loadShader(OML::Shaders::GetTeseShader(m_lsType, OML::TeseShaderType::Normals, m_evalMethod, options),
 			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		normalShaderStages[3] = loadShader(OML::Shaders::GetLatticeNormalsGeomShader(8.0f), VK_SHADER_STAGE_GEOMETRY_BIT);
+		normalShaderStages[3] = loadShader(OML::Shaders::GetLatticeNormalsGeomShader(options.normalLength), VK_SHADER_STAGE_GEOMETRY_BIT);
 		normalShaderStages[4] = loadShader(OML::Shaders::GetFlatColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(normalShaderStages.size());
 		pipelineCreateInfo.pStages = normalShaderStages.data();

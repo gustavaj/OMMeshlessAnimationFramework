@@ -75,7 +75,7 @@ namespace OML {
 		static NameSpirvPair GetUintFlatColorFragShader();
 		static NameSpirvPair GetFlatColorFragShader();
 		static NameSpirvPair GetShadedColorFragShader();
-		static NameSpirvPair GetBiQuadLatticePixelAccuracyFragShader(
+		static NameSpirvPair GetBiQuadLatticePixelAccuracyFragShader(LocalSurfaceType lsType,
 			uint32_t numLocalsurfaceControlPoints, uint32_t numLocalSurfaces, uint32_t numPatches);
 
 
@@ -117,6 +117,8 @@ namespace OML {
 
 		static std::string BiQuadEvaluatorString(std::string prefix);
 		static std::string BiQuadEvaluatorOnlyPosString(std::string prefix);
+		static std::string BiCubicEvaluatorString(std::string prefix);
+		static std::string BiCubicEvaluatorOnlyPosString(std::string prefix);
 
 		static std::string SampleLocalSurfaceEvaluator(std::string prefix);
 		static std::string BatchedSampleLocalSurfaceEvaluator(std::string prefix);

@@ -30,8 +30,17 @@ namespace OML {
 		}
 	}
 
+	void LocalSurfaceTexture::loadLocalSurface(std::vector<glm::vec3>& controlPoints, uint32_t numSamplesU, uint32_t numSamplesV, LocalSurfaceType lsType)
+	{
+		switch (lsType)
+		{
+		case LocalSurfaceType::Quadratic_Bezier: loadBezier3x3(controlPoints, numSamplesU, numSamplesV); break;
+		case LocalSurfaceType::Cubic_Bezier: loadBezier4x4(controlPoints, numSamplesU, numSamplesV); break;
+		}
+	}
+
 	void LocalSurfaceTexture::loadBezier3x3(
-		std::vector<glm::vec3> controlPoints, uint32_t numSamplesU, uint32_t numSamplesV)
+		std::vector<glm::vec3>& controlPoints, uint32_t numSamplesU, uint32_t numSamplesV)
 	{
 		m_width = numSamplesU;
 		m_height = numSamplesV;
@@ -50,13 +59,13 @@ namespace OML {
 		for (size_t j = 0; j < numSamplesV; j++)
 		{
 			float v = dv * j;
-			glm::vec3 bv = bezBasis(v);
-			glm::vec3 bvd = bezBasisDer(v);
+			glm::vec3 bv = bezBasis3(v);
+			glm::vec3 bvd = bezBasisDer3(v);
 			for (size_t i = 0; i < numSamplesU; i++)
 			{
 				float u = du * i;
-				glm::vec3 bu = bezBasis(u);
-				glm::vec3 bud = bezBasisDer(u);
+				glm::vec3 bu = bezBasis3(u);
+				glm::vec3 bud = bezBasisDer3(u);
 
 				glm::vec3 pos =
 					p00 * bu[0] * bv[0] + p01 * bu[0] * bv[1] + p02 * bu[0] * bv[2] +
@@ -84,14 +93,81 @@ namespace OML {
 		createImage(samples);
 	}
 
-	glm::vec3 LocalSurfaceTexture::bezBasis(float t)
+	void LocalSurfaceTexture::loadBezier4x4(std::vector<glm::vec3>& controlPoints, uint32_t numSamplesU, uint32_t numSamplesV)
+	{
+		m_width = numSamplesU;
+		m_height = numSamplesV;
+		m_layers = 3;
+
+		glm::vec3& p00 = controlPoints[0], p10 = controlPoints[1], p20 = controlPoints[2], p30 = controlPoints[3];
+		glm::vec3& p01 = controlPoints[4], p11 = controlPoints[5], p21 = controlPoints[6], p31 = controlPoints[7];
+		glm::vec3& p02 = controlPoints[8], p12 = controlPoints[9], p22 = controlPoints[10], p32 = controlPoints[11];
+		glm::vec3& p03 = controlPoints[12], p13 = controlPoints[13], p23 = controlPoints[14], p33 = controlPoints[15];
+
+		int numSamples = numSamplesU * numSamplesV;
+		std::vector<glm::vec4> samples(numSamples * 3);
+
+		float du = 1.0f / (float)(numSamplesU - 1);
+		float dv = 1.0f / (float)(numSamplesV - 1);
+
+		for (size_t j = 0; j < numSamplesV; j++)
+		{
+			float v = dv * j;
+			glm::vec4 bv = bezBasis4(v);
+			glm::vec4 bvd = bezBasisDer4(v);
+			for (size_t i = 0; i < numSamplesU; i++)
+			{
+				float u = du * i;
+				glm::vec4 bu = bezBasis4(u);
+				glm::vec4 bud = bezBasisDer4(u);
+
+				glm::vec3 pos =
+					p00 * bu[0] * bv[0] + p01 * bu[0] * bv[1] + p02 * bu[0] * bv[2] + p03 * bu[0] * bv[3] +
+					p10 * bu[1] * bv[0] + p11 * bu[1] * bv[1] + p12 * bu[1] * bv[2] + p13 * bu[1] * bv[3] +
+					p20 * bu[2] * bv[0] + p21 * bu[2] * bv[1] + p22 * bu[2] * bv[2] + p23 * bu[2] * bv[3] +
+					p30 * bu[3] * bv[0] + p31 * bu[3] * bv[1] + p32 * bu[3] * bv[2] + p33 * bu[3] * bv[3];
+
+				glm::vec3 dpdu =
+					p00 * bud[0] * bv[0] + p01 * bud[0] * bv[1] + p02 * bud[0] * bv[2] + p03 * bud[0] * bv[3] +
+					p10 * bud[1] * bv[0] + p11 * bud[1] * bv[1] + p12 * bud[1] * bv[2] + p13 * bud[1] * bv[3] +
+					p20 * bud[2] * bv[0] + p21 * bud[2] * bv[1] + p22 * bud[2] * bv[2] + p23 * bud[2] * bv[3] +
+					p30 * bud[3] * bv[0] + p31 * bud[3] * bv[1] + p32 * bud[3] * bv[2] + p33 * bud[3] * bv[3];
+
+				glm::vec3 dpdv =
+					p00 * bu[0] * bvd[0] + p01 * bu[0] * bvd[1] + p02 * bu[0] * bvd[2] + p03 * bu[0] * bvd[3] +
+					p10 * bu[1] * bvd[0] + p11 * bu[1] * bvd[1] + p12 * bu[1] * bvd[2] + p13 * bu[1] * bvd[3] +
+					p20 * bu[2] * bvd[0] + p21 * bu[2] * bvd[1] + p22 * bu[2] * bvd[2] + p23 * bu[2] * bvd[3] +
+					p30 * bu[3] * bvd[0] + p31 * bu[3] * bvd[1] + p32 * bu[3] * bvd[2] + p33 * bu[3] * bvd[3];
+
+				samples[j * numSamplesU + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
+				samples[1 * numSamples + j * numSamplesU + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
+				samples[2 * numSamples + j * numSamplesU + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
+				//samples[1 * numSamples + i * numSamplesU + j] = glm::normalize(glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f));
+				//samples[2 * numSamples + i * numSamplesU + j] = glm::normalize(glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f));
+			}
+		}
+
+		createImage(samples);
+	}
+
+	glm::vec3 LocalSurfaceTexture::bezBasis3(float t)
 	{
 		return glm::vec3(std::pow(1 - t, 2), 2 * t * (1 - t), std::pow(t, 2));
 	}
 
-	glm::vec3 LocalSurfaceTexture::bezBasisDer(float t)
+	glm::vec3 LocalSurfaceTexture::bezBasisDer3(float t)
 	{
 		return glm::vec3(2 * t - 2, 2 - 4 * t, 2 * t);
+	}
+
+	glm::vec4 LocalSurfaceTexture::bezBasis4(float t)
+	{
+		return glm::vec4(std::pow(1 - t, 3), 3 * t * std::pow(1 - t, 2), 3 * t * t * (1 - t), std::pow(t, 3));
+	}
+
+	glm::vec4 LocalSurfaceTexture::bezBasisDer4(float t)
+	{
+		return glm::vec4(-3 * std::pow(1 - t, 2), 3 * (1 - t) * (1 - 3 * t), 3 * t * (2 - 3 * t), 3 * t * t);
 	}
 
 	void LocalSurfaceTexture::createImage(std::vector<glm::vec4> samples)

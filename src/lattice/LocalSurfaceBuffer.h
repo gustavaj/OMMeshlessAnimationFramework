@@ -4,6 +4,8 @@
 
 #include <vector>
 
+#include "LatticeUtility.h"
+
 namespace OML {
 
 	struct LocalSurfaceData {
@@ -18,7 +20,9 @@ namespace OML {
 		LocalSurfaceBuffer(uint32_t numSamplesU, uint32_t numSamplesV)
 			: m_numSamplesU(numSamplesU), m_numSamplesV(numSamplesV) {}
 
-		uint32_t addBezier3x3(std::vector<glm::vec3> controlPoints);
+		uint32_t addLocalSurface(std::vector<glm::vec3>& controlPoints, LocalSurfaceType lsType);
+		uint32_t addBezier3x3(std::vector<glm::vec3>& controlPoints);
+		uint32_t addBezier4x4(std::vector<glm::vec3>& controlPoints);
 
 		uint32_t bufferSize() 
 		{
@@ -33,8 +37,10 @@ namespace OML {
 
 		std::vector<LocalSurfaceData> m_data;
 
-		glm::vec3 bezBasis(float t);
-		glm::vec3 bezBasisDer(float t);
+		glm::vec3 bezBasis3(float t);
+		glm::vec3 bezBasisDer3(float t);
+		glm::vec4 bezBasis4(float t);
+		glm::vec4 bezBasisDer4(float t);
 	};
 
 }

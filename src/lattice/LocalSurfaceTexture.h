@@ -9,6 +9,8 @@
 #include "../vulkan/VulkanDevice.hpp"
 #include "../vulkan/VulkanTexture.hpp"
 
+#include "LatticeUtility.h"
+
 // https://github.com/SaschaWillems/Vulkan/blob/master/examples/texturearray/texturearray.cpp
 
 namespace OML {
@@ -21,7 +23,10 @@ namespace OML {
 			VkCommandPool* commandPool, VkQueue* queue, VkAllocationCallbacks* allocator);
 		~LocalSurfaceTexture();
 
-		void loadBezier3x3(std::vector<glm::vec3> controlPoints, uint32_t numSamplesU, uint32_t numSamplesV);
+		void loadLocalSurface(std::vector<glm::vec3>& controlPoints,
+			uint32_t numSamplesU, uint32_t numSamplesV, LocalSurfaceType lsType);
+		void loadBezier3x3(std::vector<glm::vec3>& controlPoints, uint32_t numSamplesU, uint32_t numSamplesV);
+		void loadBezier4x4(std::vector<glm::vec3>& controlPoints, uint32_t numSamplesU, uint32_t numSamplesV);
 
 		void destroy();
 
@@ -31,8 +36,10 @@ namespace OML {
 		VkDescriptorImageInfo* descriptor() { return &m_texture.descriptor; }
 
 	private:
-		glm::vec3 bezBasis(float t);
-		glm::vec3 bezBasisDer(float t);
+		glm::vec3 bezBasis3(float t);
+		glm::vec3 bezBasisDer3(float t);
+		glm::vec4 bezBasis4(float t);
+		glm::vec4 bezBasisDer4(float t);
 
 		void createImage(std::vector<glm::vec4> samples);
 

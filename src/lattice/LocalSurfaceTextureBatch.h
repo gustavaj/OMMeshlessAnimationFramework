@@ -10,23 +10,11 @@
 #include "../vulkan/VulkanDevice.hpp"
 #include "../vulkan/VulkanTexture.hpp"
 
-#include "Lattice.h"
+#include "LatticeUtility.h"
 
 // https://github.com/SaschaWillems/Vulkan/blob/master/examples/texturearray/texturearray.cpp
 
-/*
-	TODO:
-	-Create batches of patches.
-	-Add every patch in a batch to the same image
-	-Create new descriptor sets
-
-*/
-
 namespace OML {
-
-	enum class TextureLocalSurfaceType {
-		Bezier3x3 = 0
-	};
 
 	class LocalSurfaceTextureBatch
 	{
@@ -42,7 +30,7 @@ namespace OML {
 			std::vector<glm::vec3> p10Points, OML::BoundaryInfo& p10Boundary,
 			std::vector<glm::vec3> p01Points, OML::BoundaryInfo& p01Boundary,
 			std::vector<glm::vec3> p11Points, OML::BoundaryInfo& p11Boundary,
-			TextureLocalSurfaceType type
+			LocalSurfaceType type
 			);
 
 		void allocateMemory();
@@ -63,13 +51,17 @@ namespace OML {
 		inline float mix(float a, float b, float t) {
 			return (1.0f - t) * a + (t * b);
 		}
-		glm::vec3 bezBasis(float t);
-		glm::vec3 bezBasisDer(float t);
+		glm::vec3 bezBasis3(float t);
+		glm::vec3 bezBasisDer3(float t);
+		glm::vec4 bezBasis4(float t);
+		glm::vec4 bezBasisDer4(float t);
 
 		void createImage();
 
 		void loadBezier3x3(std::vector<glm::vec3>& controlPoints, 
 			OML::BoundaryInfo& boundary, uint32_t baseLayer);
+		void loadBezier4x4(std::vector<glm::vec3>& controlPoints,
+			BoundaryInfo& boundary, uint32_t baseLayer);
 
 		uint32_t m_numSamplesU;
 		uint32_t m_numSamplesV;

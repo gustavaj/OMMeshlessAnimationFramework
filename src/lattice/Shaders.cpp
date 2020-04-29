@@ -280,20 +280,27 @@ namespace OML {
 
 		if (teseType == TeseShaderType::Surf_Accuracy)
 		{
+			std::string refEval;
+			switch (lsType)
+			{
+			case LocalSurfaceType::Quadratic_Bezier: refEval = Shaders::BiQuadEvaluatorString("ref_"); break;
+			case LocalSurfaceType::Cubic_Bezier: refEval = Shaders::BiCubicEvaluatorString("ref_"); break;
+			}
+
 			switch (evalMethod)
 			{
 			case EvaluationMethod::Pre_Sampled_Image: {
-				eval += Shaders::BiQuadEvaluatorOnlyPosString("ref_") + " \n";
+				eval += refEval + " \n";
 				eval += Shaders::SampleLocalSurfaceEvaluator("");
 				break;
 			}
 			case EvaluationMethod::Pre_Sampled_Image_Batched: {
-				eval += Shaders::BiQuadEvaluatorOnlyPosString("ref_") + " \n";
+				eval += refEval + " \n";
 				eval += Shaders::BatchedSampleLocalSurfaceEvaluator("");
 				break;
 			}
 			case EvaluationMethod::Pre_Sampled_Buffer: {
-				eval += Shaders::BiQuadEvaluatorOnlyPosString("ref_") + " \n";
+				eval += refEval + " \n";
 				eval += Shaders::SampleBufferEvaluator("", nSampU, nSampV);
 				break;
 			}
@@ -304,7 +311,14 @@ namespace OML {
 		{
 			switch (evalMethod)
 			{
-			case EvaluationMethod::Direct: eval += Shaders::BiQuadEvaluatorString(""); break;
+			case EvaluationMethod::Direct: {
+				switch (lsType)
+				{
+				case LocalSurfaceType::Quadratic_Bezier: eval += Shaders::BiQuadEvaluatorString(""); break;
+				case LocalSurfaceType::Cubic_Bezier: eval += Shaders::BiCubicEvaluatorString(""); break;
+				}
+				break;
+			}
 			case EvaluationMethod::Pre_Sampled_Image: eval += Shaders::SampleLocalSurfaceEvaluator(""); break;
 			case EvaluationMethod::Pre_Sampled_Image_Batched: eval += Shaders::BatchedSampleLocalSurfaceEvaluator(""); break;
 			case EvaluationMethod::Pre_Sampled_Buffer: eval += Shaders::SampleBufferEvaluator("", nSampU, nSampV); break;
@@ -530,7 +544,7 @@ namespace OML {
 		return { Shaders::ShadedColorFragName, Shaders::SpirvMap[Shaders::ShadedColorFragName] };
 	}
 
-	NameSpirvPair Shaders::GetBiQuadLatticePixelAccuracyFragShader(
+	NameSpirvPair Shaders::GetBiQuadLatticePixelAccuracyFragShader(LocalSurfaceType lsType,
 		uint32_t numLocalsurfaceControlPoints, uint32_t numLocalSurfaces, uint32_t numPatches)
 	{
 		std::string nControl = std::to_string(numLocalsurfaceControlPoints);
@@ -538,6 +552,12 @@ namespace OML {
 		std::string nPatches = std::to_string(numPatches);
 		std::string name = Shaders::BiQuadLatticePixelAccuracyFragName
 			+ "_" + nControl + "C_" + nLocal + "L_" + nPatches + "P";
+		std::string evalString;
+		switch (lsType)
+		{
+		case LocalSurfaceType::Quadratic_Bezier: evalString = Shaders::BiQuadEvaluatorString(""); break;
+		case LocalSurfaceType::Cubic_Bezier: evalString = Shaders::BiCubicEvaluatorString(""); break;
+		}
 		if (Shaders::NotInMap(name))
 		{
 			std::string nBoundaries = std::to_string(numPatches * 4);
@@ -564,7 +584,7 @@ namespace OML {
 				Shaders::ControlPointStorageBufferString(nControl, "0", "2") + " \n" +
 				Shaders::BoundaryBufferString(nBoundaries, "0", "3") + " \n" +
 				Shaders::BlendingFunctionString() + " \n" +
-				Shaders::BiQuadEvaluatorOnlyPosString("") + " \n" +
+				evalString + " \n" +
 				"void main() {\n"
 				"    float u = teUVCoords[0];\n"
 				"    float v = teUVCoords[1];\n"
@@ -778,11 +798,11 @@ namespace OML {
 	inline std::string Shaders::BiQuadEvaluatorString(std::string prefix)
 	{
 		return
-			"vec3 bez3Basis( float t ) {\n"
+			"vec3 " + prefix + "bez3Basis( float t ) {\n"
 			"    return vec3 ( pow(1-t, 2), 2*t*(1-t), pow (t, 2));\n"
 			"}\n"
 			" \n"
-			"vec3 bez3BasisDer( float t ) {\n"
+			"vec3 " + prefix + "bez3BasisDer( float t ) {\n"
 			"    return vec3 (2*t-2, 2-4*t, 2*t);\n"
 			"}\n"
 			" \n"
@@ -791,10 +811,10 @@ namespace OML {
 			"    float local_u = mix (bi.us, bi.ue, u);\n"
 			"    float local_v = mix (bi.vs, bi.ve, v);\n"
 			" \n"
-			"    vec3 bu = bez3Basis(local_u);\n"
-			"    vec3 bud = bez3BasisDer(local_u);\n"
-			"    vec3 bv = bez3Basis(local_v);\n"
-			"    vec3 bvd = bez3BasisDer(local_v);\n"
+			"    vec3 bu = " + prefix + "bez3Basis(local_u);\n"
+			"    vec3 bud = " + prefix + "bez3BasisDer(local_u);\n"
+			"    vec3 bv = " + prefix + "bez3Basis(local_v);\n"
+			"    vec3 bvd = " + prefix + "bez3BasisDer(local_v);\n"
 			" \n"
 			"    vec3 p00 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 0].xyz;\n"
 			"    vec3 p10 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 1].xyz;\n"
@@ -835,7 +855,7 @@ namespace OML {
 	inline std::string Shaders::BiQuadEvaluatorOnlyPosString(std::string prefix)
 	{
 		return
-			"vec3 bez3Basis( float t ) {\n"
+			"vec3 " + prefix + "bez3Basis( float t ) {\n"
 			"    return vec3 ( pow (1-t, 2), 2*t*(1-t), pow (t, 2));\n"
 			"}\n"
 			" \n"
@@ -844,8 +864,8 @@ namespace OML {
 			"    float local_u = mix (bi.us, bi.ue, u);\n"
 			"    float local_v = mix (bi.vs, bi.ve, v);\n"
 			" \n"
-			"    vec3 bu = bez3Basis(local_u);\n"
-			"    vec3 bv = bez3Basis(local_v);\n"
+			"    vec3 bu = " + prefix + "bez3Basis(local_u);\n"
+			"    vec3 bv = " + prefix + "bez3Basis(local_v);\n"
 			" \n"
 			"    vec3 p00 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 0].xyz;\n"
 			"    vec3 p10 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 1].xyz;\n"
@@ -867,6 +887,119 @@ namespace OML {
 			"    vec4 p = matrix * vec4 (pos, 1.0f);\n"
 			" \n"
 			"    return Sampler(p.xyz, vec3(0.0), vec3(0.0));\n"
+			"}\n";
+	}
+
+	std::string Shaders::BiCubicEvaluatorString(std::string prefix)
+	{
+		return
+			"vec4 " + prefix + "bez4Basis( float t ) {\n"
+			"    return vec4 ( pow(1-t, 3), 3*t* pow ((1-t),2), 3*t*t*(1-t), pow (t, 3));\n"
+			"}\n"
+			" \n"
+			"vec4 " + prefix + "bez4BasisDer( float t ) {\n"
+			"    return vec4 (-3* pow (1-t, 2), 3*(1-t)*(1-3*t), 3*t*(2-3*t), 3*t*t);\n"
+			"}\n"
+			" \n"
+			"Sampler " + prefix + "evaluateLocal(LocalSurfaceInfo lsInfo, float u, float v) {\n"
+			"    BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];\n"
+			"    float local_u = mix (bi.us, bi.ue, u);\n"
+			"    float local_v = mix (bi.vs, bi.ve, v);\n"
+			" \n"
+			"    vec4 bu = " + prefix + "bez4Basis(local_u);\n"
+			"    vec4 bud = " + prefix + "bez4BasisDer(local_u);\n"
+			"    vec4 bv = " + prefix + "bez4Basis(local_v);\n"
+			"    vec4 bvd = " + prefix + "bez4BasisDer(local_v);\n"
+			" \n"
+			"    vec3 p00 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 0].xyz;\n"
+			"    vec3 p10 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 1].xyz;\n"
+			"    vec3 p20 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 2].xyz;\n"
+			"    vec3 p30 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 3].xyz;\n"
+			"    vec3 p01 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 4].xyz;\n"
+			"    vec3 p11 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 5].xyz;\n"
+			"    vec3 p21 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 6].xyz;\n"
+			"    vec3 p31 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 7].xyz;\n"
+			"    vec3 p02 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 8].xyz;\n"
+			"    vec3 p12 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 9].xyz;\n"
+			"    vec3 p22 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 10].xyz;\n"
+			"    vec3 p32 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 11].xyz;\n"
+			"    vec3 p03 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 12].xyz;\n"
+			"    vec3 p13 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 13].xyz;\n"
+			"    vec3 p23 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 14].xyz;\n"
+			"    vec3 p33 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 15].xyz;\n"
+			" \n"
+			"    vec3 pos =\n"
+			"        p00 * bu[0] * bv[0] + p01 * bu[0] * bv[1] + p02 * bu[0] * bv[2] + p03 * bu[0] * bv[3] +\n"
+			"        p10 * bu[1] * bv[0] + p11 * bu[1] * bv[1] + p12 * bu[1] * bv[2] + p13 * bu[1] * bv[3] +\n"
+			"        p20 * bu[2] * bv[0] + p21 * bu[2] * bv[1] + p22 * bu[2] * bv[2] + p23 * bu[2] * bv[3] +\n"
+			"		 p30 * bu[3] * bv[0] + p31 * bu[3] * bv[1] + p32 * bu[3] * bv[2] + p33 * bu[3] * bv[3];\n"
+			" \n"
+			"    vec3 dpdu =\n"
+			"        p00 * bud[0] * bv[0] + p01 * bud[0] * bv[1] + p02 * bud[0] * bv[2] + p03 * bud[0] * bv[3] +\n"
+			"        p10 * bud[1] * bv[0] + p11 * bud[1] * bv[1] + p12 * bud[1] * bv[2] + p13 * bud[1] * bv[3] +\n"
+			"        p20 * bud[2] * bv[0] + p21 * bud[2] * bv[1] + p22 * bud[2] * bv[2] + p23 * bud[2] * bv[3] +\n"
+			"		 p30 * bud[3] * bv[0] + p31 * bud[3] * bv[1] + p32 * bud[3] * bv[2] + p33 * bud[3] * bv[3];\n"
+			" \n"
+			"    vec3 dpdv =\n"
+			"        p00 * bu[0] * bvd[0] + p01 * bu[0] * bvd[1] + p02 * bu[0] * bvd[2] + p03 * bu[0] * bvd[3] +\n"
+			"        p10 * bu[1] * bvd[0] + p11 * bu[1] * bvd[1] + p12 * bu[1] * bvd[2] + p13 * bu[1] * bvd[3] +\n"
+			"        p20 * bu[2] * bvd[0] + p21 * bu[2] * bvd[1] + p22 * bu[2] * bvd[2] + p23 * bu[2] * bvd[3] +\n"
+			"		 p30 * bu[3] * bvd[0] + p31 * bu[3] * bvd[1] + p32 * bu[3] * bvd[2] + p33 * bu[3] * bvd[3];\n"
+			" \n"
+			"    mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];\n"
+			" \n"
+			"	 pos = vec3 (matrix * vec4 (pos, 1.0f));\n"
+			"    // mat4 normalMat = transpose ( inverse (matrix));\n"
+			"    dpdu = vec3 (matrix * vec4 (dpdu, 0.0f));\n"
+			"    dpdv = vec3 (matrix * vec4 (dpdv, 0.0f));\n"
+			" \n"
+			"    return Sampler(pos.xyz, dpdu.xyz, dpdv.xyz);\n"
+			"}\n";
+	}
+
+	std::string Shaders::BiCubicEvaluatorOnlyPosString(std::string prefix)
+	{
+		return
+			"vec4 " + prefix + "bez4Basis( float t ) {\n"
+			"    return vec4 ( pow(1-t, 3), 3*t* pow ((1-t),2), 3*t*t*(1-t), pow (t, 3));\n"
+			"}\n"
+			" \n"
+			"Sampler " + prefix + "evaluateLocal(LocalSurfaceInfo lsInfo, float u, float v) {\n"
+			"    BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];\n"
+			"    float local_u = mix (bi.us, bi.ue, u);\n"
+			"    float local_v = mix (bi.vs, bi.ve, v);\n"
+			" \n"
+			"    vec4 bu = " + prefix + "bez4Basis(local_u);\n"
+			"    vec4 bv = " + prefix + "bez4Basis(local_v);\n"
+			" \n"
+			"    vec3 p00 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 0].xyz;\n"
+			"    vec3 p10 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 1].xyz;\n"
+			"    vec3 p20 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 2].xyz;\n"
+			"    vec3 p30 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 3].xyz;\n"
+			"    vec3 p01 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 4].xyz;\n"
+			"    vec3 p11 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 5].xyz;\n"
+			"    vec3 p21 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 6].xyz;\n"
+			"    vec3 p31 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 7].xyz;\n"
+			"    vec3 p02 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 8].xyz;\n"
+			"    vec3 p12 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 9].xyz;\n"
+			"    vec3 p22 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 10].xyz;\n"
+			"    vec3 p32 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 11].xyz;\n"
+			"    vec3 p03 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 12].xyz;\n"
+			"    vec3 p13 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 13].xyz;\n"
+			"    vec3 p23 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 14].xyz;\n"
+			"    vec3 p33 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 15].xyz;\n"
+			" \n"
+			"    vec3 pos =\n"
+			"        p00 * bu[0] * bv[0] + p01 * bu[0] * bv[1] + p02 * bu[0] * bv[2] + p03 * bu[0] * bv[3] +\n"
+			"        p10 * bu[1] * bv[0] + p11 * bu[1] * bv[1] + p12 * bu[1] * bv[2] + p13 * bu[1] * bv[3] +\n"
+			"        p20 * bu[2] * bv[0] + p21 * bu[2] * bv[1] + p22 * bu[2] * bv[2] + p23 * bu[2] * bv[3] +\n"
+			"		 p30 * bu[3] * bv[0] + p31 * bu[3] * bv[1] + p32 * bu[3] * bv[2] + p33 * bu[3] * bv[3];\n"
+			" \n"
+			"    mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];\n"
+			" \n"
+			"    pos = matrix * vec4 (pos, 1.0f);\n"
+			" \n"
+			"    return Sampler(pos.xyz, vec3(0.0), vec3(0.0));\n"
 			"}\n";
 	}
 
