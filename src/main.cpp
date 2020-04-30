@@ -26,37 +26,45 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	std::cerr << "asd" << std::endl;
 	for (size_t i = 0; i < __argc; i++) { LatticeExample::args.push_back(__argv[i]); };
 	
+	OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Cubic_Bezier;
+	OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct;
+
 	// Base example
-	//example = new LatticeExample(debug);
+	//example = new LatticeExample(debug, lsType, evalMethod);
 	
 	// Grid example
-	example = new GridLatticeExample(debug, 20.0f, 20.0f, 3, 3);
+	example = new GridLatticeExample(debug, 100.0f, 100.0f, 30, 30, lsType, evalMethod);
 
 	// Random grid example
-	//example = new RandomGridLatticeExample(debug, 100.0f, 100.0f, 10, 10);
+	//example = new RandomGridLatticeExample(debug, 100.0f, 100.0f, 10, 10, lsType, evalMethod);
 	
 	// Cylinder Example
-	//example = new CylinderLatticeExample(debug, 20.0f, 50.0f, 8, 12);
+	//example = new CylinderLatticeExample(debug, 20.0f, 50.0f, 8, 12, lsType, evalMethod);
 	
 	// Sphere Example
-	//example = new SphereLatticeExample(debug, 20.0f, 8, 8);
+	//example = new SphereLatticeExample(debug, 20.0f, 8, 8, lsType, evalMethod);
 
 	// Non-uniform grid example
-	//example = new NonUniformGridExample(debug);
+	//example = new NonUniformGridExample(debug, lsType, evalMethod);
 
 	// Grid where quads have angles != 90
-	//example = new NonRectangularExample(debug);
+	//example = new NonRectangularExample(debug, lsType, evalMethod);
 
 	// T-locus example
-	//example = new TLocusExample(debug);
-	//example = new TLocusx4Example(debug);
+	//example = new TLocusExample(debug, lsType, evalMethod);
+	//example = new TLocusx4Example(debug, lsType, evalMethod);
 
 	// Example with several lattices
-	//example = new MultiLatticeExample(debug);
+	//example = new MultiLatticeExample(debug, lsType, evalMethod);
+
+	OML::Timer::Start("init", "Setup example");
 
 	example->initVulkan();
 	example->setupWindow(hInstance, WndProc);
 	example->prepare();
+	
+	OML::Timer::Stop("init", "Setup example");
+
 	example->renderLoop();
 	delete(example);
 }

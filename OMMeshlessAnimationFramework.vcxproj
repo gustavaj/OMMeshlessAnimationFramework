@@ -159,16 +159,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="shaders\Lattice\lattice.frag" />
-    <None Include="shaders\Lattice\lattice.tesc" />
-    <None Include="shaders\Lattice\lattice.tese" />
-    <None Include="shaders\Lattice\lattice.vert" />
-    <None Include="shaders\Lattice\normals.frag" />
-    <None Include="shaders\Lattice\normals.geom" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="src\LatticeExample.cpp" />
     <ClCompile Include="src\lattice\Lattice.cpp" />
+    <ClCompile Include="src\lattice\LatticeUtility.cpp" />
     <ClCompile Include="src\lattice\LocalSurface.cpp" />
     <ClCompile Include="src\lattice\LocalSurfaceBuffer.cpp" />
     <ClCompile Include="src\lattice\LocalSurfaceTexture.cpp" />

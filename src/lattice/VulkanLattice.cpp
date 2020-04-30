@@ -454,6 +454,8 @@ namespace OML
 					if (micros > 10000000.0f) micros = 0.0f;
 					overlay->text("Rendering time: %.4f ms", micros);
 				}
+
+				overlay->text("GPU memory usage: \n%d bytes", m_deviceMemoryUsage);
 			}
 
 			// For editing local surfaces
@@ -630,6 +632,8 @@ namespace OML
 			vkFreeMemory(*m_device, memory, m_allocator);
 		}
 
+		m_deviceMemoryUsage += bufferSize;
+
 		struct {
 			VkBuffer buffer;
 			VkDeviceMemory memory;
@@ -691,8 +695,8 @@ namespace OML
 
 	void VulkanLattice::setupVertices()
 	{
-		auto start = std::chrono::high_resolution_clock::now();
-		std::cout << "VulkanLattice::setupVertices() start" << std::endl;
+		Timer::Start("setupVertices", "VulkanLattice::setupVertices()");
+
 		// Eval method dependent
 
 		// Set up local surface vertices
@@ -734,6 +738,7 @@ namespace OML
 						controlPoints[j] = glm::vec3(m_controlPoints[m_loci[i].controlPointIndex + j]);
 					}
 					it->second.loadLocalSurface(controlPoints, NUM_SAMPLES_U, NUM_SAMPLES_V, m_lsType);
+					m_deviceMemoryUsage += it->second.memoryUsage();
 				}
 			}
 		}
@@ -851,6 +856,7 @@ namespace OML
 			for (auto& batch : m_batchTextures)
 			{
 				batch.allocateMemory();
+				m_deviceMemoryUsage += batch.memoryUsage();
 			}
 			m_batchDescriptor.sets.resize(m_batchInfo.size());
 		}
@@ -860,10 +866,7 @@ namespace OML
 			m_localSamplerDescriptor.sets.resize(m_localSurfaceVertices.size());
 		}
 
-		auto end = std::chrono::high_resolution_clock::now();
-		auto time = std::chrono::duration<double, std::milli>(end - start).count();
-
-		std::cout << "VulkanLattice::setupVertices() end, time: " << time << "ms" << std::endl;
+		Timer::Stop("setupVertices", "VulkanLattice::setupVertices()");
 	}
 
 	void VulkanLattice::createBuffers()
@@ -929,6 +932,7 @@ namespace OML
 
 		// Map persistent
 		VK_CHECK_RESULT(m_latticeUniformBuffer.map());
+		m_deviceMemoryUsage += m_latticeUniformBuffer.size;
 
 		VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -938,6 +942,7 @@ namespace OML
 		));
 
 		VK_CHECK_RESULT(m_matrixUniformBuffer.map());
+		m_deviceMemoryUsage += m_matrixUniformBuffer.size;
 
 		VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -1110,8 +1115,7 @@ namespace OML
 
 	void VulkanLattice::preparePipelines()
 	{
-		auto start = std::chrono::high_resolution_clock::now();
-		std::cout << "VulkanLattice::preparePipelines() start" << std::endl;
+		Timer::Start("preparePipelines", "VulkanLattice::preparePipelines()");
 
 		// Input Assembly States
 		VkPipelineInputAssemblyStateCreateInfo lineInputAssemblyState =
@@ -1325,10 +1329,7 @@ namespace OML
 
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_normalPipeline));
 
-		auto end = std::chrono::high_resolution_clock::now();
-		auto time = std::chrono::duration<double, std::milli>(end - start).count();
-
-		std::cout << "VulkanLattice::preparePipelines() time: " << time << "ms" << std::endl;
+		Timer::Stop("preparePipelines", "VulkanLattice::preparePipelines()");
 	}
 
 	void VulkanLattice::setupDescriptorPool()
@@ -1560,6 +1561,8 @@ namespace OML
 		timingPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
 		timingPoolInfo.queryCount = m_timingResult.count;
 		VK_CHECK_RESULT(vkCreateQueryPool(*m_device, &timingPoolInfo, NULL, &m_timingPool));
+
+		m_deviceMemoryUsage += bufSize + timeBufSize;
 	}
 
 	void VulkanLattice::getQueryResults()

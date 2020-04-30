@@ -30,6 +30,8 @@ namespace OML {
 
 		void destroy();
 
+		uint32_t memoryUsage() const { return m_memoryUsage; }
+
 		const VkImage& image() { return m_texture.image; }
 		const VkSampler& sampler() { return m_texture.sampler; }
 		const VkImageView& imageView() { return m_texture.view; }
@@ -47,6 +49,8 @@ namespace OML {
 		uint32_t m_width;
 		uint32_t m_height;
 		uint32_t m_layers;
+
+		uint32_t m_memoryUsage = 0;
 
 		VkImage m_image;
 		VkDeviceMemory m_memory;

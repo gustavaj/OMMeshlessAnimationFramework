@@ -221,6 +221,7 @@ namespace OML {
 		//VkDeviceSize imageSize = m_width * m_height * sizeof(glm::vec4) * m_layers;
 
 		//m_texture.loadData(samples, m_width, m_height, VK_FORMAT_R32G32B32A32_SFLOAT, m_vulkanDevice, *m_queue);
+		m_memoryUsage = m_data.size() * sizeof(glm::vec4);
 		m_texture.loadData(m_data, m_rows * m_numSamplesU, m_cols * m_numSamplesV, 
 			m_layers, VK_FORMAT_R32G32B32A32_SFLOAT, m_vulkanDevice, *m_queue);
 

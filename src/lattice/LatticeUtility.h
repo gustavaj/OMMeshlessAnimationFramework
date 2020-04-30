@@ -5,6 +5,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/hash.hpp>
 
+#include <chrono>
+#include <unordered_map>
+#include <iostream>
+
 namespace OML {
 
 
@@ -93,5 +97,14 @@ namespace OML {
 	};
 
 	typedef std::unordered_map<BoundaryInfo, size_t, BoundaryKeyFunc, BoundaryKeyFunc> boundary_map;
+
+
+	struct Timer
+	{
+		static void Start(std::string name, std::string out);
+		static void Stop(std::string name, std::string out);
+
+		static std::unordered_map<std::string, std::chrono::steady_clock::time_point> TimePoints;
+	};
 
 }

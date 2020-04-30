@@ -138,6 +138,10 @@ namespace OML {
 		// Boolean to prevent vulkan stuff from being destroyed if it has not been initiated first.
 		bool m_destroyed = true;
 
+		// Note: The size of the memory usage is equal to the size of the data stored in GPU memory
+		// The size of the memory allocations may differ.
+		uint64_t m_deviceMemoryUsage = 0;
+
 		// Menu variables collected here--
 		// Suffix to use on all menu items to make their id unique
 		// Used so menu controls are responsive even when multiple Lattices are 

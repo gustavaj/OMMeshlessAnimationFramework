@@ -107,8 +107,9 @@ namespace OML
 			-improve point equality check in addPatch(), dont use .length(): ~800ms
 			-dont compare points, instead keep a map of unique points: ~60ms
 		*/
-
-		auto start = std::chrono::high_resolution_clock::now();
+		std::string out = "Lattice::addGrid(rows: " + std::to_string(rows) +
+			", cols: " + std::to_string(cols) + ")";
+		Timer::Start("addGrid", out);
 
  		float w = roundf(width) / (float)cols;
 		float h = roundf(height) / (float)rows;
@@ -122,10 +123,7 @@ namespace OML
 			topLeft += dh;
 		}
 
-		auto end = std::chrono::high_resolution_clock::now();
-		auto time = std::chrono::duration<double, std::milli>(end - start).count();
-
-		std::cout << "Lattice::addGrid(rows: " << rows << ", cols: " << cols << ") time: " << time << "ms" << std::endl;
+		Timer::Stop("addGrid", out);
 	}
 
 	void Lattice::addDonut(Vec2f topLeft, float outerRadius, float innerRadius)
@@ -153,6 +151,10 @@ namespace OML
 
 	void Lattice::addCylinder(Vec3f center, float radius, float height, int rows, int cols)
 	{
+		std::string out = "Lattice::addCylinder(rows: " + std::to_string(rows) +
+			", cols: " + std::to_string(cols) + ")";
+		Timer::Start("addCylinder", out);
+
 		float dh = roundf(height) / (float)rows;
 		float d_angle = 2 * M_PI / cols;
 
@@ -172,10 +174,16 @@ namespace OML
 				addPatch(coords[i + 1][j], coords[i + 1][j + 1], coords[i][j], coords[i][j + 1]);
 			}
 		}
+
+		Timer::Stop("addCylinder", out);
 	}
 
 	void Lattice::addSphere(Vec3f center, float radius, int segments, int slices)
 	{
+		std::string out = "Lattice::addSphere(segments: " + std::to_string(segments) +
+			", slices: " + std::to_string(slices) + ")";
+		Timer::Start("addSphere", out);
+
 		std::vector<std::vector<Vec3f>> points(slices + 1);
 
 		// https://stackoverflow.com/questions/43412525/algorithm-to-draw-a-sphere-using-quadrilaterals
@@ -208,11 +216,15 @@ namespace OML
 				addPatch(points[i + 1][j], points[i + 1][j + 1], points[i][j], points[i][j + 1]);
 			}
 		}
+
+		Timer::Stop("addSphere", out);
 	}
 
 	void Lattice::addGridRandom(Vec2f topLeft, float width, float height, int rows, int cols)
 	{
-		auto start = std::chrono::high_resolution_clock::now();
+		std::string out = "Lattice::addGrid(rows: " + std::to_string(rows) +
+			", cols: " + std::to_string(cols) + ")";
+		Timer::Start("addRandomGrid", out);
 
 		float w = roundf(width) / (float)cols;
 		float h = roundf(height) / (float)rows;
@@ -237,10 +249,7 @@ namespace OML
 			addPatch(vertices[i], w, h);
 		}
 
-		auto end = std::chrono::high_resolution_clock::now();
-		auto time = std::chrono::duration<double, std::milli>(end - start).count();
-
-		std::cout << "Lattice::addGrid(rows: " << rows << ", cols: " << cols << ") time: " << time << "ms" << std::endl;
+		Timer::Stop("addRandomGrid", out);
 	}
 
 	void Lattice::removeSimulator(SimulatorTypes simulatorType)
@@ -322,9 +331,10 @@ namespace OML
 
 	void Lattice::induceLattice()
 	{
+		Timer::Start("induceLattice", "Lattice::induceLattice()");
+
 		auto start = std::chrono::high_resolution_clock::now();
 
-		std::cout << "Number of unique points added: " << m_numUniquePointsAdded << std::endl;
 		// Clear out the pointIndexMap
 		m_uniquePointsIndexMap.clear();
 
@@ -336,7 +346,6 @@ namespace OML
 		m_loci.resize(m_numUniquePointsAdded);
 		//m_loci.resize(0);
 		m_curLocusIndex = 0;
-		std::cout << "Num loci: " << m_loci.size() << std::endl;
 
 		// Setup the valence property of the loci, and set the color of gridpoints based on the point's valence
 		setupLociValenceAndPointColor();
@@ -352,14 +361,9 @@ namespace OML
 
 		// Clean up boundary map
 		m_boundaryMap.clear();
-		std::cout << "Unique boundary infos added: " << m_numUniqueBoundaries << std::endl;
+		//std::cout << "Unique boundary infos added: " << m_numUniqueBoundaries << std::endl;
 
-		auto end = std::chrono::high_resolution_clock::now();
-		auto time = std::chrono::duration<double, std::milli>(end - start).count();
-
-		std::cout << "m_curLocusIndex: " << m_curLocusIndex << std::endl;
-
-		std::cout << "Lattice::induceLattice() time: " << time << "ms" << std::endl;
+		Timer::Stop("induceLattice", "Lattice::induceLattice()");
 	}
 
 	void Lattice::resetMatrices()

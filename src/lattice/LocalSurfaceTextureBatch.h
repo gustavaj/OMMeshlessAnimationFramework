@@ -37,6 +37,8 @@ namespace OML {
 
 		void destroy();
 
+		uint32_t memoryUsage() const { return m_memoryUsage; }
+
 		// Returns true if the given sample size can fit into this image
 		bool isFull() { return m_rows == m_curX && m_cols == m_curY; }
 
@@ -66,6 +68,8 @@ namespace OML {
 		uint32_t m_numSamplesU;
 		uint32_t m_numSamplesV;
 		uint32_t m_layers = 12;
+
+		uint32_t m_memoryUsage = 0;
 		
 		uint32_t m_rows;
 		uint32_t m_cols;

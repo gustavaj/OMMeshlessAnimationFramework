@@ -97,8 +97,10 @@ public:
 		{"gl_Position", 7}, {"gl_PointSize", 7}, {"gl_InvocationID", 7}, {"gl_TessLevelInner", 7}, {"gl_TessLevelOuter", 7}, {"gl_TessCoord", 7}, {"gl_FragCoord", 7},
 	};
 
-	LatticeExample(bool enableValidation)
-		: VulkanExampleBase(enableValidation)
+	LatticeExample(bool enableValidation, OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier, 
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		: VulkanExampleBase(enableValidation), evalMethodIdx(static_cast<uint32_t>(evalMethod)), 
+		lsTypeIdx(static_cast<uint32_t>(lsType))
 	{
 		title = "Lattice Example";
 
@@ -477,8 +479,11 @@ public:
 	int m_rows, m_cols;
 	float m_width, m_height;
 
-	GridLatticeExample(bool enableValidation, float width, float height, int rows, int cols)
-		: LatticeExample(enableValidation), m_width(width), m_height(height), m_rows(rows), m_cols(cols)
+	GridLatticeExample(bool enableValidation, float width, float height, int rows, int cols,
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		: LatticeExample(enableValidation, lsType, evalMethod), 
+		m_width(width), m_height(height), m_rows(rows), m_cols(cols)
 	{
 	}
 
@@ -497,8 +502,11 @@ public:
 	int m_rows, m_cols;
 	float m_width, m_height;
 
-	RandomGridLatticeExample(bool enableValidation, float width, float height, int rows, int cols)
-		: LatticeExample(enableValidation), m_width(width), m_height(height), m_rows(rows), m_cols(cols)
+	RandomGridLatticeExample(bool enableValidation, float width, float height, int rows, int cols,
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		: LatticeExample(enableValidation, lsType, evalMethod), 
+		m_width(width), m_height(height), m_rows(rows), m_cols(cols)
 	{
 	}
 
@@ -517,8 +525,11 @@ public:
 	int m_rows, m_cols;
 	float m_radius, m_height;
 
-	CylinderLatticeExample(bool enableValidation, float radius, float height, int rows, int cols)
-		: LatticeExample(enableValidation), m_radius(radius), m_height(height), m_rows(rows), m_cols(cols)
+	CylinderLatticeExample(bool enableValidation, float radius, float height, int rows, int cols,
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		: LatticeExample(enableValidation, lsType, evalMethod), 
+		m_radius(radius), m_height(height), m_rows(rows), m_cols(cols)
 	{
 	}
 
@@ -537,8 +548,11 @@ public:
 	int m_segments, m_slices;
 	float m_radius;
 
-	SphereLatticeExample(bool enableValidation, float radius, int segments, int slices)
-		: LatticeExample(enableValidation), m_radius(radius), m_segments(segments), m_slices(slices)
+	SphereLatticeExample(bool enableValidation, float radius, int segments, int slices,
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		: LatticeExample(enableValidation, lsType, evalMethod), 
+		m_radius(radius), m_segments(segments), m_slices(slices)
 	{
 	}
 
@@ -554,8 +568,10 @@ public:
 class NonUniformGridExample : public LatticeExample
 {
 public:
-	NonUniformGridExample(bool enableValidation)
-		: LatticeExample(enableValidation)
+	NonUniformGridExample(bool enableValidation,
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		: LatticeExample(enableValidation, lsType, evalMethod)
 	{
 	}
 
@@ -583,8 +599,10 @@ public:
 class NonRectangularExample : public LatticeExample
 {
 public:
-	NonRectangularExample(bool enableValidation)
-		: LatticeExample(enableValidation)
+	NonRectangularExample(bool enableValidation,
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		: LatticeExample(enableValidation, lsType, evalMethod)
 	{
 	}
 
@@ -609,8 +627,10 @@ public:
 class TLocusExample : public LatticeExample
 {
 public:
-	TLocusExample(bool enableValidation)
-		: LatticeExample(enableValidation)
+	TLocusExample(bool enableValidation,
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		: LatticeExample(enableValidation, lsType, evalMethod)
 	{
 	}
 
@@ -646,8 +666,10 @@ public:
 class TLocusx4Example : public LatticeExample
 {
 public:
-	TLocusx4Example(bool enableValidation)
-		: LatticeExample(enableValidation)
+	TLocusx4Example(bool enableValidation,
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		: LatticeExample(enableValidation, lsType, evalMethod)
 	{
 	}
 
@@ -703,7 +725,10 @@ public:
 class MultiLatticeExample : public LatticeExample
 {
 public:
-	MultiLatticeExample(bool enableValidation) : LatticeExample(enableValidation) {}
+	MultiLatticeExample(bool enableValidation,
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct) 
+		: LatticeExample(enableValidation, lsType, evalMethod) {}
 
 	virtual void createLatticeGeometry() override
 	{

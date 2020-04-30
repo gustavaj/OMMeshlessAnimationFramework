@@ -7,35 +7,6 @@
     <Filter Include="lattice">
       <UniqueIdentifier>{2d863040-148a-4716-8629-f21c85d58481}</UniqueIdentifier>
     </Filter>
-    <Filter Include="shaders">
-      <UniqueIdentifier>{01c7ad7f-f527-4614-ba16-33f658958c5b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="shaders\lattice">
-      <UniqueIdentifier>{5dc9ca4e-8219-44c1-a81d-365c595b1aee}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="shaders\lattice-helpers">
-      <UniqueIdentifier>{20399f6f-d004-4d54-8339-2b966ce2724e}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="shaders\Lattice\lattice.frag">
-      <Filter>shaders\lattice</Filter>
-    </None>
-    <None Include="shaders\Lattice\lattice.tesc">
-      <Filter>shaders\lattice</Filter>
-    </None>
-    <None Include="shaders\Lattice\lattice.tese">
-      <Filter>shaders\lattice</Filter>
-    </None>
-    <None Include="shaders\Lattice\lattice.vert">
-      <Filter>shaders\lattice</Filter>
-    </None>
-    <None Include="shaders\Lattice\normals.frag">
-      <Filter>shaders\lattice</Filter>
-    </None>
-    <None Include="shaders\Lattice\normals.geom">
-      <Filter>shaders\lattice</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\lattice\Lattice.cpp">
@@ -92,6 +63,9 @@
       <Filter>lattice</Filter>
     </ClCompile>
     <ClCompile Include="src\lattice\VulkanLattice.cpp">
+      <Filter>lattice</Filter>
+    </ClCompile>
+    <ClCompile Include="src\lattice\LatticeUtility.cpp">
       <Filter>lattice</Filter>
     </ClCompile>
   </ItemGroup>
