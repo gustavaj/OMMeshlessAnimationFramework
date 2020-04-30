@@ -376,10 +376,27 @@ namespace OML
 				if (overlay->checkBox("Draw Grid", &m_drawLatticeGrid)) rebuildCmd = true;
 				if (overlay->checkBox("Draw Wireframe", &m_wireframe)) rebuildCmd = true;
 				if (overlay->checkBox("Draw Normals", &m_drawNormals)) rebuildCmd = true;
+				if (m_drawNormals)
+				{
+					if (overlay->sliderFloat("Length", &m_uniforms.normalLength, 1.0f, 10.0f)) updateLatticeUniformBuffer();
+				}
+				ImGui::Separator();
+				if (m_evalMethod != EvaluationMethod::Direct)
+				{
+					if (overlay->checkBox("Color by Surf Acc", &m_displaySurfaceAccuracy)) rebuildCmd = true;
+					if (m_displaySurfaceAccuracy)
+					{
+						if (overlay->sliderFloat("Error(e)", &m_uniforms.maxError, 0.1f, 10.0f)) updateLatticeUniformBuffer();
+						overlay->text("w<=0.1e, g<=0.2e, b<=0.5e\ny<=e, r>e");
+					}
+				}
+				if (overlay->checkBox("Color by Pixel Acc", &m_displayPixelAccuracy)) rebuildCmd = true;
+				if (m_displayPixelAccuracy)
+				{
+					overlay->text("w<=0.5, g<=1.0, b<=2.0\ny<=5.0 r>5.0");
+				}
 				ImGui::Separator();
 				if (overlay->checkBox("Pixel-Accurate", &m_drawPixelAccurate)) rebuildCmd = true;
-				if (overlay->checkBox("Color by Surf Acc", &m_displaySurfaceAccuracy)) rebuildCmd = true;
-				if (overlay->checkBox("Color by Pixel Acc", &m_displayPixelAccuracy)) rebuildCmd = true;
 				if (!m_drawPixelAccurate)
 				{
 					if (overlay->sliderInt("TessInner", &m_uniforms.tessInner, 0, 64)) updateLatticeUniformBuffer();
@@ -1249,8 +1266,6 @@ namespace OML
 		options.numPatches = m_patches.size();
 		options.numSamplesU = NUM_SAMPLES_U;
 		options.numSamplesV = NUM_SAMPLES_V;
-		options.maxError = 1.0f;
-		options.normalLength = 10.0f;
 
 		// Local surface pipeline
 		std::array<VkPipelineShaderStageCreateInfo, 4> localShaderStages;
@@ -1322,7 +1337,7 @@ namespace OML
 		normalShaderStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
 		normalShaderStages[2] = loadShader(OML::Shaders::GetTeseShader(m_lsType, OML::TeseShaderType::Normals, m_evalMethod, options),
 			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		normalShaderStages[3] = loadShader(OML::Shaders::GetLatticeNormalsGeomShader(options.normalLength), VK_SHADER_STAGE_GEOMETRY_BIT);
+		normalShaderStages[3] = loadShader(OML::Shaders::GetLatticeNormalsGeomShader(), VK_SHADER_STAGE_GEOMETRY_BIT);
 		normalShaderStages[4] = loadShader(OML::Shaders::GetFlatColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(normalShaderStages.size());
 		pipelineCreateInfo.pStages = normalShaderStages.data();

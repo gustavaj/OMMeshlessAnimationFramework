@@ -1,5 +1,8 @@
 #include "LatticeUtility.h"
 
+#include <iostream>
+#include <string>
+
 namespace OML {
 
 	std::unordered_map<std::string, std::chrono::steady_clock::time_point> Timer::TimePoints;
@@ -18,7 +21,7 @@ namespace OML {
 			auto end = std::chrono::high_resolution_clock::now();
 			auto time = std::chrono::duration<double, std::milli>(end - it->second).count();
 
-			std::cout << out << " time: " << time << "ms" << std::endl;
+            std::cout << out << " time: " << time << "ms" << std::endl;
 
 			Timer::TimePoints.erase(it);
 		}

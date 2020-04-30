@@ -26,14 +26,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	std::cerr << "asd" << std::endl;
 	for (size_t i = 0; i < __argc; i++) { LatticeExample::args.push_back(__argv[i]); };
 	
-	OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Cubic_Bezier;
-	OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct;
+	OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier;
+	OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Pre_Sampled_Image;
 
 	// Base example
 	//example = new LatticeExample(debug, lsType, evalMethod);
 	
 	// Grid example
-	example = new GridLatticeExample(debug, 100.0f, 100.0f, 30, 30, lsType, evalMethod);
+	example = new GridLatticeExample(debug, 30.0f, 30.0f, 3, 3, lsType, evalMethod);
 
 	// Random grid example
 	//example = new RandomGridLatticeExample(debug, 100.0f, 100.0f, 10, 10, lsType, evalMethod);

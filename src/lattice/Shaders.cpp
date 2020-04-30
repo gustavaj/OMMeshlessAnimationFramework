@@ -10,14 +10,13 @@ namespace OML {
 	std::vector<std::string> Shaders::ShaderNames;
 
 	// Shader names
-	std::string Shaders::PosColorPassVertName = "PosColorPassVert";
-	std::string Shaders::UintFlatColorFragName = "PosColorPassFrag";
-	std::string Shaders::LocalSurfaceInfoVertName = "LocalSurfaceInfoVert";
-	std::string Shaders::FlatColorFragName = "FlatColorFrag";
-	std::string Shaders::LocalSurfaceInfoTescName = "LocalSurfaceInfoTesc";
-	std::string Shaders::ShadedColorFragName = "ShadedColorFrag";
-	std::string Shaders::BiQuadLatticeNormalsGeomName = "BiQuadLatticeNormalsGeom";
-	std::string Shaders::BiQuadLatticePixelAccuracyFragName = "BiQuadLatticePixelAccuracyFrag";
+	std::string Shaders::PosColorPassVertName = "Vert_PosColorPass";
+	std::string Shaders::UintFlatColorFragName = "Frag_PosColorPass";
+	std::string Shaders::LocalSurfaceInfoVertName = "Vert_LocalSurfaceInfo";
+	std::string Shaders::FlatColorFragName = "Frag_FlatColor";
+	std::string Shaders::LocalSurfaceInfoTescName = "Tesc_LocalSurfaceInfo";
+	std::string Shaders::ShadedColorFragName = "Frag_ShadedColor";
+	std::string Shaders::BiQuadLatticeNormalsGeomName = "Geom_LatticeNormals";
 
 	void Shaders::PrintShader(std::string name)
 	{
@@ -141,50 +140,50 @@ namespace OML {
 	std::string Shaders::GetTeseShaderName(
 		LocalSurfaceType lsType, TeseShaderType teseType, EvaluationMethod evalMethod, ShaderOptions& options)
 	{
-		std::string name;
+		std::string name = "Tese_";
 
 		if (evalMethod == EvaluationMethod::Direct)
 		{
-			name += "Direct";
+			name += "Direct_";
 
 			switch (teseType)
 			{
-			case TeseShaderType::Lattice:			name += "Lattice"; break;
-			case TeseShaderType::Local:				name += "Local"; break;
-			case TeseShaderType::Pixel_Accuracy:	name += "LatPixAcc"; break;
-			case TeseShaderType::Surf_Accuracy:		name += "LatSurfAcc"; break;
-			case TeseShaderType::Normals:			name += "LateNormals"; break;
+			case TeseShaderType::Lattice:			name += "Lattice_"; break;
+			case TeseShaderType::Local:				name += "Local_"; break;
+			case TeseShaderType::Pixel_Accuracy:	name += "LatPixAcc_"; break;
+			case TeseShaderType::Surf_Accuracy:		name += "LatSurfAcc_"; break;
+			case TeseShaderType::Normals:			name += "LateNormals_"; break;
 			}
 
 			switch (lsType)
 			{
-			case LocalSurfaceType::Quadratic_Bezier:  name += "QuadBezier"; break;
-			case LocalSurfaceType::Cubic_Bezier: name += "CubicBezier"; break;
+			case LocalSurfaceType::Quadratic_Bezier:  name += "QuadBezier_"; break;
+			case LocalSurfaceType::Cubic_Bezier: name += "CubicBezier_"; break;
 			}
 		} 
 		else 
 		{
 			switch (evalMethod)
 			{
-			case EvaluationMethod::Pre_Sampled_Image:			name += "PreImg"; break;
-			case EvaluationMethod::Pre_Sampled_Image_Batched:	name += "PreImgBatch"; break;
-			case EvaluationMethod::Pre_Sampled_Buffer:			name += "PreBuf"; break;
+			case EvaluationMethod::Pre_Sampled_Image:			name += "PreImg_"; break;
+			case EvaluationMethod::Pre_Sampled_Image_Batched:	name += "PreImgBatch_"; break;
+			case EvaluationMethod::Pre_Sampled_Buffer:			name += "PreBuf_"; break;
 			}
 
 			switch (teseType)
 			{
-			case TeseShaderType::Lattice:			name += "Lattice"; break;
-			case TeseShaderType::Local:				name += "Local"; break;
-			case TeseShaderType::Pixel_Accuracy:	name += "LatPixAcc"; break;
-			case TeseShaderType::Surf_Accuracy:		name += "LatSurfAcc"; break;
-			case TeseShaderType::Normals:			name += "LatNormals"; break;
+			case TeseShaderType::Lattice:			name += "Lattice_"; break;
+			case TeseShaderType::Local:				name += "Local_"; break;
+			case TeseShaderType::Pixel_Accuracy:	name += "LatPixAcc_"; break;
+			case TeseShaderType::Surf_Accuracy:		name += "LatSurfAcc_"; break;
+			case TeseShaderType::Normals:			name += "LatNormals_"; break;
 			}
 
-			name += "_" + std::to_string(options.numSamplesU) + "x" + std::to_string(options.numSamplesV) + "S";
+			name += std::to_string(options.numSamplesU) + "x" + std::to_string(options.numSamplesV) + "S";
 		}
 
-		name += "_" + std::to_string(options.numControl) + "C_" + std::to_string(options.numLocal) + "L_"
-			+ std::to_string(options.numPatches) + "P_Tese";
+		name += std::to_string(options.numControl) + "C_" + std::to_string(options.numLocal) + "L_"
+			+ std::to_string(options.numPatches) + "P";
 
 		return name;
 	}
@@ -371,8 +370,7 @@ namespace OML {
 				"    gl_Position = ubo.projection * ubo.modelview * vec4( pos, 1.0f );\n" +
 				Shaders::EvaluateLocalSurfacesOnlyPosString("ref_") + " \n" +
 				Shaders::BlendLocalSurfacesOnlyPos("ref_") + " \n" +
-				"    float diff = distance ( pos, ref_pos );\n"
-				"    float maxError = " + std::to_string(options.maxError) + ";\n" +
+				"    float diff = distance ( pos, ref_pos );\n" +
 				Shaders::ColorByMaxErrorString() + " \n" +
 				"}";
 		}
@@ -442,11 +440,10 @@ namespace OML {
 		return { name, Shaders::SpirvMap[name] };
 	}
 
-	NameSpirvPair Shaders::GetLatticeNormalsGeomShader(float length)
+	NameSpirvPair Shaders::GetLatticeNormalsGeomShader()
 	{
 		if (Shaders::NotInMap(Shaders::BiQuadLatticeNormalsGeomName))
 		{
-			std::string l = std::to_string(length);
 			std::string src =
 				Shaders::ShaderHeader() + " \n" +
 				"layout ( triangles ) in;\n"
@@ -467,7 +464,7 @@ namespace OML {
 				"        EmitVertex ();\n"
 				" \n"
 				"        gl_Position = ubo.projection * ( vec4 (tePosition[vertex], 1)\n"
-				"            + ( transpose ( inverse (ubo.modelview)) * vec4 (teNormal[vertex] * " + l + ", 0)));\n"
+				"            + ( transpose ( inverse (ubo.modelview)) * vec4 (teNormal[vertex] * ubo.normalLength, 0)));\n"
 				"        gColor = vec3 (0.6);\n"
 				"        EmitVertex ();\n"
 				" \n"
@@ -550,8 +547,13 @@ namespace OML {
 		std::string nControl = std::to_string(numLocalsurfaceControlPoints);
 		std::string nLocal = std::to_string(numLocalSurfaces);
 		std::string nPatches = std::to_string(numPatches);
-		std::string name = Shaders::BiQuadLatticePixelAccuracyFragName
-			+ "_" + nControl + "C_" + nLocal + "L_" + nPatches + "P";
+		std::string name;
+		switch (lsType)
+		{
+		case LocalSurfaceType::Quadratic_Bezier:  name = "Frag_QuadBezier_"; break;
+		case LocalSurfaceType::Cubic_Bezier:	  name = "Frag_CubicBezier_"; break;
+		}
+		name += "PixelAccuracy_" + nControl + "C_" + nLocal + "L_" + nPatches + "P";
 		std::string evalString;
 		switch (lsType)
 		{
@@ -680,6 +682,8 @@ namespace OML {
 			"    int tessInner;\n"
 			"    int tessOuter;\n"
 			"    int bFunctionIndex;\n"
+			"	 float maxError;\n"
+			"	 float normalLength;\n"
 			"    mat4 projection;\n"
 			"    mat4 modelview;\n"
 			"    mat4 normal;\n"
@@ -1199,16 +1203,16 @@ namespace OML {
 	inline std::string Shaders::ColorByMaxErrorString()
 	{
 		return
-			"    if(diff <= maxError * 0.1) {\n"
+			"    if(diff <= ubo.maxError * 0.1) {\n"
 			"        teColor = vec3 (0.5, 0.5, 0.5);\n"
 			"    }\n"
-			"    else if (diff <= maxError * 0.2) {\n"
+			"    else if (diff <= ubo.maxError * 0.2) {\n"
 			"        teColor = vec3 (0.0, 1.0, 0.0);\n"
 			"    }\n"
-			"    else if (diff <= maxError * 0.5) {\n"
+			"    else if (diff <= ubo.maxError * 0.5) {\n"
 			"        teColor = vec3 (0.0, 0.0, 1.0);\n"
 			"    }\n"
-			"    else if (diff <= maxError) {\n"
+			"    else if (diff <= ubo.maxError) {\n"
 			"        teColor = vec3 (1.0, 1.0, 0.0);\n"
 			"    }\n"
 			"    else {\n"

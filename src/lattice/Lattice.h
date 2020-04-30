@@ -263,6 +263,8 @@ namespace OML {
 			int tessInner = 10;
 			int tessOuter = 10;
 			int bFunctionIndex = 0;
+			float maxError = 1.0f;
+			float normalLength = 2.0f;
 			alignas(16) glm::mat4 projection = glm::mat4(1.0f);
 			alignas(16) glm::mat4 modelview = glm::mat4(1.0f);
 			alignas(16) glm::mat4 normal = glm::mat4(1.0f);
@@ -337,16 +339,16 @@ namespace OML {
 		size_t addBoundaryInfo(BoundaryInfo boundary);
 
 		std::pair<uint32_t, uint32_t> createLocalSurfaceControlPoints(
-			Vec3f& topLeft, Vec3f& topRight, Vec3f& bottomLeft, Vec3f& bottomRight);
+            Vec3f topLeft, Vec3f topRight, Vec3f bottomLeft, Vec3f bottomRight);
 		std::pair<uint32_t, uint32_t> create3x3LocalSurfaceControlPoints(
 			Vec3f& topLeft, Vec3f& topRight, Vec3f& bottomLeft, Vec3f& bottomRight);
 		std::pair<uint32_t, uint32_t> create4x4LocalSurfaceControlPoints(
 			Vec3f& topLeft, Vec3f& topRight, Vec3f& bottomLeft, Vec3f& bottomRight);
 
 		std::pair<uint32_t, uint32_t> createLocalSurfaceControlPoints(
-			Vec3f& topLeft,    Vec3f& topMiddle,	Vec3f& topRight,
-			Vec3f& middleLeft, Vec3f& middle,		Vec3f& middleRight,
-			Vec3f& bottomLeft, Vec3f& bottomMiddle, Vec3f& bottomRight);
+            Vec3f topLeft,    Vec3f topMiddle,	Vec3f topRight,
+            Vec3f middleLeft, Vec3f middle,		Vec3f middleRight,
+            Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight);
 		std::pair<uint32_t, uint32_t> create3x3LocalSurfaceControlPoints(
 			Vec3f& topLeft, Vec3f& topMiddle, Vec3f& topRight,
 			Vec3f& middleLeft, Vec3f& middle, Vec3f& middleRight,
@@ -359,9 +361,9 @@ namespace OML {
 		// New way of adding local surfaces. Rename this stuff.
 		void addLocalSurfaceOnLoci(OpenMesh::VertexHandle vh, Vec3f L2RDir, Vec3f T2BDir);
 		void getCornerPointsOfFaceL2RT2B(
-			OpenMesh::FaceHandle& fh, std::vector<Vec3f>& points);
+            OpenMesh::FaceHandle fh, std::vector<Vec3f>& points);
 		void getCornerVertexHandlesOfFaceL2RT2B(
-			OpenMesh::FaceHandle& fh, std::vector<OpenMesh::VertexHandle>& vhs);
+            OpenMesh::FaceHandle fh, std::vector<OpenMesh::VertexHandle>& vhs);
 
 		void addLocalSurfaceOnCornerLocus(
 			OpenMesh::VertexHandle vh, OpenMesh::FaceHandle fh, Vec3f L2RDir, Vec3f T2BDir);

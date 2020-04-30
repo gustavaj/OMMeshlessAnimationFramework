@@ -1028,8 +1028,8 @@ namespace OML
 	}
 
 	std::pair<uint32_t, uint32_t> Lattice::createLocalSurfaceControlPoints(
-		Vec3f& topLeft, Vec3f& topRight, 
-		Vec3f& bottomLeft, Vec3f& bottomRight)
+        Vec3f topLeft, Vec3f topRight,
+        Vec3f bottomLeft, Vec3f bottomRight)
 	{
 		switch (m_lsType)
 		{
@@ -1125,9 +1125,9 @@ namespace OML
 	}
 
 	std::pair<uint32_t, uint32_t> Lattice::createLocalSurfaceControlPoints(
-		Vec3f& topLeft, Vec3f& topMiddle, Vec3f& topRight,
-		Vec3f& middleLeft, Vec3f& middle, Vec3f& middleRight,
-		Vec3f& bottomLeft, Vec3f& bottomMiddle, Vec3f& bottomRight)
+        Vec3f topLeft, Vec3f topMiddle, Vec3f topRight,
+        Vec3f middleLeft, Vec3f middle, Vec3f middleRight,
+        Vec3f bottomLeft, Vec3f bottomMiddle, Vec3f bottomRight)
 	{
 		switch (m_lsType)
 		{
@@ -1251,7 +1251,7 @@ namespace OML
 	}
 
 	void Lattice::getCornerPointsOfFaceL2RT2B(
-		OpenMesh::FaceHandle& fh, std::vector<Vec3f>& p)
+        OpenMesh::FaceHandle fh, std::vector<Vec3f>& p)
 	{
 		auto faceValence = valence(fh);
 		// 1. Add the faces vertices to the points array
@@ -1313,7 +1313,7 @@ namespace OML
 		}*/
 	}
 
-	void Lattice::getCornerVertexHandlesOfFaceL2RT2B(OpenMesh::FaceHandle& fh, std::vector<OpenMesh::VertexHandle>& vhs)
+    void Lattice::getCornerVertexHandlesOfFaceL2RT2B(OpenMesh::FaceHandle fh, std::vector<OpenMesh::VertexHandle>& vhs)
 	{
 		auto faceValence = valence(fh);
 		// 1. Add the faces vertex handles to the points array

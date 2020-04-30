@@ -42,7 +42,6 @@ namespace OML {
 		static std::string FlatColorFragName;
 		static std::string LocalSurfaceInfoTescName;
 		static std::string BiQuadLatticeNormalsGeomName;
-		static std::string BiQuadLatticePixelAccuracyFragName;
 
 		static void PrintShader(std::string name);
 		static void PrintShader(std::string name, std::string& source);
@@ -69,7 +68,7 @@ namespace OML {
 			EvaluationMethod evalMethod, ShaderOptions& options);
 
 		// Geometry Shaders
-		static NameSpirvPair GetLatticeNormalsGeomShader(float length);
+		static NameSpirvPair GetLatticeNormalsGeomShader();
 
 		// Fragment Shaders
 		static NameSpirvPair GetUintFlatColorFragShader();

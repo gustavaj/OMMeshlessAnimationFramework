@@ -67,7 +67,8 @@ VkResult VulkanExampleBase::createInstance(bool enableValidation)
 	{
 		// The VK_LAYER_KHRONOS_validation contains all current validation functionality.
 		// Note that on Android this layer requires at least NDK r20 
-		const char* validationLayerName = "VK_LAYER_KHRONOS_validation";
+		//const char* validationLayerName = "VK_LAYER_KHRONOS_validation";
+		const char* validationLayerName = "VK_LAYER_LUNARG_standard_validation";
 		// Check if this layer is available at instance level
 		uint32_t instanceLayerCount;
 		vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
@@ -85,7 +86,8 @@ VkResult VulkanExampleBase::createInstance(bool enableValidation)
 			instanceCreateInfo.enabledLayerCount = 1;
 		}
 		else {
-			std::cerr << "Validation layer VK_LAYER_KHRONOS_validation not present, validation is disabled";
+			//std::cerr << "Validation layer VK_LAYER_KHRONOS_validation not present, validation is disabled";
+			std::cerr << "Validation layer VK_LAYER_LUNARG_standard_validation not present, validation is disabled";
 		}
 	}
 	return vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
