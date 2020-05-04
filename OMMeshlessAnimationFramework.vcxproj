@@ -99,7 +99,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_WINDOWS;VK_USE_PLATFORM_WIN32_KHR;NOMINMAX;_USE_MATH_DEFINES;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>P:\Projects\master\VulkanSascha\Vulkan\external\imgui;P:\Projects\ExternalLibs\vcpkg\installed\x64-windows\include;C:\VulkanSDK\1.1.121.2\Include\shaderc;C:\VulkanSDK\1.1.121.2\Include;P:\Projects\ExternalLibs\OpenMesh-8.1\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>P:\Projects\master\VulkanSascha\Vulkan\external\imgui;P:\Projects\ExternalLibs\vcpkg\installed\x64-windows\include;C:\VulkanSDK\1.1.121.2\Include\shaderc;C:\VulkanSDK\1.1.121.2\Include;C:\Users\Gustav\Desktop\OpenMesh-8.0\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <EnableModules>false</EnableModules>
@@ -111,7 +111,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\VulkanSDK\1.1.121.2\shaderc\BUILD\debug\libshaderc;P:\Projects\ExternalLibs\OpenMesh-8.1\BUILD\debug\Build\lib;C:\VulkanSDK\1.1.121.2\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.1.121.2\shaderc\BUILD\debug\libshaderc;C:\Users\Gustav\Desktop\OpenMesh-8.0\BUILD\debug\Build\lib;C:\VulkanSDK\1.1.121.2\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;OpenMeshCored.lib;shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>

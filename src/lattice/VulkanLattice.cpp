@@ -396,11 +396,18 @@ namespace OML
 					overlay->text("w<=0.5, g<=1.0, b<=2.0\ny<=5.0 r>5.0");
 				}
 				ImGui::Separator();
-				if (overlay->checkBox("Pixel-Accurate", &m_drawPixelAccurate)) rebuildCmd = true;
-				if (!m_drawPixelAccurate)
+				if (overlay->comboBox("TessFactorMethod", &m_uniforms.tessFactorMethod, TessFactorMethodNames)) updateLatticeUniformBuffer();
+				switch (m_uniforms.tessFactorMethod)
 				{
+				case TessFactorMethod::Static: {
 					if (overlay->sliderInt("TessInner", &m_uniforms.tessInner, 0, 64)) updateLatticeUniformBuffer();
 					if (overlay->sliderInt("TessOuter", &m_uniforms.tessOuter, 0, 64)) updateLatticeUniformBuffer();
+					break;
+				}
+				case TessFactorMethod::Dynamic: {
+					if (overlay->sliderInt("PixelsPerEdge", &m_uniforms.pixelsPerEdge, 1, 50)) updateLatticeUniformBuffer();
+					break;
+				}
 				}
 				ImGui::Separator();
 				if (overlay->comboBox("B-Function", &m_uniforms.bFunctionIndex, OML::BFunctionNames)) updateLatticeUniformBuffer();
@@ -1022,15 +1029,15 @@ namespace OML
 				0),
 			vks::initializers::descriptorSetLayoutBinding(
 				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 				1),
 			vks::initializers::descriptorSetLayoutBinding(
 				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 				2),
 			vks::initializers::descriptorSetLayoutBinding(
 				VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 				3)
 		};
 		if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer)
@@ -1270,7 +1277,7 @@ namespace OML
 		// Local surface pipeline
 		std::array<VkPipelineShaderStageCreateInfo, 4> localShaderStages;
 		localShaderStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
-		localShaderStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(1), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		localShaderStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(1, m_lsType, options), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
 		localShaderStages[2] = loadShader(OML::Shaders::GetTeseShader(m_lsType, OML::TeseShaderType::Local, 
 			(m_evalMethod == EvaluationMethod::Pre_Sampled_Image_Batched ? OML::EvaluationMethod::Direct : m_evalMethod), options),
 			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
@@ -1290,7 +1297,7 @@ namespace OML
 
 		std::array<VkPipelineShaderStageCreateInfo, 4> bsShaderStages;
 		bsShaderStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
-		bsShaderStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		bsShaderStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4, m_lsType, options), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
 		bsShaderStages[2] = loadShader(OML::Shaders::GetTeseShader(m_lsType, OML::TeseShaderType::Lattice, m_evalMethod, options),
 			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		bsShaderStages[3] = loadShader(OML::Shaders::GetShadedColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -1308,7 +1315,7 @@ namespace OML
 		{
 			std::array<VkPipelineShaderStageCreateInfo, 4> surfaceAccuracyStages;
 			surfaceAccuracyStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
-			surfaceAccuracyStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+			surfaceAccuracyStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4, m_lsType, options), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
 			surfaceAccuracyStages[2] = loadShader(OML::Shaders::GetTeseShader(m_lsType, OML::TeseShaderType::Surf_Accuracy, m_evalMethod, options),
 				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 			surfaceAccuracyStages[3] = loadShader(OML::Shaders::GetFlatColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -1321,7 +1328,7 @@ namespace OML
 		// Pixel accuracy display pipeline
 		std::array<VkPipelineShaderStageCreateInfo, 4> pixelAccuracyStages;
 		pixelAccuracyStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
-		pixelAccuracyStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		pixelAccuracyStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4, m_lsType, options), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
 		pixelAccuracyStages[2] = loadShader(OML::Shaders::GetTeseShader(m_lsType, OML::TeseShaderType::Pixel_Accuracy, m_evalMethod, options),
 			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		pixelAccuracyStages[3] = loadShader(OML::Shaders::GetBiQuadLatticePixelAccuracyFragShader(
@@ -1334,7 +1341,7 @@ namespace OML
 		// Normals pipeline
 		std::array<VkPipelineShaderStageCreateInfo, 5> normalShaderStages;
 		normalShaderStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
-		normalShaderStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		normalShaderStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4, m_lsType, options), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
 		normalShaderStages[2] = loadShader(OML::Shaders::GetTeseShader(m_lsType, OML::TeseShaderType::Normals, m_evalMethod, options),
 			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 		normalShaderStages[3] = loadShader(OML::Shaders::GetLatticeNormalsGeomShader(), VK_SHADER_STAGE_GEOMETRY_BIT);

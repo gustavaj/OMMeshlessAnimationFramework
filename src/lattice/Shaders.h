@@ -53,7 +53,8 @@ namespace OML {
 		static NameSpirvPair GetLocalSurfaceInfoVertShader();
 
 		// Tessellation Control Shaders
-		static NameSpirvPair GetLocalSurfaceInfoTescShader(uint32_t patchVertices);
+		static NameSpirvPair GetLocalSurfaceInfoTescShader(
+			uint32_t patchVertices, LocalSurfaceType lsType, ShaderOptions& options);
 
 		// Tessellation Evaluation Shaders
 		static std::string GetTeseShaderName(LocalSurfaceType lsType, TeseShaderType teseType,

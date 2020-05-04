@@ -91,6 +91,13 @@ namespace OML {
 		"3x^2-2x^3", "6x^5-15x^4+10x^3", "1/(1+e^(1/x-1/(1-x)))"
 	};
 
+	enum TessFactorMethod {
+		Static = 0, Dynamic, PixelAccurate
+	};
+	const std::vector<std::string> TessFactorMethodNames = {
+		"Static", "Dynamic", "PixelAccurate"
+	};
+
 	// Custom traits passed to the OpenMesh::PolyMesh class.
 	struct LatticeTraits : public OpenMesh::DefaultTraits
 	{
@@ -263,6 +270,8 @@ namespace OML {
 			int tessInner = 10;
 			int tessOuter = 10;
 			int bFunctionIndex = 0;
+			int tessFactorMethod = 0;
+			int pixelsPerEdge = 6;
 			float maxError = 1.0f;
 			float normalLength = 2.0f;
 			alignas(16) glm::mat4 projection = glm::mat4(1.0f);

@@ -98,16 +98,37 @@ namespace OML {
 		return { Shaders::LocalSurfaceInfoVertName, Shaders::SpirvMap[Shaders::LocalSurfaceInfoVertName] };
 	}
 
-	NameSpirvPair Shaders::GetLocalSurfaceInfoTescShader(uint32_t patchVertices)
+	NameSpirvPair Shaders::GetLocalSurfaceInfoTescShader(uint32_t patchVertices, LocalSurfaceType lsType, ShaderOptions& options)
 	{
 		std::string verts = std::to_string(patchVertices);
-		std::string name = Shaders::LocalSurfaceInfoTescName + verts;
+		std::string nControl = std::to_string(options.numControl);
+		std::string nLocal = std::to_string(options.numLocal);
+		std::string nPatches = std::to_string(options.numPatches);
+		std::string nBoundaries = std::to_string(options.numPatches * 4);
+		std::string evalString;
+		std::string name;
+		switch (lsType)
+		{
+		case LocalSurfaceType::Quadratic_Bezier: {
+			name += "QuadBezier_";
+			evalString = Shaders::BiQuadEvaluatorOnlyPosString("");
+			break;
+		}
+		case LocalSurfaceType::Cubic_Bezier: {
+			name += "CubicBezier_";
+			evalString = Shaders::BiCubicEvaluatorOnlyPosString("");
+			break;
+		}
+		}
+		name += Shaders::LocalSurfaceInfoTescName + "_" + verts + "V_" + nControl + "C_" + nLocal + "L_" + nPatches + "P";
 		if (Shaders::NotInMap(name))
 		{
 			std::string src =
 				Shaders::ShaderHeader() +
-				" \n"
-				+ Shaders::LocalSurfaceInfoStruct() +
+				" \n" +
+				Shaders::LocalSurfaceInfoStruct() + " \n" +
+				Shaders::SamplerStruct() + " \n" +
+				Shaders::BoundaryInfoStruct() + " \n" +
 				" \n"
 				"layout ( vertices = " + verts + " ) out;\n"
 				" \n"
@@ -117,21 +138,73 @@ namespace OML {
 				"layout ( location = 0 ) out LocalSurfaceInfo tcLSInfo[];\n"
 				"layout ( location = 4 ) out vec3 tcColor[];\n"
 				" \n"
-				+ Shaders::CommonUniformBufferString() +
+				"const int TessFactorMethod_Static = 0;\n"
+				"const int TessFactorMethod_Dynamic = 1;\n"
+				"const int TessFactorMethod_PixelAccurate = 2;\n"
+				" \n" +
+				Shaders::CommonUniformBufferString() + " \n" +
+				Shaders::MatrixStorageBufferString(nLocal, "0", "1") + " \n" +
+				Shaders::ControlPointStorageBufferString(nControl, "0", "2") + " \n" +
+				Shaders::BoundaryBufferString(nBoundaries, "0", "3") + " \n" +
+				" \n" +
+				evalString + " \n" +
+				" \n"
+				"float getPostProjectionSphereExtent( vec3 origin, float diameter ) {\n"
+				"    vec4 clipPos = ubo.projection * ubo.modelview * vec4 (origin, 1.0f);\n"
+				"    return abs (diameter * ubo.projection[1][1] / clipPos.w);\n"
+				"}\n"
+				" \n"
+				"float calculateTessellationFactor( vec3 control0, vec3 control1) {\n"
+				"    float e0 = distance (control0, control1);\n"
+				"    vec3 m0 = (control0 + control1) / 2;\n"
+				"    return max (1.0f, (ubo.windowSize.y / ubo.pixelsPerEdge) * getPostProjectionSphereExtent(m0, e0));\n"
+				"}\n"
 				" \n"
 				"void main() {\n"
 				"    tcLSInfo[ gl_InvocationID ] = vLSInfo[ gl_InvocationID ];\n"
 				"    tcColor[ gl_InvocationID ] = vColor[ gl_InvocationID ];\n"
 				" \n"
-				"    if( gl_InvocationID == 0 ) {\n"
-				"        gl_TessLevelInner [0] = ubo.tessInner;\n"
-				"        gl_TessLevelInner [1] = ubo.tessInner;\n"
-				"        gl_TessLevelOuter [0] = ubo.tessOuter;\n"
-				"        gl_TessLevelOuter [1] = ubo.tessOuter;\n"
-				"        gl_TessLevelOuter [2] = ubo.tessOuter;\n"
-				"        gl_TessLevelOuter [3] = ubo.tessOuter;\n"
-			    "    }\n"
-				"}";
+				"    if ( gl_InvocationID == 0 ) {\n"
+				"		 if ( ubo.tessFactorMethod == TessFactorMethod_Static ) {\n"
+				"			 gl_TessLevelInner [0] = ubo.tessInner;\n"
+				"			 gl_TessLevelInner [1] = ubo.tessInner;\n"
+				"			 gl_TessLevelOuter [0] = ubo.tessOuter;\n"
+				"			 gl_TessLevelOuter [1] = ubo.tessOuter;\n"
+				"			 gl_TessLevelOuter [2] = ubo.tessOuter;\n"
+				"			 gl_TessLevelOuter [3] = ubo.tessOuter;\n"
+				"		 }\n";
+			if (patchVertices == 4) {
+				src +=
+					"		 else if( ubo.tessFactorMethod == TessFactorMethod_Dynamic ) {\n"
+					"            // https://developer.nvidia.com/content/dynamic-hardware-tessellation-basics \n"
+					"            // Calculate the four corner points\n"
+					"            vec3 topLeft  = evaluateLocal(tcLSInfo[0], 0.0, 0.0).p;\n"
+					"            vec3 topRight = evaluateLocal(tcLSInfo[1], 1.0, 0.0).p;\n"
+					"            vec3 botLeft  = evaluateLocal(tcLSInfo[2], 0.0, 1.0).p;\n"
+					"            vec3 botRight = evaluateLocal(tcLSInfo[3], 1.0, 1.0).p;\n"
+					"            \n"
+					"            // Use corner points to calculate outer edge tess factors\n"
+					"            float tf0 = calculateTessellationFactor(topLeft, botLeft);\n"
+					"            float tf1 = calculateTessellationFactor(topLeft, topRight);\n"
+					"            float tf2 = calculateTessellationFactor(topRight, botRight);\n"
+					"            float tf3 = calculateTessellationFactor(botLeft, botRight);\n"
+					"            gl_TessLevelOuter [0] = tf0;\n"
+					"            gl_TessLevelOuter [1] = tf1;\n"
+					"            gl_TessLevelOuter [2] = tf2;\n"
+					"            gl_TessLevelOuter [3] = tf3;\n"
+					"            \n"
+					"            // Set inner tess factors based on the max factor in the respective directions\n"
+					"			 gl_TessLevelInner [0] = max (tf1, tf3);\n"
+					"			 gl_TessLevelInner [1] = max (tf0, tf2);\n"
+					"        }\n"
+					"    }\n"
+					"}";
+			}
+			else {
+				src +=
+					"    }\n"
+					"}";;
+			}
 			Shaders::LoadSpirv(name, src, shaderc_shader_kind::shaderc_tess_control_shader);
 		}
 		return { name, Shaders::SpirvMap[name] };
@@ -682,6 +755,8 @@ namespace OML {
 			"    int tessInner;\n"
 			"    int tessOuter;\n"
 			"    int bFunctionIndex;\n"
+			"	 int tessFactorMethod;\n"
+			"	 int pixelsPerEdge;\n"
 			"	 float maxError;\n"
 			"	 float normalLength;\n"
 			"    mat4 projection;\n"
@@ -695,7 +770,7 @@ namespace OML {
 	{
 		return 
 			"struct LocalSurfaceInfo {\n"
-			"    uint controlPointIndex;\n"
+			"	 uint controlPointIndex;\n"
 			"    uint controlPointCount;\n"
 			"    uint matrixIndex;\n"
 			"    uint boundaryIndex;\n"
