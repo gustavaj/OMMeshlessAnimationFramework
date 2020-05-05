@@ -60,14 +60,17 @@ public:
 	int ShaderItemIndex = 0;
 
 	std::vector<ImVec4> ShaderWordColors = {
-		ImVec4(1.0, 1.0, 1.0, 1.0),
-		ImVec4(0.6, 0.6, 0.6, 1.0),
-		ImVec4(1.0, 0.3, 0.2, 1.0),
-		ImVec4(1.0, 0.6, 0.2, 1.0),
-		ImVec4(0.7, 0.0, 1.0, 1.0),
-		ImVec4(0.0, 0.7, 0.7, 1.0),
-		ImVec4(0.0, 1.0, 0.0, 1.0),
-		ImVec4(0.7, 0.2, 0.3, 1.0)
+		ImVec4(0.9, 0.9, 0.9, 1.0), // Normal text
+		ImVec4(0.6, 0.6, 0.6, 1.0), // line numbers
+		ImVec4(1.0, 0.3, 0.2, 1.0), // Data types
+		ImVec4(1.0, 0.6, 0.2, 1.0), // Built-in functions
+		ImVec4(0.7, 0.0, 1.0, 1.0), // Macros
+		ImVec4(0.0, 0.7, 0.7, 1.0), // Something
+		ImVec4(0.0, 0.7, 0.0, 1.0), // Comment
+		ImVec4(0.9, 0.8, 0.3, 1.0), // gl_ stuff
+		ImVec4(0.6, 0.7, 0.9, 1.0), // User defined Buffers
+		ImVec4(0.7, 0.2, 0.3, 1.0), // User defined types
+		ImVec4(0.8, 0.4, 0.8, 1.0), // User defined constants
 	};
 	std::unordered_map<std::string, size_t> GLSLWordMap = {
 		// Data types
@@ -95,6 +98,16 @@ public:
 
 		// gl_ stuff
 		{"gl_Position", 7}, {"gl_PointSize", 7}, {"gl_InvocationID", 7}, {"gl_TessLevelInner", 7}, {"gl_TessLevelOuter", 7}, {"gl_TessCoord", 7}, {"gl_FragCoord", 7},
+
+		// User defined Buffers
+		{"ubo", 8}, {"lsDataBuffer", 8}, {"matrixBuffer", 8}, {"boundaryBuffer", 8}, {"controlPointBuffer", 8},
+		
+		// User defined types
+		{"LocalSurfaceInfo", 9}, {"Sampler", 9}, {"BoundaryInfo", 9},
+
+		// User defined constants
+		{"BFunction_B1Poly", 10}, {"BFunction_B2Poly", 10}, {"BFunction_Lerbs", 10}, 
+		{"TessFactorMethod_Static", 10}, {"TessFactorMethod_Dynamic", 10}, {"TessFactorMethod_PixelAccurate", 10},
 	};
 
 	LatticeExample(bool enableValidation, OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier, 
@@ -444,6 +457,11 @@ public:
 			std::string line;
 			std::string word;
 
+			bool isComment = false;
+			size_t commentColIdx = 6;
+
+			std::string nastyChars = "(){}[].;";
+
 			std::stringstream liness(code);
 
 			OML::Random rnd;
@@ -457,12 +475,58 @@ public:
 				std::stringstream wordss(line);
 				while (std::getline(wordss, word, ' '))
 				{
+					if (isComment || word.find("//") != std::string::npos) {
+						isComment = true;
+						ImGui::SameLine();
+						ImGui::TextColored(ShaderWordColors[commentColIdx], word.c_str());
+						continue;
+					}
+
 					int colIdx = 0;
-					auto res = GLSLWordMap.find(word);
-					if (res != GLSLWordMap.end()) colIdx = res->second;
-					ImGui::SameLine();
-					ImGui::TextColored(ShaderWordColors[colIdx], word.c_str());
+					size_t pos = 0;
+					size_t idx = word.find_first_of(nastyChars, pos);
+					if (idx == std::string::npos || (idx == pos && word.size() == 1)) {
+						auto res = GLSLWordMap.find(word);
+						if (res != GLSLWordMap.end()) colIdx = res->second;
+						ImGui::SameLine();
+						ImGui::TextColored(ShaderWordColors[colIdx], word.c_str());
+					}
+					else {
+						bool first = true;
+						while (idx != std::string::npos)
+						{
+							std::string subword = word.substr(pos, idx - pos);
+							pos = idx + 1;
+							auto res = GLSLWordMap.find(subword);
+							if (res != GLSLWordMap.end()) colIdx = res->second;
+							if (first) {
+								ImGui::SameLine();
+								first = false;
+							}
+							else {
+								ImGui::SameLine(0.0f, 0.0f);
+							}
+							ImGui::TextColored(ShaderWordColors[colIdx], subword.c_str());
+							colIdx = 0;
+							ImGui::SameLine(0.0f, 0.0f);
+							//ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 5.0f);
+							std::string specialChar = word.substr(idx, 1);
+							ImGui::TextColored(ShaderWordColors[colIdx], specialChar.c_str());
+							idx = word.find_first_of(nastyChars, pos);
+							if (idx == word.size() - 1) break;
+						}
+						if (pos != word.size())
+						{
+							std::string lastsubword = word.substr(pos);
+							auto res = GLSLWordMap.find(lastsubword);
+							if (res != GLSLWordMap.end()) colIdx = res->second;
+							ImGui::SameLine(0.0f, 0.0f);
+							ImGui::TextColored(ShaderWordColors[colIdx], lastsubword.c_str());
+						}
+					}
 				}
+
+				isComment = false;
 			}
 
 			if (ImGui::Button("Close##Shaders")) ShaderWindowOpen = false;
