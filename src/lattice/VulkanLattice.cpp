@@ -140,6 +140,7 @@ namespace OML
 			vkDestroyPipeline(*m_device, m_patchWireframePipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_normalPipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_displayPixelAccuracyPipeline, m_allocator);
+			vkDestroyPipeline(*m_device, m_displayTriSizePipeline, m_allocator);
 			vkDestroyPipeline(*m_device, m_displaySurfaceAccuracyPipeline, m_allocator);
 
 			vkDestroyPipelineLayout(*m_device, m_pipelineLayout, m_allocator);
@@ -225,10 +226,12 @@ namespace OML
 		if (m_drawSurface)
 		{
 			// Bind the correct pipeline
-			if (m_evalMethod != EvaluationMethod::Direct && m_displaySurfaceAccuracy)
+			if (m_evalMethod != EvaluationMethod::Direct && m_surfaceColor == SurfaceColor::SurfAccuracy)
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_displaySurfaceAccuracyPipeline);
-			else if (m_displayPixelAccuracy)
+			else if (m_surfaceColor == SurfaceColor::PixelAccuracy)
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_displayPixelAccuracyPipeline);
+			else if (m_surfaceColor == SurfaceColor::TriSize)
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_displayTriSizePipeline);
 			else if (m_wireframe)
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_patchWireframePipeline);
 			else
@@ -380,22 +383,31 @@ namespace OML
 				{
 					if (overlay->sliderFloat("Length", &m_uniforms.normalLength, 1.0f, 10.0f)) updateLatticeUniformBuffer();
 				}
+				
 				ImGui::Separator();
-				if (m_evalMethod != EvaluationMethod::Direct)
-				{
-					if (overlay->checkBox("Color by Surf Acc", &m_displaySurfaceAccuracy)) rebuildCmd = true;
-					if (m_displaySurfaceAccuracy)
-					{
-						if (overlay->sliderFloat("Error(e)", &m_uniforms.maxError, 0.1f, 10.0f)) updateLatticeUniformBuffer();
-						overlay->text("w<=0.1e, g<=0.2e, b<=0.5e\ny<=e, r>e");
+				
+				if (overlay->comboBox("Surface Color", &m_surfaceColor, SurfaceColorNames)) {
+					if (m_surfaceColor == SurfaceColor::SurfAccuracy && m_evalMethod == EvaluationMethod::Direct) {
+						m_surfaceColor = SurfaceColor::Default;
 					}
+					rebuildCmd = true;
 				}
-				if (overlay->checkBox("Color by Pixel Acc", &m_displayPixelAccuracy)) rebuildCmd = true;
-				if (m_displayPixelAccuracy)
+				if (m_surfaceColor == SurfaceColor::SurfAccuracy)
 				{
-					overlay->text("w<=0.5, g<=1.0, b<=2.0\ny<=5.0 r>5.0");
+					if (overlay->sliderFloat("Error(e)", &m_uniforms.maxError, 0.1f, 10.0f)) updateLatticeUniformBuffer();
+					overlay->text("w<=0.1e, g<=0.2e, b<=0.5e\ny<=e, r>e");
 				}
+				else if (m_surfaceColor == SurfaceColor::PixelAccuracy)
+				{
+					overlay->text("w<=0.5, g<=1.0, b<=2.0\ny<=5.0, r>5.0");
+				}
+				else if (m_surfaceColor == SurfaceColor::TriSize)
+				{
+					overlay->text("w<=1.0, g<=5.0, b<=10.0\ny<=20, r>20.0");
+				}
+
 				ImGui::Separator();
+
 				if (overlay->comboBox("TessFactorMethod", &m_uniforms.tessFactorMethod, TessFactorMethodNames)) updateLatticeUniformBuffer();
 				switch (m_uniforms.tessFactorMethod)
 				{
@@ -1338,6 +1350,18 @@ namespace OML
 
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_displayPixelAccuracyPipeline));
 
+		// Triangle Size display pipeline
+		std::array<VkPipelineShaderStageCreateInfo, 5> triSizeStages;
+		triSizeStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
+		triSizeStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4, m_lsType, options), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+		triSizeStages[2] = loadShader(OML::Shaders::GetTeseShader(m_lsType, OML::TeseShaderType::Lattice, m_evalMethod, options), VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+		triSizeStages[3] = loadShader(OML::Shaders::GetTriSizeGeomShader(), VK_SHADER_STAGE_GEOMETRY_BIT);
+		triSizeStages[4] = loadShader(OML::Shaders::GetShadedColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
+		pipelineCreateInfo.stageCount = static_cast<uint32_t>(triSizeStages.size());
+		pipelineCreateInfo.pStages = triSizeStages.data();
+
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_displayTriSizePipeline));
+
 		// Normals pipeline
 		std::array<VkPipelineShaderStageCreateInfo, 5> normalShaderStages;
 		normalShaderStages[0] = loadShader(OML::Shaders::GetLocalSurfaceInfoVertShader(), VK_SHADER_STAGE_VERTEX_BIT);
@@ -1350,6 +1374,8 @@ namespace OML
 		pipelineCreateInfo.pStages = normalShaderStages.data();
 
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(*m_device, /*pipelineCache*/nullptr, 1, &pipelineCreateInfo, m_allocator, &m_normalPipeline));
+
+		Shaders::SortShaderNames();
 
 		Timer::Stop("preparePipelines", "VulkanLattice::preparePipelines()");
 	}

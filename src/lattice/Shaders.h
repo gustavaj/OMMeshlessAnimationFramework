@@ -38,10 +38,13 @@ namespace OML {
 		static std::string PosColorPassVertName;
 		static std::string UintFlatColorFragName;
 		static std::string ShadedColorFragName;
+		static std::string ShadedColorNoInterpFragName;
 		static std::string LocalSurfaceInfoVertName;
 		static std::string FlatColorFragName;
+		static std::string FlatColorNoInterpFragName;
 		static std::string LocalSurfaceInfoTescName;
 		static std::string BiQuadLatticeNormalsGeomName;
+		static std::string TriSizeGeomName;
 
 		static void PrintShader(std::string name);
 		static void PrintShader(std::string name, std::string& source);
@@ -70,11 +73,14 @@ namespace OML {
 
 		// Geometry Shaders
 		static NameSpirvPair GetLatticeNormalsGeomShader();
+		static NameSpirvPair GetTriSizeGeomShader();
 
 		// Fragment Shaders
 		static NameSpirvPair GetUintFlatColorFragShader();
 		static NameSpirvPair GetFlatColorFragShader();
+		static NameSpirvPair GetFlatColorNoInterpFragShader();
 		static NameSpirvPair GetShadedColorFragShader();
+		static NameSpirvPair GetShadedColorNoInterpFragShader();
 		static NameSpirvPair GetBiQuadLatticePixelAccuracyFragShader(LocalSurfaceType lsType,
 			uint32_t numLocalsurfaceControlPoints, uint32_t numLocalSurfaces, uint32_t numPatches);
 
@@ -91,6 +97,8 @@ namespace OML {
 		static std::vector<std::string> ShaderNames;
 		/*static shaderc::Compiler Compiler;
 		static shaderc::CompileOptions Options;*/
+
+		static void SortShaderNames();
 
 		// Common shader code
 		static std::string ShaderHeader();
@@ -134,6 +142,8 @@ namespace OML {
 		static std::string BlendLocalSurfacesOnlyPos(std::string prefix);
 
 		static std::string ColorByMaxErrorString();
+
+		static std::string ClipToWindowFunctionString();
 	};
 
 }

@@ -366,6 +366,8 @@ namespace OML
 		Timer::Stop("induceLattice", "Lattice::induceLattice()");
 	}
 
+	// TODO: I dont know if this is needed anymore, after simulators was changed to clean up after themselves,
+	// just unecessary memory usage now.
 	void Lattice::resetMatrices()
 	{
 		m_matrices.resize(0);
@@ -375,18 +377,18 @@ namespace OML
 		}
 	}
 
+	// Set the color of the edges based on if they are on the boundary or not
 	void Lattice::setupEdgeColor()
 	{
-		// Set the color of the edges based on if they are on the boundary or not
 		for (auto e_itr = edges_begin(); e_itr != edges_end(); e_itr++)
 		{
 			set_color(*e_itr, is_boundary(*e_itr) ? BOUNDARY_EDGE_COLOR : INNER_EDGE_COLOR);
 		}
 	}
 
+	// Loop over vertices, set valence and color based on valence.
 	void Lattice::setupLociValenceAndPointColor()
 	{
-		// Loop over vertices, set valence and color based on valence.
 		for (auto v_itr = vertices_begin(); v_itr != vertices_end(); v_itr++)
 		{
 			auto vh = (*v_itr);
@@ -412,9 +414,9 @@ namespace OML
 		}
 	}
 
+	// Look for T-loci, and handle it!
 	void Lattice::handleTLoci()
 	{
-		// Look for T-loci, and handle it!
 		for (auto v_itr = vertices_begin(); v_itr != vertices_end(); v_itr++)
 		{
 			auto vh_t1 = *v_itr;
@@ -769,7 +771,6 @@ namespace OML
 		property(LatticeProperties::LocusIndex, vertex) = m_curLocusIndex;
 
 		m_loci[m_curLocusIndex++] = locus;
-		//m_loci.push_back(std::move(locus));
 	}
 
 	size_t Lattice::addBoundaryInfo(BoundaryInfo boundary)

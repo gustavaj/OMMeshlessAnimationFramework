@@ -211,6 +211,7 @@ namespace OML {
 		VkPipeline m_normalPipeline;
 		VkPipeline m_displaySurfaceAccuracyPipeline;
 		VkPipeline m_displayPixelAccuracyPipeline;
+		VkPipeline m_displayTriSizePipeline;
 
 		VkPipelineLayout m_pipelineLayout;
 		VkDescriptorSetLayout m_descriptorSetLayout;

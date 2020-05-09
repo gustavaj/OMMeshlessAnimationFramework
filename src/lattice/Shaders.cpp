@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <algorithm>
 
 namespace OML {
 
@@ -14,9 +15,12 @@ namespace OML {
 	std::string Shaders::UintFlatColorFragName = "Frag_PosColorPass";
 	std::string Shaders::LocalSurfaceInfoVertName = "Vert_LocalSurfaceInfo";
 	std::string Shaders::FlatColorFragName = "Frag_FlatColor";
+	std::string Shaders::FlatColorNoInterpFragName = "Frag_FlatColorNoInterp";
 	std::string Shaders::LocalSurfaceInfoTescName = "LocalSurfaceInfo";
 	std::string Shaders::ShadedColorFragName = "Frag_ShadedColor";
+	std::string Shaders::ShadedColorNoInterpFragName = "Frag_ShadedColorNoInterp";
 	std::string Shaders::BiQuadLatticeNormalsGeomName = "Geom_LatticeNormals";
+	std::string Shaders::TriSizeGeomName = "Geom_TriSize";
 
 	void Shaders::PrintShader(std::string name)
 	{
@@ -549,6 +553,70 @@ namespace OML {
 		return { Shaders::BiQuadLatticeNormalsGeomName, Shaders::SpirvMap[Shaders::BiQuadLatticeNormalsGeomName] };
 	}
 
+	NameSpirvPair Shaders::GetTriSizeGeomShader()
+	{
+		if (Shaders::NotInMap(Shaders::TriSizeGeomName))
+		{
+			std::string src =
+				Shaders::ShaderHeader() + " \n" +
+				"layout(triangles) in;\n"
+				" \n"
+				"layout(location = 1) in vec3 teNormal[];\n"
+				" \n" +
+				Shaders::CommonUniformBufferString() + " \n" +
+				" \n"
+				"layout(triangle_strip, max_vertices = 3) out;\n"
+				" \n"
+				"layout(location = 0) out vec3 gColor;\n"
+				"layout(location = 1) out vec3 gNormal;\n"
+				" \n" +
+				Shaders::ClipToWindowFunctionString() + "\n" + 
+				"void main() {\n"
+				"  vec4 p1 = gl_in[0].gl_Position;\n"
+				"  vec4 p2 = gl_in[1].gl_Position;\n"
+				"  vec4 p3 = gl_in[2].gl_Position;\n"
+				" \n"
+				"  // Set the color based on the longest edge of the triangle,\n"
+				"  // when projected to screen space.\n"
+				"  vec4 p1_w = clipToWindow(p1);\n"
+				"  vec4 p2_w = clipToWindow(p2);\n"
+				"  vec4 p3_w = clipToWindow(p3);\n"
+				"  float maxEdgeLength = max(distance(p1_w, p2_w), \n"
+				"    max(distance(p2_w, p3_w), distance(p1_w, p3_w)));\n"
+				"  vec3 color = vec3(1, 0, 0);\n"
+				"  if(maxEdgeLength < 1.0f) {\n"
+				"    color = vec3(0.6, 0.6, 0.6);\n"
+				"  }\n"
+				"  else if(maxEdgeLength < 5.0f) {\n"
+				"    color = vec3(0.0, 1.0, 0.0);\n"
+				"  }\n"
+				"  else if(maxEdgeLength < 10.0f) {\n"
+				"    color = vec3(0.0, 0.0, 1.0);\n"
+				"  }\n"
+				"  else if(maxEdgeLength < 20.0f) {\n"
+				"    color = vec3(1.0, 1.0, 0.0);\n"
+				"  }\n"
+				" \n"
+				"  // Just pass the positions through the shader\n"
+				"  gl_Position = p1;\n"
+				"  gColor = color;\n"
+				"  gNormal = teNormal[0];\n"
+				"  EmitVertex();\n"
+				"  gl_Position = p2;\n"
+				"  gColor = color;\n"
+				"  gNormal = teNormal[1];\n"
+				"  EmitVertex();\n"
+				"  gl_Position = p3;\n"
+				"  gColor = color;\n"
+				"  gNormal = teNormal[2];\n"
+				"  EmitVertex();\n"
+				"  EndPrimitive();\n"
+				"}";
+			Shaders::LoadSpirv(Shaders::TriSizeGeomName, src, shaderc_shader_kind::shaderc_geometry_shader);
+		}
+		return { Shaders::TriSizeGeomName, Shaders::SpirvMap[Shaders::TriSizeGeomName] };
+	}
+
 	NameSpirvPair Shaders::GetUintFlatColorFragShader()
 	{
 		if (Shaders::NotInMap(Shaders::UintFlatColorFragName))
@@ -590,6 +658,25 @@ namespace OML {
 		return { Shaders::FlatColorFragName, Shaders::SpirvMap[Shaders::FlatColorFragName] };
 	}
 
+	NameSpirvPair Shaders::GetFlatColorNoInterpFragShader()
+	{
+		if (Shaders::NotInMap(Shaders::FlatColorNoInterpFragName))
+		{
+			std::string src =
+				Shaders::ShaderHeader() +
+				" \n"
+				"layout(location = 0) flat in vec3 teColor;\n"
+				" \n"
+				"layout(location = 0) out vec4 FragColor;\n"
+				" \n"
+				"void main() {\n"
+				"  FragColor = vec4(teColor, 1.0);\n"
+				"}";
+			Shaders::LoadSpirv(Shaders::FlatColorNoInterpFragName, src, shaderc_shader_kind::shaderc_fragment_shader);
+		}
+		return { Shaders::FlatColorNoInterpFragName, Shaders::SpirvMap[Shaders::FlatColorNoInterpFragName] };
+	}
+
 	NameSpirvPair Shaders::GetShadedColorFragShader()
 	{
 		if (Shaders::NotInMap(Shaders::ShadedColorFragName))
@@ -612,6 +699,30 @@ namespace OML {
 			Shaders::LoadSpirv(Shaders::ShadedColorFragName, src, shaderc_shader_kind::shaderc_fragment_shader);
 		}
 		return { Shaders::ShadedColorFragName, Shaders::SpirvMap[Shaders::ShadedColorFragName] };
+	}
+
+	NameSpirvPair Shaders::GetShadedColorNoInterpFragShader()
+	{
+		if (Shaders::NotInMap(Shaders::ShadedColorNoInterpFragName))
+		{
+			std::string src =
+				Shaders::ShaderHeader() +
+				" \n"
+				"layout(location = 0) flat in vec3 teColor;\n"
+				"layout(location = 1) in vec3 teNormal;\n"
+				" \n"
+				"layout(location = 0) out vec4 FragColor;\n"
+				" \n"
+				"void main() {\n"
+				"  vec3 light = normalize(vec3 (0.5f, 0.5f, 1.0f));\n"
+				"  vec3 ambient = vec3(0.3f);\n"
+				"  vec3 diffuse = max(dot(light, teNormal), 0.0f) * vec3(0.8f);\n"
+				" \n"
+				"  FragColor = vec4((ambient + diffuse) * teColor, 1.0);\n"
+				"}";
+			Shaders::LoadSpirv(Shaders::ShadedColorNoInterpFragName, src, shaderc_shader_kind::shaderc_fragment_shader);
+		}
+		return { Shaders::ShadedColorNoInterpFragName, Shaders::SpirvMap[Shaders::ShadedColorNoInterpFragName] };
 	}
 
 	NameSpirvPair Shaders::GetBiQuadLatticePixelAccuracyFragShader(LocalSurfaceType lsType,
@@ -660,6 +771,7 @@ namespace OML {
 				Shaders::BoundaryBufferString(nBoundaries, "0", "3") + " \n" +
 				Shaders::BlendingFunctionString() + " \n" +
 				evalString + " \n" +
+				Shaders::ClipToWindowFunctionString() + "\n" +
 				"void main() {\n"
 				"  float u = teUVCoords[0];\n"
 				"  float v = teUVCoords[1];\n"
@@ -677,11 +789,7 @@ namespace OML {
 				"  vec3 p = Su1 + (Su0 - Su1) * Bv;\n"
 				" \n"
 				"  vec4 pos = ubo.projection * ubo.modelview * vec4(p, 1.0f);\n"
-				"  vec4 ndc = pos / pos.w;\n"
-				"  float windowX = (ubo.windowSize.x / 2) * (ndc.x + 1);\n"
-				"  float windowY = (ubo.windowSize.y / 2) * (ndc.y + 1);\n"
-				"  float windowZ = 0.5 * ndc.z + 0.5;\n"
-				"  vec4 windowPos = vec4(windowX, windowY, windowZ, 1.0f);\n"
+				"  vec4 windowPos = clipToWindow(pos);\n"
 				" \n"
 				"  float error = distance(gl_FragCoord.xy, windowPos.xy);\n"
 				"  vec3 color;\n"
@@ -736,6 +844,13 @@ namespace OML {
 
 
 
+	// Just sorts the vector of shaderNames alphabetically
+	// For nicer display in the shader viewer
+	void Shaders::SortShaderNames()
+	{
+		std::sort(Shaders::ShaderNames.begin(), Shaders::ShaderNames.end(),
+			[](std::string a, std::string b) { return a < b; });
+	}
 
 	// Common shader code
 	inline std::string Shaders::ShaderHeader()
@@ -1298,6 +1413,18 @@ namespace OML {
 			"  else {\n"
 			"    teColor = vec3(1.0, 0.0, 0.0);\n"
 			"  }\n";
+	}
+
+	std::string Shaders::ClipToWindowFunctionString()
+	{
+		return
+			"vec4 clipToWindow(vec4 clip) {\n"
+			"  vec4 ndc = clip / clip.w;\n"
+			"  float windowX = (ubo.windowSize.x / 2.0f) * (ndc.x + 1.0f);\n"
+			"  float windowY = (ubo.windowSize.y / 2.0f) * (ndc.y + 1.0f);\n"
+			"  float windowZ = 0.5f * ndc.z + 0.5f;\n"
+			"  return vec4(windowX, windowY, windowZ, 1.0f);\n"
+			"}\n";
 	}
 
 }

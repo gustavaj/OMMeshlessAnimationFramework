@@ -445,6 +445,8 @@ public:
 
 
 		if(ShaderWindowOpen) {
+			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.1, 0.1, 0.1, 1.0));
+
 			ImGui::SetNextWindowSize(ImVec2(600, 600));
 
 			ImGui::Begin("Shaders Viewer");
@@ -532,6 +534,8 @@ public:
 			if (ImGui::Button("Close##Shaders")) ShaderWindowOpen = false;
 
 			ImGui::End();
+
+			ImGui::PopStyleColor();
 		}
 	}
 

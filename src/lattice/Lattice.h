@@ -30,11 +30,6 @@
 		Simulators:
 		-Fix RandomSphereSimulator
 
-		Pre-evaluation:
-		-Use in TES to improve(?) evaluation time.
-		-Look at memory usage with respect to large lattices.
-		-Experiment with different buffer/texture dimensions.
-
 		Pixel-accurate rendering:
 		-Set tessellation factors in the TCS based on some error metric.
 */
@@ -96,6 +91,13 @@ namespace OML {
 	};
 	const std::vector<std::string> TessFactorMethodNames = {
 		"Static", "Dynamic", "PixelAccurate"
+	};
+
+	enum SurfaceColor {
+		Default = 0, SurfAccuracy, PixelAccuracy, TriSize
+	};
+	const std::vector<std::string> SurfaceColorNames = {
+		"Default", "Surface Accuracy", "Pixel Accuracy", "Triangle Size"
 	};
 
 	// Custom traits passed to the OpenMesh::PolyMesh class.
@@ -200,8 +202,6 @@ namespace OML {
 		bool setDrawNormals(bool drawNormals) { m_drawNormals = drawNormals; }
 		/* Sets wireframe mode */
 		void setWireframe(bool wireframe) { m_wireframe = wireframe; }
-		/* Sets wheter the surface is drawn pixel-accurate */
-		void setDrawPixelAccurate(bool drawPixelAccurate) { m_drawPixelAccurate = drawPixelAccurate; }
 		/* Set tessellation factors */
 		void setTessellationFactors(int inner, int outer) { 
 			m_uniforms.tessInner = inner; m_uniforms.tessOuter = outer; }
@@ -216,6 +216,8 @@ namespace OML {
 		void setPatchColor(glm::vec3 color) { m_color = color; }
 		// Sets the local surface type, must be called before induceLattice() to have any effect.
 		void setLocalSurfaceType(LocalSurfaceType lsType) { m_lsType = lsType; }
+		// Choose how the surface should be colored
+		void setSurfaceColorMethod(SurfaceColor method) { m_surfaceColor = method; }
 
 		// Returns the name of the Lattice
 		std::string name() { return m_name; }
@@ -248,8 +250,7 @@ namespace OML {
 		bool m_drawNormals = false;
 		bool m_wireframe = false;
 		bool m_drawPixelAccurate = false;
-		bool m_displaySurfaceAccuracy = false;
-		bool m_displayPixelAccuracy = false;
+		int m_surfaceColor = SurfaceColor::Default;
 
 		std::vector<Locus> m_loci;
 		std::vector<Patch> m_patches;
@@ -261,7 +262,7 @@ namespace OML {
 		boundary_map m_boundaryMap;
 		size_t m_numUniqueBoundaries = 0;
 		// The initial matrices the local surfaces were created with, used for resetting transformations
-		std::vector<glm::mat4> m_initialMatrices;
+		std::vector<glm::mat4> m_initialMatrices; // TODO: Do I still need this, after simulators removes their simulation?
 		// The transofrmation matrices for the local surfaces.
 		std::vector<glm::mat4> m_matrices;
 

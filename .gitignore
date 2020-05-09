@@ -355,3 +355,4 @@ healthchecksdb
 /shaders/Mod/common/Consts.txt
 /shaders/Mod/common/Buffers.txt
 /shaders/Mod/common/BFunctions.txt
+imgui.ini
