@@ -36,6 +36,7 @@ namespace OML {
 		{
 		case LocalSurfaceType::Quadratic_Bezier: loadBezier3x3(controlPoints, numSamplesU, numSamplesV); break;
 		case LocalSurfaceType::Cubic_Bezier: loadBezier4x4(controlPoints, numSamplesU, numSamplesV); break;
+		case LocalSurfaceType::Plane: loadPlane(controlPoints, numSamplesU, numSamplesV); break;
 		}
 	}
 
@@ -144,6 +145,41 @@ namespace OML {
 				samples[2 * numSamples + j * numSamplesU + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
 				//samples[1 * numSamples + i * numSamplesU + j] = glm::normalize(glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f));
 				//samples[2 * numSamples + i * numSamplesU + j] = glm::normalize(glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f));
+			}
+		}
+
+		createImage(samples);
+	}
+
+	void LocalSurfaceTexture::loadPlane(std::vector<glm::vec3>& controlPoints, uint32_t numSamplesU, uint32_t numSamplesV)
+	{
+		m_width = numSamplesU;
+		m_height = numSamplesV;
+		m_layers = 3;
+
+		glm::vec3& p00 = controlPoints[0], p10 = controlPoints[1];
+		glm::vec3& p01 = controlPoints[2], p11 = controlPoints[3];
+
+		int numSamples = numSamplesU * numSamplesV;
+		std::vector<glm::vec4> samples(numSamples * 3);
+
+		float du = 1.0f / (float)(numSamplesU - 1);
+		float dv = 1.0f / (float)(numSamplesV - 1);
+
+		for (size_t j = 0; j < numSamplesV; j++)
+		{
+			float v = dv * j;
+			for (size_t i = 0; i < numSamplesU; i++)
+			{
+				float u = du * i;
+
+				glm::vec3 pos = mix(mix(p00, p10, u), mix(p01, p11, u), v);
+				glm::vec3 dpdu = p10 - p00;
+				glm::vec3 dpdv = p01 - p00;
+
+				samples[j * numSamplesU + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
+				samples[1 * numSamples + j * numSamplesU + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
+				samples[2 * numSamples + j * numSamplesU + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
 			}
 		}
 

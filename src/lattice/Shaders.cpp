@@ -123,6 +123,11 @@ namespace OML {
 			evalString = Shaders::BiCubicEvaluatorOnlyPosString("");
 			break;
 		}
+		case LocalSurfaceType::Plane: {
+			name += "Plane_";
+			evalString = Shaders::PlaneEvaluatorString("");
+			break;
+		}
 		}
 		name += Shaders::LocalSurfaceInfoTescName + "_" + verts + "V_" + nControl + "C_" + nLocal + "L_" + nPatches + "P";
 		if (Shaders::NotInMap(name))
@@ -236,6 +241,7 @@ namespace OML {
 			{
 			case LocalSurfaceType::Quadratic_Bezier:  name += "QuadBezier_"; break;
 			case LocalSurfaceType::Cubic_Bezier: name += "CubicBezier_"; break;
+			case LocalSurfaceType::Plane: name += "Plane_"; break;
 			}
 		} 
 		else 
@@ -361,6 +367,7 @@ namespace OML {
 			{
 			case LocalSurfaceType::Quadratic_Bezier: refEval = Shaders::BiQuadEvaluatorString("ref_"); break;
 			case LocalSurfaceType::Cubic_Bezier: refEval = Shaders::BiCubicEvaluatorString("ref_"); break;
+			case LocalSurfaceType::Plane: refEval = Shaders::PlaneEvaluatorString("ref_"); break;
 			}
 
 			switch (evalMethod)
@@ -392,6 +399,7 @@ namespace OML {
 				{
 				case LocalSurfaceType::Quadratic_Bezier: eval += Shaders::BiQuadEvaluatorString(""); break;
 				case LocalSurfaceType::Cubic_Bezier: eval += Shaders::BiCubicEvaluatorString(""); break;
+				case LocalSurfaceType::Plane: eval += Shaders::PlaneEvaluatorString(""); break;
 				}
 				break;
 			}
@@ -736,6 +744,7 @@ namespace OML {
 		{
 		case LocalSurfaceType::Quadratic_Bezier:  name = "Frag_QuadBezier_"; break;
 		case LocalSurfaceType::Cubic_Bezier:	  name = "Frag_CubicBezier_"; break;
+		case LocalSurfaceType::Plane:			  name = "Frag_Plane_"; break;
 		}
 		name += "PixelAccuracy_" + nControl + "C_" + nLocal + "L_" + nPatches + "P";
 		std::string evalString;
@@ -743,6 +752,7 @@ namespace OML {
 		{
 		case LocalSurfaceType::Quadratic_Bezier: evalString = Shaders::BiQuadEvaluatorString(""); break;
 		case LocalSurfaceType::Cubic_Bezier: evalString = Shaders::BiCubicEvaluatorString(""); break;
+		case LocalSurfaceType::Plane: evalString = Shaders::PlaneEvaluatorString(""); break;
 		}
 		if (Shaders::NotInMap(name))
 		{
@@ -1199,6 +1209,36 @@ namespace OML {
 			"  pos = matrix * vec4(pos, 1.0f);\n"
 			" \n"
 			"  return Sampler(pos.xyz, vec3(0.0), vec3(0.0));\n"
+			"}\n";
+	}
+
+	std::string Shaders::PlaneEvaluatorString(std::string prefix)
+	{
+		return
+			"Sampler " + prefix + "evaluateLocal(LocalSurfaceInfo lsInfo, float u, float v) {\n"
+			"  BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];\n"
+			"  float local_u = mix(bi.us, bi.ue, u);\n"
+			"  float local_v = mix(bi.vs, bi.ve, v);\n"
+			" \n"
+			"  vec3 p00 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 0].xyz;\n"
+			"  vec3 p10 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 1].xyz;\n"
+			"  vec3 p01 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 2].xyz;\n"
+			"  vec3 p11 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 3].xyz;\n"
+			" \n"
+			"  vec3 pos = mix(mix(p00, p10, local_u), mix(p01, p11, local_u), local_v);\n"
+			" \n"
+			"  vec3 dpdu = p10 - p00;\n"
+			" \n"
+			"  vec3 dpdv = p01 - p00;\n"
+			" \n"
+			"  mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];\n"
+			" \n"
+			"  pos = vec3(matrix * vec4(pos, 1.0f));\n"
+			"  // mat4 normalMat = transpose(inverse(matrix));\n"
+			"  dpdu = vec3(matrix * vec4(dpdu, 0.0f));\n"
+			"  dpdv = vec3(matrix * vec4(dpdv, 0.0f));\n"
+			" \n"
+			"  return Sampler(pos.xyz, dpdu.xyz, dpdv.xyz);\n"
 			"}\n";
 	}
 

@@ -17,7 +17,8 @@ namespace OML {
 	enum class LocalSurfaceType
 	{
 		Quadratic_Bezier = 0,
-		Cubic_Bezier
+		Cubic_Bezier,
+		Plane
 	};
 
 	enum class EvaluationMethod

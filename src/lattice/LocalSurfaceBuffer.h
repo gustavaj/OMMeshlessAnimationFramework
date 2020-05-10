@@ -23,6 +23,7 @@ namespace OML {
 		uint32_t addLocalSurface(std::vector<glm::vec3>& controlPoints, LocalSurfaceType lsType);
 		uint32_t addBezier3x3(std::vector<glm::vec3>& controlPoints);
 		uint32_t addBezier4x4(std::vector<glm::vec3>& controlPoints);
+		uint32_t addPlane(std::vector<glm::vec3>& controlPoints);
 
 		uint32_t bufferSize() 
 		{
@@ -41,6 +42,10 @@ namespace OML {
 		glm::vec3 bezBasisDer3(float t);
 		glm::vec4 bezBasis4(float t);
 		glm::vec4 bezBasisDer4(float t);
+
+		inline glm::vec3 mix(glm::vec3 a, glm::vec3 b, float t) {
+			return (1.0f - t) * a + (t * b);
+		}
 	};
 
 }

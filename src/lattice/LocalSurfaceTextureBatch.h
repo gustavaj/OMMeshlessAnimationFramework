@@ -53,6 +53,10 @@ namespace OML {
 		inline float mix(float a, float b, float t) {
 			return (1.0f - t) * a + (t * b);
 		}
+		inline glm::vec3 mix(glm::vec3 a, glm::vec3 b, float t) {
+			return (1.0f - t) * a + (t * b);
+		}
+
 		glm::vec3 bezBasis3(float t);
 		glm::vec3 bezBasisDer3(float t);
 		glm::vec4 bezBasis4(float t);
@@ -63,6 +67,8 @@ namespace OML {
 		void loadBezier3x3(std::vector<glm::vec3>& controlPoints, 
 			OML::BoundaryInfo& boundary, uint32_t baseLayer);
 		void loadBezier4x4(std::vector<glm::vec3>& controlPoints,
+			BoundaryInfo& boundary, uint32_t baseLayer);
+		void loadPlane(std::vector<glm::vec3>& controlPoints,
 			BoundaryInfo& boundary, uint32_t baseLayer);
 
 		uint32_t m_numSamplesU;

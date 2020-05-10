@@ -1,13 +1,16 @@
 /*
 	Framework from here: https://github.com/SaschaWillems/Vulkan
 	Some code for elephant including some shaders from here: https://prideout.net/blog/old/blog/index.html@tag=tessellation.html
-	Some other shader code from: https://www.amazon.com/Graphics-Shaders-Theory-Practice-Second/dp/1568814348
 	Some code from prototype
 */
 
 #include "LatticeExample.cpp"
 
 // TODO: Right now resources are not properly deleted when lattices are added from the menu
+
+// TODO: Adding new local surface types are a lot of repeat work right now
+// All the different pre-eval schemes are added in almost the same way but has to be done individually
+// Maybe add some evaluator function that are used by all of them?
 
 const bool debug = true;
 
@@ -26,8 +29,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	std::cerr << "qwe" << std::endl;
 	for (size_t i = 0; i < __argc; i++) { LatticeExample::args.push_back(__argv[i]); };
 	
-	OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier;
-	OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Pre_Sampled_Image;
+	OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Plane;
+	OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct;
 
 	// Base example
 	//example = new LatticeExample(debug, lsType, evalMethod);

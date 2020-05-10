@@ -7,6 +7,7 @@ namespace OML {
 		{
 		case LocalSurfaceType::Quadratic_Bezier: return addBezier3x3(controlPoints);
 		case LocalSurfaceType::Cubic_Bezier: return addBezier4x4(controlPoints);
+		case LocalSurfaceType::Plane: return addPlane(controlPoints);
 		}
 	}
 
@@ -108,6 +109,43 @@ namespace OML {
 					p10 * bu[1] * bvd[0] + p11 * bu[1] * bvd[1] + p12 * bu[1] * bvd[2] + p13 * bu[1] * bvd[3] +
 					p20 * bu[2] * bvd[0] + p21 * bu[2] * bvd[1] + p22 * bu[2] * bvd[2] + p23 * bu[2] * bvd[3] +
 					p30 * bu[3] * bvd[0] + p31 * bu[3] * bvd[1] + p32 * bu[3] * bvd[2] + p33 * bu[3] * bvd[3];
+
+				lsData.positions[j * m_numSamplesV + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
+				lsData.partialU[j * m_numSamplesV + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
+				lsData.partialV[j * m_numSamplesV + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
+			}
+		}
+
+		m_data.push_back(std::move(lsData));
+
+		return m_data.size() - 1;
+	}
+
+	uint32_t LocalSurfaceBuffer::addPlane(std::vector<glm::vec3>& controlPoints)
+	{
+		int numSamples = m_numSamplesU * m_numSamplesV;
+
+		LocalSurfaceData lsData;
+		lsData.positions.resize(numSamples);
+		lsData.partialU.resize(numSamples);
+		lsData.partialV.resize(numSamples);
+
+		glm::vec3& p00 = controlPoints[0], p10 = controlPoints[1];
+		glm::vec3& p01 = controlPoints[2], p11 = controlPoints[3];
+
+		float du = 1.0f / (float)(m_numSamplesU - 1);
+		float dv = 1.0f / (float)(m_numSamplesV - 1);
+
+		for (size_t j = 0; j < m_numSamplesV; j++)
+		{
+			float v = dv * j;
+			for (size_t i = 0; i < m_numSamplesU; i++)
+			{
+				float u = du * i;
+
+				glm::vec3 pos = mix(mix(p00, p10, u), mix(p01, p11, u), v);
+				glm::vec3 dpdu = p10 - p00;
+				glm::vec3 dpdv = p01 - p00;
 
 				lsData.positions[j * m_numSamplesV + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
 				lsData.partialU[j * m_numSamplesV + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);

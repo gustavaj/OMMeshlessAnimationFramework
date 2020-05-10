@@ -51,6 +51,14 @@ namespace OML {
 			loadBezier4x4(p11Points, p11Boundary, 9);
 			break;
 		}
+		case LocalSurfaceType::Plane:
+		{
+			loadPlane(p00Points, p00Boundary, 0);
+			loadPlane(p10Points, p10Boundary, 3);
+			loadPlane(p01Points, p01Boundary, 6);
+			loadPlane(p11Points, p11Boundary, 9);
+			break;
+		}
 		}
 
 		std::pair<uint32_t, uint32_t> coords{m_curX * m_numSamplesU, m_curY * m_numSamplesV};
@@ -188,6 +196,42 @@ namespace OML {
 					p10 * bu[1] * bvd[0] + p11 * bu[1] * bvd[1] + p12 * bu[1] * bvd[2] + p13 * bu[1] * bvd[3] +
 					p20 * bu[2] * bvd[0] + p21 * bu[2] * bvd[1] + p22 * bu[2] * bvd[2] + p23 * bu[2] * bvd[3] +
 					p30 * bu[3] * bvd[0] + p31 * bu[3] * bvd[1] + p32 * bu[3] * bvd[2] + p33 * bu[3] * bvd[3];
+
+				m_data[posLayerTileStart + j * layerWidth + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
+				m_data[duLayerTileStart + j * layerWidth + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
+				m_data[dvLayerTileStart + j * layerWidth + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
+			}
+		}
+	}
+
+	void LocalSurfaceTextureBatch::loadPlane(std::vector<glm::vec3>& controlPoints, BoundaryInfo& boundary, uint32_t baseLayer)
+	{
+		glm::vec3& p00 = controlPoints[0], p10 = controlPoints[1];
+		glm::vec3& p01 = controlPoints[2], p11 = controlPoints[3];
+
+		float du = 1.0f / (float)(m_numSamplesU - 1);
+		float dv = 1.0f / (float)(m_numSamplesV - 1);
+
+		uint32_t layerWidth = m_numSamplesU * m_cols;
+		uint32_t layerSize = layerWidth * m_numSamplesV * m_rows;
+		uint32_t tileSize = m_numSamplesU * m_numSamplesV;
+		uint32_t rowSize = tileSize * m_cols;
+
+		uint32_t posLayerTileStart = baseLayer * layerSize + m_curY * rowSize + m_curX * m_numSamplesU;
+		uint32_t duLayerTileStart = posLayerTileStart + layerSize;
+		uint32_t dvLayerTileStart = duLayerTileStart + layerSize;
+
+#pragma omp parallel for
+		for (int j = 0; j < m_numSamplesV; j++)
+		{
+			float v = mix(boundary.vs, boundary.ve, dv * j);
+			for (size_t i = 0; i < m_numSamplesU; i++)
+			{
+				float u = mix(boundary.us, boundary.ue, du * i);
+
+				glm::vec3 pos = mix(mix(p00, p10, u), mix(p01, p11, u), v);
+				glm::vec3 dpdu = p10 - p00;
+				glm::vec3 dpdv = p01 - p00;
 
 				m_data[posLayerTileStart + j * layerWidth + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
 				m_data[duLayerTileStart + j * layerWidth + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);

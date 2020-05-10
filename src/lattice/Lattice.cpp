@@ -1048,6 +1048,11 @@ namespace OML
 				bottomLeft, bottomRight
 			);
 		}
+		case LocalSurfaceType::Plane:
+			return create2x2LocalSurfaceControlPoints(
+				topLeft, topRight,
+				bottomLeft, bottomRight
+			);
 		}
 	}
 
@@ -1125,6 +1130,16 @@ namespace OML
 		return { idx, 16 };
 	}
 
+	std::pair<uint32_t, uint32_t> Lattice::create2x2LocalSurfaceControlPoints(Vec3f& topLeft, Vec3f& topRight, Vec3f& bottomLeft, Vec3f& bottomRight)
+	{
+		uint32_t idx = m_controlPoints.size();
+		m_controlPoints.emplace_back(topLeft[0], topLeft[1], topLeft[2], 1.0f);
+		m_controlPoints.emplace_back(topRight[0], topRight[1], topRight[2], 1.0f);
+		m_controlPoints.emplace_back(bottomLeft[0], bottomLeft[1], bottomLeft[2], 1.0f);
+		m_controlPoints.emplace_back(bottomRight[0], bottomRight[1], bottomRight[2], 1.0f);
+		return { idx, 4 };
+	}
+
 	std::pair<uint32_t, uint32_t> Lattice::createLocalSurfaceControlPoints(
         Vec3f topLeft, Vec3f topMiddle, Vec3f topRight,
         Vec3f middleLeft, Vec3f middle, Vec3f middleRight,
@@ -1146,6 +1161,13 @@ namespace OML
 				topLeft, topMiddle, topRight,
 				middleLeft, middle, middleRight,
 				bottomLeft, bottomMiddle, bottomRight
+			);
+		}
+		case LocalSurfaceType::Plane:
+		{
+			return create2x2LocalSurfaceControlPoints(
+				topLeft, topRight,
+				bottomLeft, bottomRight
 			);
 		}
 		}

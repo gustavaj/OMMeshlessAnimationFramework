@@ -354,6 +354,8 @@ namespace OML {
 			Vec3f& topLeft, Vec3f& topRight, Vec3f& bottomLeft, Vec3f& bottomRight);
 		std::pair<uint32_t, uint32_t> create4x4LocalSurfaceControlPoints(
 			Vec3f& topLeft, Vec3f& topRight, Vec3f& bottomLeft, Vec3f& bottomRight);
+		std::pair<uint32_t, uint32_t> create2x2LocalSurfaceControlPoints(
+			Vec3f& topLeft, Vec3f& topRight, Vec3f& bottomLeft, Vec3f& bottomRight);
 
 		std::pair<uint32_t, uint32_t> createLocalSurfaceControlPoints(
             Vec3f topLeft,    Vec3f topMiddle,	Vec3f topRight,
