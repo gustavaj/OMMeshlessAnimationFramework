@@ -25,7 +25,7 @@
 
 const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "Patches" };
 const std::vector<std::string> EVALUATION_METHODS = { "Direct", "PreSampledImg", "PreSampledImgBatched", "PreSampledBuffer" };
-const std::vector<std::string> LOCAL_SURFACE_TYPES = { "Biquadratic Bezier", "Bicubic Bezier" };
+const std::vector<std::string> LOCAL_SURFACE_TYPES = { "Biquadratic Bezier", "Bicubic Bezier", "Plane" };
 
 class LatticeExample : public VulkanExampleBase
 {
@@ -132,7 +132,7 @@ public:
 	~LatticeExample()
 	{
 		for (auto& lat : lattices) {
-			lat.destroyVulkanStuff();
+			lat.destroyVulkan();
 		}
 	}
 
@@ -264,7 +264,7 @@ public:
 		lattice.setLocalSurfaceType(static_cast<OML::LocalSurfaceType>(lsTypeIdx));
 		lattice.setEvaluationMethod(static_cast<OML::EvaluationMethod>(evalMethodIdx));
 		lattice.induceLattice();
-		lattice.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		lattice.initVulkan(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		lattice.onViewChanged(camera.matrices.perspective, camera.matrices.view);
 		lattices.push_back(std::move(lattice));
 		latticeNames.push_back(lattice.name());
@@ -279,7 +279,7 @@ public:
 		{
 			if (lat_it->name() == name)
 			{
-				lat_it->destroyVulkanStuff();
+				lat_it->destroyVulkan();
 				lattices.erase(lat_it);
 				break;
 			}
@@ -704,8 +704,13 @@ public:
 
 	virtual void createLatticeGeometry() override
 	{
+		//OML::VulkanLattice bkg("background");
+		//bkg.setUseRandomPatchColors(false);
+		//bkg.addPatch(OML::Vec2f(-20, -10), 30, 20);
+		//addLattice(bkg);
+
 		OML::VulkanLattice lat("T-locus Lattice");
-		lat.setUseRandomPatchColors(true);
+		lat.setUseRandomPatchColors(false);
 
 		/*lat.addPatch(OML::Vec2f(-20.0f, -20.0f), 10.0f, 10.0f);
 		lat.addPatch(OML::Vec2f(-10.0f, -20.0f), 10.0f, 10.0f);
@@ -720,8 +725,8 @@ public:
 		lat.addPatch(p2, 10.0f, 10.0f);
 		lat.addPatch(p3, 10.0f, 10.0f);
 
-		lat.addPatch(OML::Vec2f(10.0f, -10.0f), 10.0f, 10.0f);
-		lat.addPatch(OML::Vec2f(10.0f, 0.0f), 10.0f, 10.0f);
+		//lat.addPatch(OML::Vec2f(10.0f, -10.0f), 10.0f, 10.0f);
+		//lat.addPatch(OML::Vec2f(10.0f, 0.0f), 10.0f, 10.0f);
 		/*lat.addPatch(OML::Vec2f(-20.0f, 10.0f), 10.0f, 10.0f);
 		lat.addPatch(OML::Vec2f(-10.0f, 10.0f), 10.0f, 10.0f);
 		lat.addPatch(OML::Vec2f(0.0f, 10.0f), 10.0f, 10.0f);
@@ -805,21 +810,21 @@ public:
 		lat.setUseRandomPatchColors(true);
 		lat.addGrid(OML::Vec2f(-25.0f, -25.0f), 20.0f, 20.0f, 3, 3);
 		lat.induceLattice();
-		lat.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		lat.initVulkan(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		addLattice(lat);
 
 		OML::VulkanLattice lat2("Cylinder Lattice");
 		lat2.setUseRandomPatchColors(true);
 		lat2.addCylinder(OML::Vec3f(20.0f, 0.0f, -30.0f), 10.0f, 30.0f, 4, 8);
 		lat2.induceLattice();
-		lat2.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		lat2.initVulkan(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		addLattice(lat2);
 
 		OML::VulkanLattice lat3("Sphere Lattice");
 		lat3.setUseRandomPatchColors(true);
 		lat3.addSphere(OML::Vec3f(0.0f, -20.0f, 20.0f), 8.0f, 6, 6);
 		lat3.induceLattice();
-		lat3.initVulkanStuff(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		lat3.initVulkan(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		addLattice(lat3);
 	}
 };

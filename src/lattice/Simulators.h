@@ -38,11 +38,11 @@ namespace OML {
 
 
 	enum class SimulatorTypes {
-		NormalSin = 0, RandomSphere, Rotation, XYScale
+		NormalSin = 0, NormalRotation, XYScale
 	};
 
 	const std::vector<std::string> SimulatorNames = {
-		"NormalSin", "RandomSphere", "NormalRotation", "XYScale"
+		"NormalSin", "NormalRotation", "XYScale"
 	};
 
 	class Simulator {
@@ -87,24 +87,6 @@ namespace OML {
 	private:
 		double m_amp;
 		glm::vec3 m_normal;
-		glm::vec3 m_lastOffset;
-	};
-
-	class RandomSphereSimulator : public Simulator {
-	public:
-		RandomSphereSimulator() : 
-			Simulator(), m_amp(RNG.random(Simulator::MinAmp, Simulator::MaxAmp)), 
-			m_direction(glm::normalize(glm::vec3(RNG.random(0.0f, 1.0f), 
-				RNG.random(0.0f, 1.0f), RNG.random(0.0f, 1.0f)))),
-			m_lastOffset(glm::vec3(0.0f)) {}
-		~RandomSphereSimulator() {}
-
-		virtual void simulate(double dt, glm::mat4& matrix) override;
-		virtual void undoTransformation(glm::mat4& matrix) override;
-
-	private:
-		double m_amp;
-		glm::vec3 m_direction;
 		glm::vec3 m_lastOffset;
 	};
 

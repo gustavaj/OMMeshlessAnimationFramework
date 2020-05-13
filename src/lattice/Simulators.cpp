@@ -43,31 +43,6 @@ namespace OML {
 
 
 
-	void RandomSphereSimulator::simulate(double dt, glm::mat4& matrix)
-	{
-		m_t += dt;
-
-		glm::vec3 offset = m_direction * (float)(dt * m_speed);
-		glm::vec4 trans(offset[0], offset[1], offset[2], 0.0f);
-
-		matrix[3] += trans;
-		m_lastOffset += offset;
-		if (m_lastOffset.length() > m_amp) {
-			m_direction = -m_direction;// glm::normalize((-m_direction +
-				//glm::vec3(RNG.random(0.0, 1.0), RNG.random(0.0, 1.0), RNG.random(-1.0, 1.0))));
-		}
-	}
-
-	void RandomSphereSimulator::undoTransformation(glm::mat4& matrix)
-	{
-		glm::vec4 trans(-m_lastOffset[0], -m_lastOffset[1], -m_lastOffset[2], 0.0f);
-		matrix[3] += trans;
-		m_lastOffset = glm::vec3(0.0f);
-	}
-
-
-
-
 	void RangeRotationSimulator::simulate(double dt, glm::mat4& matrix)
 	{
 		m_t += dt;

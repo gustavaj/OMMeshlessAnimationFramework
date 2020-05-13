@@ -98,13 +98,13 @@ namespace OML {
 		~VulkanLattice();
 
 		// Vulkan framework
-		void initVulkanStuff(
+		void initVulkan(
 			VkDevice* device, vks::VulkanDevice* vulkanDevice,
 			VkQueue* queue, VkCommandPool* commandPool,
 			VkDescriptorPool* descriptorPool, VkRenderPass* renderPass,
 			VkAllocationCallbacks* allocator);
 		/* Clean up vulkan stuff */
-		void destroyVulkanStuff();
+		void destroyVulkan();
 		/* Add commands before renderpass has started, like e.g. resetting query pools */
 		void addToCommandbufferPreRenderpass(VkCommandBuffer& commandBuffer);
 		/* Add drawing commands to a command buffer */
@@ -117,7 +117,7 @@ namespace OML {
 		/* Update UIOverlay with information about the lattice */
 		bool onUpdateUIOverlay(vks::UIOverlay* overlay);
 
-		// Sets the evaluation method to be used, must be called before initVulkanStuff() to have any effect
+		// Sets the evaluation method to be used, must be called before initVulkan() to have any effect
 		void setEvaluationMethod(EvaluationMethod evalMethod) { m_evalMethod = evalMethod; }
 
 		/*

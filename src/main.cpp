@@ -12,9 +12,8 @@
 // All the different pre-eval schemes are added in almost the same way but has to be done individually
 // Maybe add some evaluator function that are used by all of them?
 
-const bool debug = true;
-
 LatticeExample* example;
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	if (example != NULL)
@@ -29,8 +28,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	std::cerr << "qwe" << std::endl;
 	for (size_t i = 0; i < __argc; i++) { LatticeExample::args.push_back(__argv[i]); };
 	
-	OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Plane;
+	OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier;
 	OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct;
+	bool debug = true;
 
 	// Base example
 	//example = new LatticeExample(debug, lsType, evalMethod);
@@ -42,7 +42,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	//example = new RandomGridLatticeExample(debug, 100.0f, 100.0f, 10, 10, lsType, evalMethod);
 	
 	// Cylinder Example
-	//example = new CylinderLatticeExample(debug, 20.0f, 50.0f, 8, 12, lsType, evalMethod);
+	//example = new CylinderLatticeExample(debug, 20.0f, 20.0f, 1, 4, lsType, evalMethod);
 	
 	// Sphere Example
 	//example = new SphereLatticeExample(debug, 20.0f, 8, 8, lsType, evalMethod);

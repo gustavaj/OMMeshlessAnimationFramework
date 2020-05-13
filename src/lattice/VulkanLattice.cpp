@@ -76,7 +76,7 @@ namespace OML
 	{
 	}
 
-	void VulkanLattice::initVulkanStuff(
+	void VulkanLattice::initVulkan(
 		VkDevice* device, vks::VulkanDevice* vulkanDevice, VkQueue* queue, 
 		VkCommandPool* commandPool, VkDescriptorPool* descriptorPool, 
 		VkRenderPass* renderPass, VkAllocationCallbacks* allocator)
@@ -115,7 +115,7 @@ namespace OML
 		m_destroyed = false;
 	}
 
-	void VulkanLattice::destroyVulkanStuff()
+	void VulkanLattice::destroyVulkan()
 	{
 		if (m_destroyed) return;
 
@@ -431,15 +431,15 @@ namespace OML
 			{
 				overlay->checkBox("Simulate", &m_simulate);
 				overlay->comboBox("Simulator", &m_simulatorIndex, OML::SimulatorNames);
-				if (m_simulatorIndex == 0 || m_simulatorIndex == 1) {
+				if (m_simulatorIndex == static_cast<int>(OML::SimulatorTypes::NormalSin)) {
 					overlay->sliderFloat("Min amp", &OML::Simulator::MinAmp, OML::Simulator::AmpRange.x, OML::Simulator::MaxAmp);
 					overlay->sliderFloat("Max amp", &OML::Simulator::MaxAmp, OML::Simulator::MinAmp, OML::Simulator::AmpRange.y);
 				}
-				else if (m_simulatorIndex == 2) {
+				else if (m_simulatorIndex == static_cast<int>(OML::SimulatorTypes::NormalRotation)) {
 					overlay->sliderFloat("Min angle", &OML::Simulator::MinAngle, OML::Simulator::AngleRange.x, OML::Simulator::MaxAngle);
 					overlay->sliderFloat("Max angle", &OML::Simulator::MaxAngle, OML::Simulator::MinAngle, OML::Simulator::AngleRange.y);
 				}
-				else if (m_simulatorIndex == 3) {
+				else if (m_simulatorIndex == static_cast<int>(OML::SimulatorTypes::XYScale)) {
 					overlay->sliderFloat("Min scale - 1", &OML::Simulator::MinScale, OML::Simulator::ScaleRange.x, OML::Simulator::MaxScale);
 					overlay->sliderFloat("Max scale - 1", &OML::Simulator::MaxScale, OML::Simulator::MinScale, OML::Simulator::ScaleRange.y);
 				}
@@ -448,18 +448,22 @@ namespace OML
 				bool simulatorActive = m_simulators.find(static_cast<OML::SimulatorTypes>(m_simulatorIndex)) != m_simulators.end();
 				std::string addBtnTitle = simulatorActive ? "Update" : "Add";
 				if (overlay->button(addBtnTitle.c_str())) {
-					if (m_simulatorIndex == 0) addNormalSinSimulation();
-					else if (m_simulatorIndex == 1) addRandomSphereSimulation();
-					else if (m_simulatorIndex == 2) addNormalRotationSimulation();
-					else if (m_simulatorIndex == 3) addXYScalingSimulation();
+					if (m_simulatorIndex == static_cast<int>(OML::SimulatorTypes::NormalSin)) 
+						addNormalSinSimulation();
+					else if (m_simulatorIndex == static_cast<int>(OML::SimulatorTypes::NormalRotation)) 
+						addNormalRotationSimulation();
+					else if (m_simulatorIndex == static_cast<int>(OML::SimulatorTypes::XYScale)) 
+						addXYScalingSimulation();
 				}
 				if (simulatorActive) {
 					ImGui::SameLine();
 					if (overlay->button("Remove")) {
-						if (m_simulatorIndex == 0) removeSimulator(OML::SimulatorTypes::NormalSin);
-						else if (m_simulatorIndex == 1) removeSimulator(OML::SimulatorTypes::RandomSphere);
-						else if (m_simulatorIndex == 2) removeSimulator(OML::SimulatorTypes::Rotation);
-						else if (m_simulatorIndex == 3) removeSimulator(OML::SimulatorTypes::XYScale);
+						if (m_simulatorIndex == static_cast<int>(OML::SimulatorTypes::NormalSin)) 
+							removeSimulator(OML::SimulatorTypes::NormalSin);
+						else if (m_simulatorIndex == static_cast<int>(OML::SimulatorTypes::NormalRotation))
+							removeSimulator(OML::SimulatorTypes::NormalRotation);
+						else if (m_simulatorIndex == static_cast<int>(OML::SimulatorTypes::XYScale)) 
+							removeSimulator(OML::SimulatorTypes::XYScale);
 					}
 				}
 			}
@@ -1208,6 +1212,8 @@ namespace OML
 				VK_SAMPLE_COUNT_1_BIT,
 				0);
 
+		// TODO: Probably remove this dynamic state as it is never changed, aside from maybe viewport?
+		// Probably has some performance penalty.
 		std::vector<VkDynamicState> dynamicStateEnables = {
 			VK_DYNAMIC_STATE_VIEWPORT,
 			VK_DYNAMIC_STATE_SCISSOR,

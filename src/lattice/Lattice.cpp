@@ -276,22 +276,9 @@ namespace OML
 		m_simulators.insert({ SimulatorTypes::NormalSin, sims });
 	}
 
-	void Lattice::addRandomSphereSimulation()
-	{
-		removeSimulator(SimulatorTypes::RandomSphere);
-
-		std::unordered_map<uint32_t, std::shared_ptr<Simulator>> sims;
-		for (auto& locus : m_loci)
-		{
-			sims.insert({ locus.matrixIndex,
-				std::make_shared<RandomSphereSimulator>() });
-		}
-		m_simulators.insert({ SimulatorTypes::RandomSphere, sims });
-	}
-
 	void Lattice::addNormalRotationSimulation()
 	{
-		removeSimulator(SimulatorTypes::Rotation);
+		removeSimulator(SimulatorTypes::NormalRotation);
 
 		std::unordered_map<uint32_t, std::shared_ptr<Simulator>> sims;
 		for (auto& locus : m_loci)
@@ -299,7 +286,7 @@ namespace OML
 			sims.insert({ locus.matrixIndex,
 				std::make_shared<RangeRotationSimulator>(glm::vec3(locus.normal[0], locus.normal[1], locus.normal[2])) });
 		}
-		m_simulators.insert({ SimulatorTypes::Rotation, sims });
+		m_simulators.insert({ SimulatorTypes::NormalRotation, sims });
 	}
 
 	void Lattice::addXYScalingSimulation()
@@ -523,7 +510,7 @@ namespace OML
 					}
 
 					std::vector<OpenMesh::VertexHandle> vhs{ nf1, nf2, nf3, nf4, nf5 };
-					add_face(vhs);
+					OpenMesh::FaceHandle newFaceHandle = add_face(vhs);
 
 					// Update valence
 					property(LatticeProperties::VertexValence, vh_t1) -= 1;
@@ -534,19 +521,17 @@ namespace OML
 					auto heh_1_to_T = find_halfedge(vh_t1, vh_T);
 					auto heh_T_to_2 = find_halfedge(vh_T, vh_t2);
 
-					OpenMesh::FaceHandle newFaceHandle;
-
 					Vec3f startTParallel = terminal1IsBoundary ? point(vh_t1) :
 						point(from_vertex_handle(prev_halfedge_handle(opposite_halfedge_handle(prev_halfedge_handle(heh_1_to_T)))));
 					Vec3f endTParallel = terminal2IsBoundary ? point(vh_t2) :
 						point(to_vertex_handle(next_halfedge_handle(opposite_halfedge_handle(next_halfedge_handle(heh_T_to_2)))));
 					Vec3f startTOrthogonal;
 					if ((isHorizontal && isTSmallerThan12) || (!isHorizontal && !isTSmallerThan12)) {
-						newFaceHandle = face_handle(opposite_halfedge_handle(heh_1_to_T));
+						//newFaceHandle = face_handle(opposite_halfedge_handle(heh_1_to_T));
 						startTOrthogonal = point(to_vertex_handle(next_halfedge_handle(heh_1_to_T)));
 					}
 					else {
-						newFaceHandle = face_handle(heh_1_to_T);
+						//newFaceHandle = face_handle(heh_1_to_T);
 						startTOrthogonal = point(from_vertex_handle(prev_halfedge_handle(opposite_halfedge_handle(heh_1_to_T))));
 					}
 					Vec3f endTOrthogonal = point(vh_T) + (point(vh1) - point(vh_t1));
@@ -631,6 +616,12 @@ namespace OML
 	{
 
 		std::vector<OpenMesh::VertexHandle> cornerVertices;
+
+		// Local surface rendering will use the boundary with index 0.
+		// Therefore a boundary info that ensures the full surface is 
+		// rendered is input at index 0 manually.
+		BoundaryInfo fullPatchBoundary(0.0f, 1.0f, 0.0f, 1.0f);
+		addBoundaryInfo(fullPatchBoundary);
 
 		// Add local surfaces
 		for (auto f_itr = faces_begin(); f_itr != faces_end(); f_itr++)
@@ -1066,11 +1057,11 @@ namespace OML
 		Vec3f bottomMiddle = (bottomLeft + bottomRight) / 2;
 		Vec3f middle = ((topMiddle + bottomMiddle) / 2 + (middleLeft + middleRight) / 2) / 2;
 
-#ifdef TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+#ifdef TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 		Vec3f normal = ((topRight - topLeft) % (bottomLeft - topLeft)).normalize();
 		float amp = (topRight - topLeft).length();
 		middle += normal * m_rng.random(-amp, amp);
-#endif // TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+#endif // TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 
 		uint32_t idx = m_controlPoints.size();
 		m_controlPoints.push_back(glm::vec4(topLeft[0], topLeft[1], topLeft[2], 1.0f));
@@ -1101,14 +1092,14 @@ namespace OML
 		glm::vec4 p12 = p00 + u + 2.0f * v;
 		glm::vec4 p22 = p00 + 2.0f * u + 2.0f * v;
 
-#ifdef TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+#ifdef TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 		glm::vec4 normal = glm::vec4(glm::normalize(glm::cross(glm::vec3(u), glm::vec3(v))), 0.0f);
 		float amp = (topRight - topLeft).length();
 		p11 += normal * m_rng.random(-amp, amp);
 		p21 += normal * m_rng.random(-amp, amp);
 		p12 += normal * m_rng.random(-amp, amp);
 		p22 += normal * m_rng.random(-amp, amp);
-#endif // TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+#endif // TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 
 		uint32_t idx = m_controlPoints.size();
 		/* p00 */m_controlPoints.push_back(p00);
@@ -1178,11 +1169,11 @@ namespace OML
 		Vec3f& middleLeft, Vec3f& middle, Vec3f& middleRight,
 		Vec3f& bottomLeft, Vec3f& bottomMiddle, Vec3f& bottomRight)
 	{
-#ifdef TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+#ifdef TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 		Vec3f normal = ((topRight - topLeft) % (bottomLeft - topLeft)).normalize();
 		float amp = (topRight - topLeft).length();
 		middle += normal * m_rng.random(-amp, amp);
-#endif // TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+#endif // TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 
 
 		uint32_t idx = m_controlPoints.size();
@@ -1229,7 +1220,7 @@ namespace OML
 		glm::vec4 p13 = p03 + (bm - p03) * 0.66f;
 		glm::vec4 p23 = p33 + (bm - p33) * 0.66f;
 
-#ifdef TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+#ifdef TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 		glm::vec4 normal = glm::vec4(glm::normalize(
 			glm::cross(glm::vec3(p30 - p00), glm::vec3(p03 - p00))), 0.0f);
 		float amp = (topRight - topLeft).length();
@@ -1237,7 +1228,7 @@ namespace OML
 		p21 += normal * m_rng.random(-amp, amp);
 		p12 += normal * m_rng.random(-amp, amp);
 		p22 += normal * m_rng.random(-amp, amp);
-#endif // TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+#endif // TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 
 		uint32_t idx = m_controlPoints.size();
 		/* p00 */m_controlPoints.push_back(p00);

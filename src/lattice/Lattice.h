@@ -12,7 +12,7 @@
 //#define USE_OLD_LOCAL_SURFACE_METHOD
 
 // Randomly move the middle controlpoint along the patch normal.
-#define TRANSLATE_MIDDLE_POINT_OF_LOCAL_SURFACE
+#define TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 
 /*
 	In general, all local surface and patch orderings are left to right, top to bottom i.e.
@@ -125,12 +125,15 @@ namespace OML {
 
 	// Different properties of the vertices
 	namespace LatticeProperties {
-		// Holds the value of the valence of a vertex. So it does not need to calculated more than once.
+		// Holds the value of the valence of a vertex. So it does not need to be calculated more than once.
 		static OpenMesh::VPropHandleT<size_t> VertexValence;
-		// Holds the index into the m_loci vector
+		// Holds the index into the m_loci vector for each vertex
 		static OpenMesh::VPropHandleT<uint32_t> LocusIndex;
+		// Holds the locus type for each vertex
 		static OpenMesh::VPropHandleT<LocusType> Type;
 
+		// A user defined index of the face used by patches to reference faces
+		// When deleting geometry when using an array kernel, the indices are no longer valid
 		static OpenMesh::FPropHandleT<uint32_t> FaceIndex;
 	};
 
@@ -140,7 +143,7 @@ namespace OML {
 		Col3(255,255,255), Col3(255,255,255), Col3(255,0,0), Col3(0,255,0), Col3(0,0,255), Col3(0,255,255)
 	};
 	const Col3 BOUNDARY_EDGE_COLOR = Col3(0, 0, 0);
-	const Col3 INNER_EDGE_COLOR = Col3(200, 200, 200);
+	const Col3 INNER_EDGE_COLOR = Col3(254, 254, 254);
 
 	class Lattice : public OpenMesh::PolyMesh_ArrayKernelT<LatticeTraits>
 	{
@@ -171,16 +174,15 @@ namespace OML {
 		/* add a grid but add the patches in random order */
 		void addGridRandom(Vec2f topLeft, float width, float height, int rows, int cols);
 
+		// TODO: Maybe try to add just one function that takes in the simulator type?
 		/* Add a simulator to the patches */
 		void addNormalSinSimulation();
-		/* TODO: Not working yet. */
-		void addRandomSphereSimulation();
 		/* Add a simulator that rotates the local surfaces */
 		void addNormalRotationSimulation();
 		void addXYScalingSimulation();
 		/* Removes a simulator */
 		void removeSimulator(SimulatorTypes simulatorType);
-		/* Used for simulation. Should be called in the rendering loop(?) */
+		/* Used for simulation. Should be called in the rendering loop */
 		void update(double dt);
 
 		/* Finalize lattice creation */
