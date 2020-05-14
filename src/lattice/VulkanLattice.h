@@ -7,6 +7,7 @@
 #include "../vulkan/VulkanDevice.hpp"
 #include "../vulkan/VulkanBuffer.hpp"
 #include "../vulkan/VulkanUIOverlay.h"
+#include "../vulkan/frustum.hpp"
 
 #include "Lattice.h"
 #include "LocalSurfaceTexture.h"
@@ -246,6 +247,8 @@ namespace OML {
 
 		std::vector<LocalSurfaceVertex> m_localSurfaceVertices;
 		std::vector<LocalSurfaceVertex> m_patchVertices;
+
+		vks::Frustum m_frustum;
 	};
 
 }

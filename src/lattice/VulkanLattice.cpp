@@ -349,6 +349,8 @@ namespace OML
 	{
 		m_uniforms.projection = projection;
 		m_view = view;
+		m_frustum.update(projection * view);
+		m_uniforms.frustumPlanes = m_frustum.planes;
 		updateLatticeUniformBuffer();
 	}
 
@@ -407,7 +409,7 @@ namespace OML
 				}
 
 				ImGui::Separator();
-
+				if (overlay->checkBox("Frustum Culling", &m_uniforms.doCulling)) updateLatticeUniformBuffer();
 				if (overlay->comboBox("TessFactorMethod", &m_uniforms.tessFactorMethod, TessFactorMethodNames)) updateLatticeUniformBuffer();
 				switch (m_uniforms.tessFactorMethod)
 				{

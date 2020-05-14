@@ -277,9 +277,11 @@ namespace OML {
 			int pixelsPerEdge = 6;
 			float maxError = 1.0f;
 			float normalLength = 2.0f;
+			bool doCulling = false;
 			alignas(16) glm::mat4 projection = glm::mat4(1.0f);
 			alignas(16) glm::mat4 modelview = glm::mat4(1.0f);
 			alignas(16) glm::mat4 normal = glm::mat4(1.0f);
+			alignas(16) std::array<glm::vec4, 6> frustumPlanes;
 			alignas(16) glm::vec2 windowSize = glm::vec2(800, 600);
 		} m_uniforms;
 
