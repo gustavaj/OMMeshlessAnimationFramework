@@ -118,13 +118,13 @@ public:
 		title = "Lattice Example";
 
 		// Camera
-		zoom = -100.0f;
-		zoomSpeed = 20.0f;
-		camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 10000.0f);
-		/*camera.type = Camera::CameraType::firstperson;*/
-		/*camera.movementSpeed = 0.025f;*/
-		camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
-		camera.setTranslation(glm::vec3(0.0f, 0.0f, -50.0f));
+		//zoom = -100.0f;
+		//zoomSpeed = 20.0f;
+		//camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 10000.0f);
+		//camera.type = Camera::CameraType::firstperson;
+		//camera.movementSpeed = 20.0f;
+		//camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
+		//camera.setTranslation(glm::vec3(0.0f, 0.0f, -50.0f));
 
 		settings.overlay = true; // ImGui overlay
 	}

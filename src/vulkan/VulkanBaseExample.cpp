@@ -1243,6 +1243,12 @@ void VulkanExampleBase::handleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 			case KEY_D:
 				camera.keys.right = true;
 				break;
+			case KEY_SPACE:
+				camera.keys.space = true;
+				break;
+			case KEY_CTRL:
+				camera.keys.ctrl = true;
+				break;
 			}
 		}
 
@@ -1281,6 +1287,12 @@ void VulkanExampleBase::handleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 				break;
 			case KEY_D:
 				camera.keys.right = false;
+				break;
+			case KEY_SPACE:
+				camera.keys.space = false;
+				break;
+			case KEY_CTRL:
+				camera.keys.ctrl = false;
 				break;
 			}
 		}

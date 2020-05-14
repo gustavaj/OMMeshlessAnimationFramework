@@ -36,7 +36,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	//example = new LatticeExample(debug, lsType, evalMethod);
 	
 	// Grid example
-	example = new GridLatticeExample(debug, 100.0f, 100.0f, 6, 6, lsType, evalMethod);
+	example = new GridLatticeExample(debug, 1000.0f, 1000.0f, 10, 10, lsType, evalMethod);
 
 	// Random grid example
 	//example = new RandomGridLatticeExample(debug, 100.0f, 100.0f, 10, 10, lsType, evalMethod);
@@ -59,6 +59,20 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 
 	// Example with several lattices
 	//example = new MultiLatticeExample(debug, lsType, evalMethod);
+
+	// Example setup
+	example->camera.setPerspective(60.0f, (float)example->width / (float)example->height, 1.0f, 10000.0f);
+	example->camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
+	example->camera.setTranslation(glm::vec3(0.0f, 0.0f, -500.0f));
+	example->camera.movementSpeed = 100.0f;
+	example->zoom = 0.0f;
+	example->zoomSpeed = 100.0f;
+	//example->camera.type = Camera::CameraType::firstperson;
+	example->camera.type = Camera::CameraType::lookat;
+
+	// Example settings
+	example->settings.fullscreen = false;
+	example->settings.overlay = true;
 
 	OML::Timer::Start("init", "Setup example");
 
