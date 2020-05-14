@@ -240,7 +240,19 @@ namespace OML
 			// EvalMethod dependent
 			switch (m_evalMethod)
 			{
-			case EvaluationMethod::Direct:
+			case EvaluationMethod::Direct: {
+#ifdef DIRECT_MULTIPLE_DRAW_CALLS
+				for (size_t i = 0; i < m_patches.size(); i++)
+				{
+					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+						m_pipelineLayout, 0, 1, &m_descriptorSet, 0, NULL);
+					vkCmdDraw(commandBuffer, 4, 1, i * 4, 0);
+				}
+#else
+				vkCmdDraw(commandBuffer, m_patchVertexBuffer.count, 1, 0, 0);
+#endif
+				break;
+			}
 			case EvaluationMethod::Pre_Sampled_Buffer: {
 				vkCmdDraw(commandBuffer, m_patchVertexBuffer.count, 1, 0, 0);
 				break;
@@ -984,6 +996,13 @@ namespace OML
 		VK_CHECK_RESULT(m_matrixUniformBuffer.map());
 		m_deviceMemoryUsage += m_matrixUniformBuffer.size;
 
+#ifdef ADD_DUMMY_DATA_TO_CONTROL_POINT_BUFFER
+		size_t numVec4s = DUMMY_DATA_SIZE_BYTES / 16;
+		for (size_t i = 0; i < numVec4s; i++)
+		{
+			m_controlPoints.push_back(glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+		}
+#endif
 		VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,

@@ -13,6 +13,10 @@
 #include "LocalSurfaceTextureBatch.h"
 #include "LocalSurfaceBuffer.h"
 
+#define DIRECT_MULTIPLE_DRAW_CALLS
+#define ADD_DUMMY_DATA_TO_CONTROL_POINT_BUFFER
+const size_t DUMMY_DATA_SIZE_BYTES = 10000000;
+
 namespace OML {
 
 	// Parameters used for pre-evaluation
