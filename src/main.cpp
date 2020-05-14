@@ -25,7 +25,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow)
 {
-	std::cerr << "qwe" << std::endl;
+	std::cerr << "asd" << std::endl;
 	for (size_t i = 0; i < __argc; i++) { LatticeExample::args.push_back(__argv[i]); };
 	
 	OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier;
@@ -36,7 +36,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	//example = new LatticeExample(debug, lsType, evalMethod);
 	
 	// Grid example
-	example = new GridLatticeExample(debug, 1000.0f, 1000.0f, 10, 10, lsType, evalMethod);
+	//example = new GridLatticeExample(debug, 1000.0f, 1000.0f, 10, 10, lsType, evalMethod);
 
 	// Random grid example
 	//example = new RandomGridLatticeExample(debug, 100.0f, 100.0f, 10, 10, lsType, evalMethod);
@@ -46,6 +46,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	
 	// Sphere Example
 	//example = new SphereLatticeExample(debug, 20.0f, 8, 8, lsType, evalMethod);
+
+	// Torus Example
+	example = new TorusLatticeExample(debug, 50.0f, 25.0f, 16, 16, lsType, evalMethod);
 
 	// Non-uniform grid example
 	//example = new NonUniformGridExample(debug, lsType, evalMethod);

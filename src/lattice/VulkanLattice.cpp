@@ -399,7 +399,7 @@ namespace OML
 				}
 				else if (m_surfaceColor == SurfaceColor::PixelAccuracy)
 				{
-					overlay->text("w<=0.5, g<=1.0, b<=2.0\ny<=5.0, r>5.0");
+					overlay->text("w<=0.1, g<=0.5, b<=2.0\ny<=5.0, r>5.0");
 				}
 				else if (m_surfaceColor == SurfaceColor::TriSize)
 				{

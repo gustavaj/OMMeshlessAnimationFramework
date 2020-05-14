@@ -9,10 +9,10 @@
 
 // Use the old way of creating local surface control points.
 // The new way works for T-junctions, but not well when its non planar
-//#define USE_OLD_LOCAL_SURFACE_METHOD
+#define USE_OLD_LOCAL_SURFACE_METHOD
 
 // Randomly move the middle controlpoint along the patch normal.
-#define TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
+//#define TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 
 /*
 	In general, all local surface and patch orderings are left to right, top to bottom i.e.
@@ -162,6 +162,8 @@ namespace OML {
 		void addPatch(Vec2f topLeft, float width, float height);
 		/* Add patch in space */
 		void addPatch(Vec3f topLeft, float width, float height, float depth);
+		/* Add a vector of patches */
+		void addPatches(std::vector<Vec3f>& controlPoints);
 		/* Add grid in xy-plane */
 		void addGrid(Vec2f topLeft, float width, float height, int rows, int cols);
 		/* Add donut in xy-plane */
@@ -170,6 +172,8 @@ namespace OML {
 		void addCylinder(Vec3f center, float radius, float height, int rows, int cols);
 		/* Add sphere in space */
 		void addSphere(Vec3f center, float radius, int segments, int slices);
+		/* Add Torus */
+		void addTorus(Vec3f center, float radius, float wheelRadius, int segments, int slices);
 
 		/* add a grid but add the patches in random order */
 		void addGridRandom(Vec2f topLeft, float width, float height, int rows, int cols);

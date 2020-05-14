@@ -99,6 +99,14 @@ namespace OML
 		addPatch(topLeft + in, topLeft + right + in, topLeft + down, topLeft + right + down);
 	}
 
+	void Lattice::addPatches(std::vector<Vec3f>& controlPoints)
+	{
+		for (size_t i = 0; i < controlPoints.size(); i += 4)
+		{
+			addPatch(controlPoints[i], controlPoints[i + 1], controlPoints[i + 2], controlPoints[i + 3]);
+		}
+	}
+
 	void Lattice::addGrid(Vec2f topLeft, float width, float height, int rows, int cols)
 	{
 		/*
@@ -218,6 +226,43 @@ namespace OML
 		}
 
 		Timer::Stop("addSphere", out);
+	}
+
+	void Lattice::addTorus(Vec3f center, float radius, float wheelRadius, int segments, int slices)
+	{
+		std::vector<std::vector<Vec3f>> controlPoints(segments + 1);
+
+		float du = 1.0f / (float)slices;
+		float dv = 1.0f / (float)segments;
+
+		float u, v, cosv, sinv;
+
+		for (size_t j = 0; j < segments; j++)
+		{
+			controlPoints[j] = std::vector<Vec3f>(slices + 1);
+			v = j * dv * 2 * M_PI;
+			cosv = std::cos(v);
+			sinv = std::sin(v);
+			for (size_t i = 0; i < slices; i++)
+			{
+				u = i * du * 2 * M_PI;
+				controlPoints[j][i] = Vec3f(
+					(radius + wheelRadius * cosv) * std::cos(u),
+					(radius + wheelRadius * cosv) * std::sin(u),
+					wheelRadius * sinv
+				);
+			}
+			controlPoints[j][slices] = controlPoints[j][0];
+		}
+		controlPoints[segments] = controlPoints[0];
+
+		for (size_t j = 0; j < segments; j++)
+		{
+			for (size_t i = 0; i < slices; i++)
+			{
+				addPatch(controlPoints[j][i + 1], controlPoints[j + 1][i + 1], controlPoints[j][i], controlPoints[j + 1][i]);
+			}
+		}
 	}
 
 	void Lattice::addGridRandom(Vec2f topLeft, float width, float height, int rows, int cols)

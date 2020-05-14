@@ -23,7 +23,8 @@
 
 #include "lattice/Shaders.h"
 
-const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "Patches" };
+enum LATTICE_CREATE_TYPE { Grid = 0, Cylinder, Sphere, Torus, Patches };
+const std::vector<std::string> LATTICE_TYPES = { "Grid", "Cylinder", "Sphere", "Torus", "Patches" };
 const std::vector<std::string> EVALUATION_METHODS = { "Direct", "PreSampledImg", "PreSampledImgBatched", "PreSampledBuffer" };
 const std::vector<std::string> LOCAL_SURFACE_TYPES = { "Biquadratic Bezier", "Bicubic Bezier", "Plane" };
 
@@ -298,7 +299,7 @@ public:
 		// Lattice creation
 		if (overlay->header("Add/Delete", false))
 		{
-			if (latticeCreateTypeIndex == 3)
+			if (latticeCreateTypeIndex == LATTICE_CREATE_TYPE::Patches)
 			{
 				ImGui::PushItemWidth(260.0f * UIOverlay.scale);
 				ImGui::ListBox("", &patchInputIdx, patchInputChars.data(), patchInputChars.size(), 4);
@@ -314,28 +315,35 @@ public:
 			overlay->comboBox("Type", &latticeCreateTypeIndex, LATTICE_TYPES);
 			ImGui::InputText("Name", latticeName, IM_ARRAYSIZE(latticeName));
 
-			if (latticeCreateTypeIndex == 0)
+			if (latticeCreateTypeIndex == LATTICE_CREATE_TYPE::Grid)
 			{
 				overlay->sliderFloat("width", &c_width, 10.0f, 200.0f);
 				overlay->sliderFloat("height", &c_height, 10.0f, 200.0f);
 				overlay->sliderInt("rows", &c_rows, 1, 100);
 				overlay->sliderInt("cols", &c_cols, 1, 100);
 			}
-			else if (latticeCreateTypeIndex == 1)
+			else if (latticeCreateTypeIndex == LATTICE_CREATE_TYPE::Cylinder)
 			{
 				overlay->sliderFloat("radius", &c_width, 10.0f, 100.0f);
 				overlay->sliderFloat("height", &c_height, 10.0f, 100.0f);
 				overlay->sliderInt("slices", &c_rows, 4, 30);
 				overlay->sliderInt("segments", &c_cols, 4, 30);
 			}
-			else if (latticeCreateTypeIndex == 2)
+			else if (latticeCreateTypeIndex == LATTICE_CREATE_TYPE::Sphere)
 			{
 				overlay->sliderFloat("radius", &c_width, 10.0f, 100.0f);
 				overlay->sliderInt("slices", &c_rows, 4, 30);
 				overlay->sliderInt("segments", &c_cols, 4, 30);
 				ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
 			}
-			else if (latticeCreateTypeIndex == 3)
+			else if (latticeCreateTypeIndex == LATTICE_CREATE_TYPE::Torus)
+			{
+				overlay->inputFloat("radius", &c_width, 5.0f, 0);
+				overlay->inputFloat("wheelRadius", &c_height, 5.0f, 0);
+				ImGui::InputInt("segments", &c_rows);
+				ImGui::InputInt("slices", &c_cols);
+			}
+			else if (latticeCreateTypeIndex == LATTICE_CREATE_TYPE::Patches)
 			{
 				overlay->inputFloat("x", &patchTopLeftX, 1.0f, 1);
 				overlay->inputFloat("y", &patchTopLeftY, 1.0f, 1);
@@ -396,16 +404,20 @@ public:
 				lat.setMatrix(mat);
 				lat.setUseRandomPatchColors(perPatchColors);
 				lat.setPatchColor(c_col);
-				if (latticeCreateTypeIndex == 0) {
+				if (latticeCreateTypeIndex == LATTICE_CREATE_TYPE::Grid) {
 					lat.addGrid(OML::Vec2f(-c_width / 2, -c_height / 2), c_width, c_height, c_rows, c_cols);
 				}
-				else if (latticeCreateTypeIndex == 1) {
+				else if (latticeCreateTypeIndex == LATTICE_CREATE_TYPE::Cylinder) {
 					lat.addCylinder(OML::Vec3f(0.0f), c_width, c_height, c_rows, c_cols);
 				}
-				else if (latticeCreateTypeIndex == 2) {
+				else if (latticeCreateTypeIndex == LATTICE_CREATE_TYPE::Sphere) {
 					lat.addSphere(OML::Vec3f(0.0f), c_width, c_rows, c_cols);
 				}
-				else if (latticeCreateTypeIndex == 3) {
+				else if (latticeCreateTypeIndex == LATTICE_CREATE_TYPE::Torus)
+				{
+					lat.addTorus(OML::Vec3f(0.0f), c_width, c_height, c_rows, c_cols);
+				}
+				else if (latticeCreateTypeIndex == LATTICE_CREATE_TYPE::Patches) {
 					for (size_t i = 0; i < patchInputs.size(); i += 2) {
 						lat.addPatch(patchInputs[i], patchInputs[i + 1][0], patchInputs[i + 1][1]);
 					}
@@ -629,6 +641,29 @@ public:
 		OML::VulkanLattice lat("Sphere Lattice");
 		lat.setUseRandomPatchColors(true);
 		lat.addSphere(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_segments, m_slices);
+		addLattice(lat);
+	}
+};
+
+class TorusLatticeExample : public LatticeExample
+{
+public:
+	int m_segments, m_slices;
+	float m_radius, m_wheelRadius;
+
+	TorusLatticeExample(bool enableValidation, float radius, float wheelRadius, int segments, int slices,
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		: LatticeExample(enableValidation, lsType, evalMethod),
+		m_radius(radius), m_wheelRadius(wheelRadius), m_segments(segments), m_slices(slices)
+	{
+	}
+
+	virtual void createLatticeGeometry() override
+	{
+		OML::VulkanLattice lat("Torus Lattice");
+		lat.setUseRandomPatchColors(true);
+		lat.addTorus(OML::Vec3f(0.0f, 0.0f, 0.0f), m_radius, m_wheelRadius, m_segments, m_slices);
 		addLattice(lat);
 	}
 };
