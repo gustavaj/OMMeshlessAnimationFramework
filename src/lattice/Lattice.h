@@ -12,7 +12,8 @@
 #define USE_OLD_LOCAL_SURFACE_METHOD
 
 // Randomly move the middle controlpoint along the patch normal.
-//#define TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
+#define TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE_RANDOM
+//#define TRANSLATE_MIDDLE_POINTS_OF_CUBIC_BEZ_PRE_DEFINED
 
 /*
 	In general, all local surface and patch orderings are left to right, top to bottom i.e.
@@ -72,20 +73,6 @@ namespace OML {
 		std::array<size_t, 4> lociIndices;
 	};
 
-	/*
-		Different B-Functions that can be used.
-		B1Poly = "3x^2-2x^3"
-		B2Polt = "6x^5-15x^4+10x^3"
-		LERBS  = "1/(1+e^(1/x-1/(1-x)))"
-	*/
-	enum class BFunctionType {
-		B1Poly = 0, B2Poly, LERBS
-	};
-	// The possible B-functions
-	const std::vector<std::string> BFunctionNames = {
-		"3x^2-2x^3", "6x^5-15x^4+10x^3", "1/(1+e^(1/x-1/(1-x)))"
-	};
-
 	enum TessFactorMethod {
 		Static = 0, Dynamic, PixelAccurate
 	};
@@ -113,7 +100,7 @@ namespace OML {
 		EdgeAttributes(OpenMesh::Attributes::Color | OpenMesh::Attributes::Status);
 
 		// Status used for deleting halfedges
-		HalfedgeAttributes(OpenMesh::Attributes::Status);
+		HalfedgeAttributes(OpenMesh::Attributes::Status | OpenMesh::Attributes::PrevHalfedge);
 
 		// Status used for deleting faces.
 		FaceAttributes(OpenMesh::Attributes::Status);
@@ -128,6 +115,7 @@ namespace OML {
 		// Holds the value of the valence of a vertex. So it does not need to be calculated more than once.
 		static OpenMesh::VPropHandleT<size_t> VertexValence;
 		// Holds the index into the m_loci vector for each vertex
+
 		static OpenMesh::VPropHandleT<uint32_t> LocusIndex;
 		// Holds the locus type for each vertex
 		static OpenMesh::VPropHandleT<LocusType> Type;
@@ -143,7 +131,7 @@ namespace OML {
 		Col3(255,255,255), Col3(255,255,255), Col3(255,0,0), Col3(0,255,0), Col3(0,0,255), Col3(0,255,255)
 	};
 	const Col3 BOUNDARY_EDGE_COLOR = Col3(0, 0, 0);
-	const Col3 INNER_EDGE_COLOR = Col3(254, 254, 254);
+	const Col3 INNER_EDGE_COLOR = Col3(255, 0, 0);
 
 	class Lattice : public OpenMesh::PolyMesh_ArrayKernelT<LatticeTraits>
 	{
@@ -166,8 +154,6 @@ namespace OML {
 		void addPatches(std::vector<Vec3f>& controlPoints);
 		/* Add grid in xy-plane */
 		void addGrid(Vec2f topLeft, float width, float height, int rows, int cols);
-		/* Add donut in xy-plane */
-		void addDonut(Vec2f topLeft, float outerRadius, float innerRadius);
 		/* Add cylinder in space */
 		void addCylinder(Vec3f center, float radius, float height, int rows, int cols);
 		/* Add sphere in space */
@@ -208,12 +194,6 @@ namespace OML {
 		bool setDrawNormals(bool drawNormals) { m_drawNormals = drawNormals; }
 		/* Sets wireframe mode */
 		void setWireframe(bool wireframe) { m_wireframe = wireframe; }
-		/* Set tessellation factors */
-		void setTessellationFactors(int inner, int outer) { 
-			m_uniforms.tessInner = inner; m_uniforms.tessOuter = outer; }
-		/* Set the b function to be used */
-		void setBFunction(BFunctionType bFunction) { 
-			m_uniforms.bFunctionIndex = static_cast<int>(bFunction); }
 		/* Set the matrix */
 		void setMatrix(glm::mat4 matrix) { m_matrix = matrix; }
 		/* Use different colors per patch */
@@ -224,6 +204,11 @@ namespace OML {
 		void setLocalSurfaceType(LocalSurfaceType lsType) { m_lsType = lsType; }
 		// Choose how the surface should be colored
 		void setSurfaceColorMethod(SurfaceColor method) { m_surfaceColor = method; }
+		// Set tessellation factor
+		void translateLocalSurface(uint32_t index, glm::vec3 trans) {
+			if (index > m_matrices.size()) return;
+			m_matrices[index] = glm::translate(m_matrices[index], trans);
+		}
 
 		// Returns the name of the Lattice
 		std::string name() { return m_name; }
@@ -276,9 +261,9 @@ namespace OML {
 		struct {
 			int tessInner = 10;
 			int tessOuter = 10;
-			int bFunctionIndex = 0;
 			int tessFactorMethod = 0;
 			int pixelsPerEdge = 6;
+			int numPASamples = 3;
 			float maxError = 1.0f;
 			float normalLength = 2.0f;
 			alignas(16) glm::mat4 projection = glm::mat4(1.0f);

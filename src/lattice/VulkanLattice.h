@@ -13,19 +13,19 @@
 #include "LocalSurfaceTextureBatch.h"
 #include "LocalSurfaceBuffer.h"
 
-#define DIRECT_MULTIPLE_DRAW_CALLS
-#define ADD_DUMMY_DATA_TO_CONTROL_POINT_BUFFER
-const size_t DUMMY_DATA_SIZE_BYTES = 10000000;
+//#define DIRECT_MULTIPLE_DRAW_CALLS
+//#define ADD_DUMMY_DATA_TO_CONTROL_POINT_BUFFER
+//const size_t DUMMY_DATA_SIZE_BYTES = 10000000;
 
 namespace OML {
 
 	// Parameters used for pre-evaluation
-	const int NUM_SAMPLES_U = 16;
-	const int NUM_SAMPLES_V = 16;
-	const int NUM_PATCHES_PER_BATCH = 1024;
-	const int BATCH_ROWS = 32;
-	const int BATCH_COLS = 32;
-	const int MAX_BATCHES = 4;
+	const int NUM_SAMPLES_U = 32;
+	const int NUM_SAMPLES_V = 32;
+	const int NUM_PATCHES_PER_BATCH = 9;
+	const int BATCH_ROWS = 3;
+	const int BATCH_COLS = 3;
+	const int MAX_BATCHES = 1;
 
 	// Various structs used by the vulkan implementation
 
@@ -50,15 +50,21 @@ namespace OML {
 	{
 		LocalSurfaceVertex() : LocalSurfaceVertex(0, 0, 0, 0, glm::vec3(1.0f)) {}
 		LocalSurfaceVertex(uint32_t controlPointIndex, uint32_t controlPointCount,
-						   uint32_t matrixIndex, uint32_t boundaryIndex, glm::vec3 color)
+						   uint32_t matrixIndex, uint32_t boundaryIndex, glm::vec3 color,
+						   uint32_t s = 0, uint32_t t = 0, uint32_t numSamples = 0, uint32_t dataIndex = 0)
 			: controlPointIndex(controlPointIndex), controlPointCount(controlPointCount),
-			  matrixIndex(matrixIndex), boundaryIndex(boundaryIndex), color(color) {}
+			  matrixIndex(matrixIndex), boundaryIndex(boundaryIndex), color(color),
+			  s(s), t(t), numSamples(0), dataIndex(dataIndex) {}
 
 		uint32_t controlPointIndex;
 		uint32_t controlPointCount; 
 		uint32_t matrixIndex;
 		uint32_t boundaryIndex;
 		glm::vec3 color;
+		uint32_t s;
+		uint32_t t;
+		uint32_t numSamples;
+		uint32_t dataIndex;
 
 		static std::vector<VkVertexInputBindingDescription> GetBindingDescriptions();
 		static std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptions();
@@ -130,6 +136,19 @@ namespace OML {
 		*/
 		static void CheckAndSetupRequiredPhysicalDeviceFeatures(
 			VkPhysicalDeviceFeatures& deviceFeatures, VkPhysicalDeviceFeatures& enabledFeatures);
+
+
+		/* Set tessellation factors */
+		void setTessellationFactors(int inner, int outer) {
+			m_uniforms.tessInner = inner; 
+			m_uniforms.tessOuter = outer;
+		}
+		void updateUniformBuffer() {
+			updateLatticeUniformBuffer();
+		}
+		void updateMatrixBuffer() {
+			updateMatrixUniformBuffer();
+		}
 
 	protected:
 		// Called from the update function in the the Lattice class.

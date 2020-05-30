@@ -112,20 +112,32 @@ public:
 	};
 
 	LatticeExample(bool enableValidation, OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier, 
-		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct, bool frontCamera = false)
 		: VulkanExampleBase(enableValidation), evalMethodIdx(static_cast<uint32_t>(evalMethod)), 
 		lsTypeIdx(static_cast<uint32_t>(lsType))
 	{
 		title = "Lattice Example";
 
 		// Camera
-		//zoom = -100.0f;
-		//zoomSpeed = 20.0f;
-		//camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 10000.0f);
+		zoom = 0.0f;
+		zoomSpeed = 100.0f;
+		camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 10000.0f);
 		//camera.type = Camera::CameraType::firstperson;
-		//camera.movementSpeed = 20.0f;
+		//camera.movementSpeed = 100.0f;
 		//camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
 		//camera.setTranslation(glm::vec3(0.0f, 0.0f, -50.0f));
+		if (frontCamera)
+		{
+			// front
+			camera.setRotation(glm::vec3(70, 0.0f, 0.0f));
+			camera.setTranslation(glm::vec3(0.0f, 0.0f, -250.0f));
+		}
+		else
+		{
+			// top
+			camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
+			camera.setTranslation(glm::vec3(0.0f, 0.0f, -250.0f));
+		}
 
 		settings.overlay = true; // ImGui overlay
 	}
@@ -162,7 +174,8 @@ public:
 	}
 
 	void buildCommandBuffers() {
-		vkDeviceWaitIdle(device);
+		//vkDeviceWaitIdle(device);
+		vkWaitForFences(device, MAX_FRAMES_IN_FLIGHT, &inFlightFences[0], VK_TRUE, UINT64_MAX);
 
 		if (!checkCommandBuffers())
 		{
@@ -173,6 +186,7 @@ public:
 		VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
 
 		VkClearValue clearValues[2];
+		//clearValues[0].color = { 1.0f, 1.0f, 1.0f, 1.0f };
 		clearValues[0].color = { 0.925f, 0.925f, 0.925f, 1.0f };
 		clearValues[1].depthStencil = { 1.0f, 0 };
 
@@ -231,8 +245,8 @@ public:
 	void prepare() {
 		VulkanExampleBase::prepare();
 		loadAssets();
-		if(!checkCommandBuffers())
-			buildCommandBuffers();
+		if (!checkCommandBuffers())
+			rebuildCmdBuffers = true;
 		viewChanged();
 		prepared = true;
 	}
@@ -240,6 +254,10 @@ public:
 	virtual void render() override {
 		if (!prepared)
 			return;
+		if (rebuildCmdBuffers)
+		{
+			buildCommandBuffers();
+		}
 		for (auto& lat : lattices)
 			lat.update(frameTimer);
 		draw();
@@ -270,7 +288,7 @@ public:
 		lattices.push_back(std::move(lattice));
 		latticeNames.push_back(lattice.name());
 		latticeIdx++;
-		buildCommandBuffers();
+		rebuildCmdBuffers = true;
 	}
 
 	void removeLattice(std::string name)
@@ -443,7 +461,7 @@ public:
 		for (auto& lat : lattices)
 		{
 			if (lat.onUpdateUIOverlay(overlay)) {
-				buildCommandBuffers();
+				rebuildCmdBuffers = true;
 			}
 		}
 
@@ -459,7 +477,7 @@ public:
 		if(ShaderWindowOpen) {
 			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.1, 0.1, 0.1, 1.0));
 
-			ImGui::SetNextWindowSize(ImVec2(600, 600));
+			ImGui::SetNextWindowSize(ImVec2(800, 800));
 
 			ImGui::Begin("Shaders Viewer");
 
@@ -562,7 +580,7 @@ public:
 	GridLatticeExample(bool enableValidation, float width, float height, int rows, int cols,
 		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
 		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
-		: LatticeExample(enableValidation, lsType, evalMethod), 
+		: LatticeExample(enableValidation, lsType, evalMethod, true), 
 		m_width(width), m_height(height), m_rows(rows), m_cols(cols)
 	{
 	}
@@ -714,15 +732,15 @@ public:
 		OML::VulkanLattice lat("Non-rectangular Lattice");
 		lat.setUseRandomPatchColors(true);
 		// Grid where quads have angles != 90
-		lat.addPatch(OML::Vec2f(-6,-15), OML::Vec2f(0,-10), OML::Vec2f(-15,-5), OML::Vec2f(0,0));
-		lat.addPatch(OML::Vec2f(0,-10), OML::Vec2f(5,-6), OML::Vec2f(0,0), OML::Vec2f(10,0));
-		lat.addPatch(OML::Vec2f(5, -6), OML::Vec2f(17,-5), OML::Vec2f(10,0), OML::Vec2f(14,-1));
-		lat.addPatch(OML::Vec2f(-15,-5), OML::Vec2f(0,0), OML::Vec2f(-5,13), OML::Vec2f(2,10));
-		lat.addPatch(OML::Vec2f(0,0), OML::Vec2f(10,0), OML::Vec2f(2,10), OML::Vec2f(10,10));
-		lat.addPatch(OML::Vec2f(10, 0), OML::Vec2f(14, -1), OML::Vec2f(10, 10), OML::Vec2f(20, 10));
-		lat.addPatch(OML::Vec2f(-5, 13), OML::Vec2f(2, 10), OML::Vec2f(-8, 20), OML::Vec2f(2, 20));
-		lat.addPatch(OML::Vec2f(2, 10), OML::Vec2f(10, 10), OML::Vec2f(2, 20), OML::Vec2f(10, 15));
-		lat.addPatch(OML::Vec2f(10, 10), OML::Vec2f(20, 10), OML::Vec2f(10, 15), OML::Vec2f(15, 18));
+		lat.addPatch(OML::Vec2f(-60,-150), OML::Vec2f(0,-100), OML::Vec2f(-150,-50), OML::Vec2f(0,0));
+		lat.addPatch(OML::Vec2f(0,-100), OML::Vec2f(50,-60), OML::Vec2f(0,0), OML::Vec2f(100,0));
+		lat.addPatch(OML::Vec2f(50, -60), OML::Vec2f(170,-50), OML::Vec2f(100,0), OML::Vec2f(140,-10));
+		lat.addPatch(OML::Vec2f(-150,-50), OML::Vec2f(0,0), OML::Vec2f(-50,130), OML::Vec2f(20,100));
+		lat.addPatch(OML::Vec2f(0,0), OML::Vec2f(100,0), OML::Vec2f(20,100), OML::Vec2f(100,100));
+		lat.addPatch(OML::Vec2f(100, 0), OML::Vec2f(140, -10), OML::Vec2f(100, 100), OML::Vec2f(200, 100));
+		lat.addPatch(OML::Vec2f(-50, 130), OML::Vec2f(20, 100), OML::Vec2f(-80, 200), OML::Vec2f(20, 200));
+		lat.addPatch(OML::Vec2f(20, 100), OML::Vec2f(100, 100), OML::Vec2f(20, 200), OML::Vec2f(100, 150));
+		lat.addPatch(OML::Vec2f(100, 100), OML::Vec2f(200, 100), OML::Vec2f(100, 150), OML::Vec2f(150, 180));
 		addLattice(lat);
 	}
 };
@@ -844,22 +862,165 @@ public:
 		OML::VulkanLattice lat("Grid Lattice");
 		lat.setUseRandomPatchColors(true);
 		lat.addGrid(OML::Vec2f(-25.0f, -25.0f), 20.0f, 20.0f, 3, 3);
-		lat.induceLattice();
-		lat.initVulkan(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		addLattice(lat);
 
 		OML::VulkanLattice lat2("Cylinder Lattice");
 		lat2.setUseRandomPatchColors(true);
 		lat2.addCylinder(OML::Vec3f(20.0f, 0.0f, -30.0f), 10.0f, 30.0f, 4, 8);
-		lat2.induceLattice();
-		lat2.initVulkan(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		addLattice(lat2);
 
 		OML::VulkanLattice lat3("Sphere Lattice");
 		lat3.setUseRandomPatchColors(true);
 		lat3.addSphere(OML::Vec3f(0.0f, -20.0f, 20.0f), 8.0f, 6, 6);
-		lat3.induceLattice();
-		lat3.initVulkan(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		addLattice(lat3);
+	}
+};
+
+
+
+class AllMethodsGridExample : public LatticeExample
+{
+public:
+	AllMethodsGridExample(bool enableValidation, bool moveLocals,
+		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
+		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
+		: LatticeExample(enableValidation, lsType, evalMethod), m_moveLocals(moveLocals) {}
+
+	bool m_moveLocals = false;
+
+	virtual void createLatticeGeometry() override
+	{
+		std::vector<std::string> names = { "Direct", "Pre_Img", "Pre_Batch", "Pre_Buf" };
+		std::vector<OML::EvaluationMethod> evals = { OML::EvaluationMethod::Direct, OML::EvaluationMethod::Pre_Sampled_Image,
+			OML::EvaluationMethod::Pre_Sampled_Image_Batched, OML::EvaluationMethod::Pre_Sampled_Buffer };
+		std::vector<glm::vec3> colors = {glm::vec3(0,0,0), glm::vec3(0,1,0), glm::vec3(0,0,1), glm::vec3(1,1,0)};
+		for (size_t i = 0; i < 4; i++)
+		{
+			OML::VulkanLattice lat(names[i]);
+			lat.setUseRandomPatchColors(true);
+			lat.setPatchColor(colors[i]);
+			lat.setLocalSurfaceType(static_cast<OML::LocalSurfaceType>(lsTypeIdx));
+			lat.setEvaluationMethod(evals[i]);
+			lat.addGrid(OML::Vec2f(-100.0f, -100.0f), 200.0f, 200.0f, 3, 3);
+			lat.induceLattice();
+			lat.initVulkan(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+			lat.onViewChanged(camera.matrices.perspective, camera.matrices.view);
+
+			if (m_moveLocals)
+			{
+				lat.translateLocalSurface(0, glm::vec3(0, 0, 50));
+				lat.translateLocalSurface(1, glm::vec3(0, 0, -50));
+				lat.translateLocalSurface(2, glm::vec3(0, 0, 25));
+				lat.translateLocalSurface(3, glm::vec3(0, 0, 0));
+				lat.translateLocalSurface(4, glm::vec3(0, 0, -25));
+				lat.translateLocalSurface(5, glm::vec3(0, 0, 10));
+				lat.translateLocalSurface(6, glm::vec3(0, 0, -12));
+				lat.translateLocalSurface(7, glm::vec3(0, 0, 10));
+				lat.translateLocalSurface(8, glm::vec3(0, 0, 10));
+				lat.translateLocalSurface(9, glm::vec3(0, 0, 25));
+				lat.translateLocalSurface(10, glm::vec3(0, 0, -12));
+				lat.translateLocalSurface(11, glm::vec3(0, 0, 0));
+				lat.translateLocalSurface(12, glm::vec3(0, 0, 30));
+				lat.translateLocalSurface(13, glm::vec3(0, 0, -12));
+				lat.translateLocalSurface(14, glm::vec3(0, 0, 2));
+				lat.translateLocalSurface(15, glm::vec3(0, 0, 21));
+				lat.updateMatrixBuffer();
+			}
+
+
+			lattices.push_back(std::move(lat));
+			latticeNames.push_back(names[i]);
+			latticeIdx++;
+		}
+		rebuildCmdBuffers = true;
+	}
+};
+
+class PixelAccTest : public LatticeExample
+{
+public:
+	PixelAccTest(bool enableValidation)
+		: LatticeExample(enableValidation, OML::LocalSurfaceType::Plane, OML::EvaluationMethod::Direct){
+		camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 100000.0f);
+		camera.setTranslation(glm::vec3(0, 100.0f, -750.0f));
+	}
+
+	virtual void createLatticeGeometry() override
+	{
+		camera.setRotation(glm::vec3(70, 0.0f, 0.0f));
+		camera.setTranslation(glm::vec3(0.0f, 0.0f, -13000.0f));
+		zoomSpeed = 500.0f;
+
+		OML::VulkanLattice lat("PixelAccTestLattice");
+		lat.setUseRandomPatchColors(true);
+		lat.setLocalSurfaceType(OML::LocalSurfaceType::Cubic_Bezier);
+		lat.setEvaluationMethod(OML::EvaluationMethod::Direct);
+		int rows = 20;
+		int cols = 20;
+		lat.addGrid(OML::Vec2f(-75000.0f, -75000.0f), 100000.0f, 100000.0f, rows, cols);
+		lat.induceLattice();
+		lat.initVulkan(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
+		lat.onViewChanged(camera.matrices.perspective, camera.matrices.view);
+
+		for (size_t j = 0; j < (rows + 1); j++)
+		{
+			for (size_t i = 0; i < (cols + 1); i++)
+			{
+				float ti = ((float)i / (float)(rows)) * 2 * M_PI;
+				float tj = ((float)j / (float)(cols)) * 2 * M_PI;
+				lat.translateLocalSurface(j * cols + i, glm::vec3(
+					0, 0, std::sin(4*ti) * std::sin(5*tj) * 3000.0f));
+			}
+		}
+		/*for (size_t i = 0; i < 2601; i++)
+		{
+			float t = ((float)i / 2601.0f) * 2 * M_PI;
+			lat.translateLocalSurface(i, glm::vec3(0, 0, std::sin(t) * 1000.0f));
+		}*/
+		lat.updateMatrixBuffer();
+
+		lattices.push_back(std::move(lat));
+		latticeNames.push_back("PixelAccTestLattice");
+		latticeIdx++;
+		rebuildCmdBuffers = true;
+	}
+};
+
+class BenchmarkGrid : public LatticeExample
+{
+public:
+	int tess, rowcol;
+	std::string resultDir;
+
+	BenchmarkGrid(int rowcol, int tess, std::string resultDir, OML::LocalSurfaceType lsType, OML::EvaluationMethod evalMethod)
+		: LatticeExample(false, lsType, evalMethod), rowcol(rowcol), tess(tess), resultDir(resultDir)
+	{
+	}
+
+	virtual void createLatticeGeometry() override
+	{
+		OML::VulkanLattice lat("Grid");
+		lat.addGrid(OML::Vec2f(-250.0f, -250.0f), 500.0f, 500.0f, rowcol, rowcol);
+		lat.setUseRandomPatchColors(false);
+
+		std::string benchmarkFilename = resultDir;
+		benchmarkFilename += std::to_string(rowcol) + "x" + std::to_string(rowcol) + "grid_";
+		benchmarkFilename += std::to_string(tess) + "x" + std::to_string(tess) + "tess_";
+		benchmarkFilename += "lsType" + std::to_string(lsTypeIdx) + "_evalMethod"
+			+ std::to_string(evalMethodIdx) + ".txt";
+
+		benchmark.active = true;
+		benchmark.warmup = 10;
+		benchmark.duration = 20;
+		benchmark.filename = benchmarkFilename;
+
+		camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 10000.0f);
+		camera.setRotation(glm::vec3(0, 0, 0));
+		camera.setTranslation(glm::vec3(0, 0, -500));
+
+		settings.overlay = false;
+		settings.fullscreen = true;
+
+		addLattice(lat);
 	}
 };

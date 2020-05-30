@@ -1,8 +1,10 @@
 #include "LocalSurfaceBuffer.h"
 
 namespace OML {
-	uint32_t LocalSurfaceBuffer::addLocalSurface(std::vector<glm::vec3>& controlPoints, LocalSurfaceType lsType)
+	uint32_t LocalSurfaceBuffer::addLocalSurface(std::vector<glm::vec3>& controlPoints, LocalSurfaceType lsType, int numSamplesU, int numSamplesV)
 	{
+		m_numSamplesU = numSamplesU;
+		m_numSamplesV = numSamplesV;
 		switch (lsType)
 		{
 		case LocalSurfaceType::Quadratic_Bezier: return addBezier3x3(controlPoints);
@@ -110,9 +112,9 @@ namespace OML {
 					p20 * bu[2] * bvd[0] + p21 * bu[2] * bvd[1] + p22 * bu[2] * bvd[2] + p23 * bu[2] * bvd[3] +
 					p30 * bu[3] * bvd[0] + p31 * bu[3] * bvd[1] + p32 * bu[3] * bvd[2] + p33 * bu[3] * bvd[3];
 
-				lsData.positions[j * m_numSamplesV + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
-				lsData.partialU[j * m_numSamplesV + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
-				lsData.partialV[j * m_numSamplesV + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
+				lsData.positions[j * m_numSamplesU + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
+				lsData.partialU[j * m_numSamplesU + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
+				lsData.partialV[j * m_numSamplesU + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
 			}
 		}
 
@@ -171,7 +173,7 @@ namespace OML {
 
 		return data;
 	}
-	
+
 	glm::vec3 LocalSurfaceBuffer::bezBasis3(float t)
 	{
 		return glm::vec3(std::pow(1 - t, 2), 2 * t * (1 - t), std::pow(t, 2));
@@ -184,12 +186,12 @@ namespace OML {
 
 	glm::vec4 LocalSurfaceBuffer::bezBasis4(float t)
 	{
-		return glm::vec4(std::pow(1-t,3), 3*t*std::pow(1-t,2), 3*t*t*(1-t), std::pow(t,3));
+		return glm::vec4(std::pow(1 - t, 3), 3 * t * std::pow(1 - t, 2), 3 * t * t * (1 - t), std::pow(t, 3));
 	}
 
 	glm::vec4 LocalSurfaceBuffer::bezBasisDer4(float t)
 	{
-		return glm::vec4(-3*std::pow(1-t,2), 3*(1-t)*(1-3*t), 3*t*(2-3*t), 3*t*t);
+		return glm::vec4(-3 * std::pow(1 - t, 2), 3 * (1 - t) * (1 - 3 * t), 3 * t * (2 - 3 * t), 3 * t * t);
 	}
 
 }

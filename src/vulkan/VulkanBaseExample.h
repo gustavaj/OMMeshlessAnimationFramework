@@ -136,6 +136,8 @@ public:
 	uint32_t width = 1280;
 	uint32_t height = 720;
 
+	bool rebuildCmdBuffers = false;
+
 	vks::UIOverlay UIOverlay;
 
 	/** @brief Last frame time measured using a high performance timer (if available) */

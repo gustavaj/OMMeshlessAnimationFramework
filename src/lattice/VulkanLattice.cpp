@@ -19,7 +19,7 @@ namespace OML
 	std::vector<VkVertexInputAttributeDescription> LocalSurfaceVertex::GetAttributeDescriptions()
 	{
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {};
-		attributeDescriptions.resize(2);
+		attributeDescriptions.resize(3);
 		attributeDescriptions[0].binding = 0;
 		attributeDescriptions[0].location = 0;
 		attributeDescriptions[0].format = VK_FORMAT_R32G32B32A32_UINT;
@@ -28,6 +28,10 @@ namespace OML
 		attributeDescriptions[1].location = 1;
 		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 		attributeDescriptions[1].offset = offsetof(LocalSurfaceVertex, color);
+		attributeDescriptions[2].binding = 0;
+		attributeDescriptions[2].location = 2;
+		attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_UINT;
+		attributeDescriptions[2].offset = offsetof(LocalSurfaceVertex, s);
 
 		return attributeDescriptions;
 	}
@@ -406,7 +410,7 @@ namespace OML
 				}
 				if (m_surfaceColor == SurfaceColor::SurfAccuracy)
 				{
-					if (overlay->sliderFloat("Error(e)", &m_uniforms.maxError, 0.1f, 10.0f)) updateLatticeUniformBuffer();
+					if (ImGui::InputFloat("Error(e)", &m_uniforms.maxError, 0.5f, 1.0f, 1)) updateLatticeUniformBuffer();
 					overlay->text("w<=0.1e, g<=0.2e, b<=0.5e\ny<=e, r>e");
 				}
 				else if (m_surfaceColor == SurfaceColor::PixelAccuracy)
@@ -432,9 +436,11 @@ namespace OML
 					if (overlay->sliderInt("PixelsPerEdge", &m_uniforms.pixelsPerEdge, 1, 50)) updateLatticeUniformBuffer();
 					break;
 				}
+				case TessFactorMethod::PixelAccurate: {
+					if (ImGui::InputInt("Samples", &m_uniforms.numPASamples, 1, 1)) updateLatticeUniformBuffer();
+					break;
 				}
-				ImGui::Separator();
-				if (overlay->comboBox("B-Function", &m_uniforms.bFunctionIndex, OML::BFunctionNames)) updateLatticeUniformBuffer();
+				}
 				ImGui::Separator();
 			}
 
@@ -765,11 +771,12 @@ namespace OML
 						controlPoints[j] = glm::vec3(m_controlPoints[m_loci[i].controlPointIndex + j]);
 					}
 					auto it = m_LSIdxToLSBufferMap.insert({ m_loci[i].controlPointIndex,
-						m_LSBuffer.addLocalSurface(controlPoints, m_lsType) });
+						m_LSBuffer.addLocalSurface(controlPoints, m_lsType, NUM_SAMPLES_U, NUM_SAMPLES_V) });
 				}
 
-				m_localSurfaceVertices[i] = LocalSurfaceVertex(m_LSIdxToLSBufferMap[m_loci[i].controlPointIndex],
-					m_loci[i].controlPointCount, m_loci[i].matrixIndex, 0, m_loci[i].color);
+				m_localSurfaceVertices[i] = LocalSurfaceVertex(m_loci[i].controlPointIndex,
+					m_loci[i].controlPointCount, m_loci[i].matrixIndex, 0, m_loci[i].color,
+					0, 0, 0, m_LSIdxToLSBufferMap[m_loci[i].controlPointIndex]);
 			}
 			else
 			{
@@ -866,18 +873,18 @@ namespace OML
 					m_lsType
 				);
 
-				localVert00.controlPointIndex = coords.first;
-				localVert00.controlPointCount = coords.second;
-				localVert00.boundaryIndex = NUM_SAMPLES_U;
-				localVert10.controlPointIndex = coords.first;
-				localVert10.controlPointCount = coords.second;
-				localVert10.boundaryIndex = NUM_SAMPLES_U;
-				localVert01.controlPointIndex = coords.first;
-				localVert01.controlPointCount = coords.second;
-				localVert01.boundaryIndex = NUM_SAMPLES_U;
-				localVert11.controlPointIndex = coords.first;
-				localVert11.controlPointCount = coords.second;
-				localVert11.boundaryIndex = NUM_SAMPLES_U;
+				localVert00.s = coords.first;
+				localVert00.t = coords.second;
+				localVert00.numSamples = NUM_SAMPLES_U;
+				localVert10.s = coords.first;
+				localVert10.t = coords.second;
+				localVert10.numSamples = NUM_SAMPLES_U;
+				localVert01.s = coords.first;
+				localVert01.t = coords.second;
+				localVert01.numSamples = NUM_SAMPLES_U;
+				localVert11.s = coords.first;
+				localVert11.t = coords.second;
+				localVert11.numSamples = NUM_SAMPLES_U;
 			}
 			else if (m_evalMethod == EvaluationMethod::Pre_Sampled_Image)
 			{
@@ -890,10 +897,10 @@ namespace OML
 			}
 			else if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer)
 			{
-				localVert00.controlPointIndex = m_LSIdxToLSBufferMap[locus00.controlPointIndex];
-				localVert10.controlPointIndex = m_LSIdxToLSBufferMap[locus10.controlPointIndex];
-				localVert01.controlPointIndex = m_LSIdxToLSBufferMap[locus01.controlPointIndex];
-				localVert11.controlPointIndex = m_LSIdxToLSBufferMap[locus11.controlPointIndex];
+				localVert00.dataIndex = m_LSIdxToLSBufferMap[locus00.controlPointIndex];
+				localVert10.dataIndex = m_LSIdxToLSBufferMap[locus10.controlPointIndex];
+				localVert01.dataIndex = m_LSIdxToLSBufferMap[locus01.controlPointIndex];
+				localVert11.dataIndex = m_LSIdxToLSBufferMap[locus11.controlPointIndex];
 			}
 
 
@@ -923,9 +930,9 @@ namespace OML
 
 	void VulkanLattice::createBuffers()
 	{
+
 		// Lattice grid points
 		std::vector<GridVertex> gridPoints;
-
 		for (auto v_itr = vertices_begin(); v_itr != vertices_end(); v_itr++)
 		{
 			GridVertex v;
@@ -941,7 +948,6 @@ namespace OML
 
 		// Lattice grid lines
 		std::vector<GridVertex> gridLines;
-
 		for (auto e_itr = edges_begin(); e_itr != edges_end(); e_itr++)
 		{
 			GridVertex v1;
@@ -1034,6 +1040,8 @@ namespace OML
 
 	void VulkanLattice::uploadStorageBuffers()
 	{
+		vkDeviceWaitIdle(*m_device);
+
 		createDeviceLocalBuffer(m_controlPointBuffer.buffer, m_controlPointBuffer.memory,
 			m_controlPoints.data(), m_controlPointBuffer.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		m_controlPointBuffer.descriptor.buffer = m_controlPointBuffer.buffer;
@@ -1318,7 +1326,7 @@ namespace OML
 		localShaderStages[2] = loadShader(OML::Shaders::GetTeseShader(m_lsType, OML::TeseShaderType::Local, 
 			(m_evalMethod == EvaluationMethod::Pre_Sampled_Image_Batched ? OML::EvaluationMethod::Direct : m_evalMethod), options),
 			VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-		localShaderStages[3] = loadShader(OML::Shaders::GetFlatColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
+		localShaderStages[3] = loadShader(OML::Shaders::GetShadedColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(localShaderStages.size());
 		pipelineCreateInfo.pStages = localShaderStages.data();
 
@@ -1355,7 +1363,7 @@ namespace OML
 			surfaceAccuracyStages[1] = loadShader(OML::Shaders::GetLocalSurfaceInfoTescShader(4, m_lsType, options), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
 			surfaceAccuracyStages[2] = loadShader(OML::Shaders::GetTeseShader(m_lsType, OML::TeseShaderType::Surf_Accuracy, m_evalMethod, options),
 				VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-			surfaceAccuracyStages[3] = loadShader(OML::Shaders::GetFlatColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
+			surfaceAccuracyStages[3] = loadShader(OML::Shaders::GetShadedColorFragShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
 			pipelineCreateInfo.stageCount = static_cast<uint32_t>(surfaceAccuracyStages.size());
 			pipelineCreateInfo.pStages = surfaceAccuracyStages.data();
 
@@ -1568,6 +1576,7 @@ namespace OML
 
 	void VulkanLattice::updateMatrixUniformBuffer()
 	{
+		vkDeviceWaitIdle(*m_device); // Just do it
 		memcpy(m_matrixUniformBuffer.mapped, &m_matrices[0][0], sizeof(glm::mat4) * m_matrices.size());
 	}
 

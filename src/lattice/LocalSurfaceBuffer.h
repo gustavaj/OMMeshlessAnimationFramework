@@ -16,11 +16,9 @@ namespace OML {
 
 	class LocalSurfaceBuffer {
 	public:
-		LocalSurfaceBuffer() : LocalSurfaceBuffer(16, 16) {}
-		LocalSurfaceBuffer(uint32_t numSamplesU, uint32_t numSamplesV)
-			: m_numSamplesU(numSamplesU), m_numSamplesV(numSamplesV) {}
+		LocalSurfaceBuffer() {}
 
-		uint32_t addLocalSurface(std::vector<glm::vec3>& controlPoints, LocalSurfaceType lsType);
+		uint32_t addLocalSurface(std::vector<glm::vec3>& controlPoints, LocalSurfaceType lsType, int numSamplesU, int numSamplesV);
 		uint32_t addBezier3x3(std::vector<glm::vec3>& controlPoints);
 		uint32_t addBezier4x4(std::vector<glm::vec3>& controlPoints);
 		uint32_t addPlane(std::vector<glm::vec3>& controlPoints);

@@ -134,29 +134,6 @@ namespace OML
 		Timer::Stop("addGrid", out);
 	}
 
-	void Lattice::addDonut(Vec2f topLeft, float outerRadius, float innerRadius)
-	{
-		float d = (outerRadius - innerRadius) / 2;
-		float r = innerRadius;
-		Vec2f dw(d, 0.0f);
-		Vec2f dh(0.0f, d);
-		Vec2f rw(r, 0.0f);
-		Vec2f rh(0.0f, r);
-
-		addPatch(topLeft, d, d);
-		addPatch(topLeft + dw, r, d);
-		addPatch(topLeft + dw + rw, d, d);
-
-		topLeft += dh;
-		addPatch(topLeft, d, r);
-		addPatch(topLeft + dw + rw, d, r);
-
-		topLeft += rh;
-		addPatch(topLeft, d, d);
-		addPatch(topLeft + dw, r, d);
-		addPatch(topLeft + dw + rw, d, d);
-	}
-
 	void Lattice::addCylinder(Vec3f center, float radius, float height, int rows, int cols)
 	{
 		std::string out = "Lattice::addCylinder(rows: " + std::to_string(rows) +
@@ -366,6 +343,12 @@ namespace OML
 		Timer::Start("induceLattice", "Lattice::induceLattice()");
 
 		auto start = std::chrono::high_resolution_clock::now();
+
+		// Local surface rendering will use the boundary with index 0.
+		// Therefore a boundary info that ensures the full surface is 
+		// rendered is input at index 0 manually.
+		BoundaryInfo fullPatchBoundary(0.0f, 1.0f, 0.0f, 1.0f);
+		addBoundaryInfo(fullPatchBoundary);
 
 		// Clear out the pointIndexMap
 		m_uniquePointsIndexMap.clear();
@@ -661,12 +644,6 @@ namespace OML
 	{
 
 		std::vector<OpenMesh::VertexHandle> cornerVertices;
-
-		// Local surface rendering will use the boundary with index 0.
-		// Therefore a boundary info that ensures the full surface is 
-		// rendered is input at index 0 manually.
-		BoundaryInfo fullPatchBoundary(0.0f, 1.0f, 0.0f, 1.0f);
-		addBoundaryInfo(fullPatchBoundary);
 
 		// Add local surfaces
 		for (auto f_itr = faces_begin(); f_itr != faces_end(); f_itr++)
@@ -1102,7 +1079,7 @@ namespace OML
 		Vec3f bottomMiddle = (bottomLeft + bottomRight) / 2;
 		Vec3f middle = ((topMiddle + bottomMiddle) / 2 + (middleLeft + middleRight) / 2) / 2;
 
-#ifdef TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
+#if defined(TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE_RANDOM)
 		Vec3f normal = ((topRight - topLeft) % (bottomLeft - topLeft)).normalize();
 		float amp = (topRight - topLeft).length();
 		middle += normal * m_rng.random(-amp, amp);
@@ -1137,13 +1114,19 @@ namespace OML
 		glm::vec4 p12 = p00 + u + 2.0f * v;
 		glm::vec4 p22 = p00 + 2.0f * u + 2.0f * v;
 
-#ifdef TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
+#if defined(TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE_RANDOM)
 		glm::vec4 normal = glm::vec4(glm::normalize(glm::cross(glm::vec3(u), glm::vec3(v))), 0.0f);
 		float amp = (topRight - topLeft).length();
 		p11 += normal * m_rng.random(-amp, amp);
 		p21 += normal * m_rng.random(-amp, amp);
 		p12 += normal * m_rng.random(-amp, amp);
 		p22 += normal * m_rng.random(-amp, amp);
+#elif defined(TRANSLATE_MIDDLE_POINTS_OF_CUBIC_BEZ_PRE_DEFINED)
+		glm::vec4 normal = glm::vec4(glm::normalize(glm::cross(glm::vec3(u), glm::vec3(v))), 0.0f);
+		p11 += normal * 50.0f;
+		p21 += normal * 25.0f;
+		p12 += normal * -25.0f;
+		p22 += normal * -50.0f;
 #endif // TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 
 		uint32_t idx = m_controlPoints.size();
@@ -1214,7 +1197,7 @@ namespace OML
 		Vec3f& middleLeft, Vec3f& middle, Vec3f& middleRight,
 		Vec3f& bottomLeft, Vec3f& bottomMiddle, Vec3f& bottomRight)
 	{
-#ifdef TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
+#if defined(TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE_RANDOM)
 		Vec3f normal = ((topRight - topLeft) % (bottomLeft - topLeft)).normalize();
 		float amp = (topRight - topLeft).length();
 		middle += normal * m_rng.random(-amp, amp);
@@ -1265,7 +1248,7 @@ namespace OML
 		glm::vec4 p13 = p03 + (bm - p03) * 0.66f;
 		glm::vec4 p23 = p33 + (bm - p33) * 0.66f;
 
-#ifdef TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
+#if defined(TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE_RANDOM)
 		glm::vec4 normal = glm::vec4(glm::normalize(
 			glm::cross(glm::vec3(p30 - p00), glm::vec3(p03 - p00))), 0.0f);
 		float amp = (topRight - topLeft).length();
@@ -1273,6 +1256,13 @@ namespace OML
 		p21 += normal * m_rng.random(-amp, amp);
 		p12 += normal * m_rng.random(-amp, amp);
 		p22 += normal * m_rng.random(-amp, amp);
+#elif defined(TRANSLATE_MIDDLE_POINTS_OF_CUBIC_BEZ_PRE_DEFINED)
+		glm::vec4 normal = glm::vec4(glm::normalize(
+			glm::cross(glm::vec3(p30 - p00), glm::vec3(p03 - p00))), 0.0f);
+		p11 += normal * 50.0f;
+		p21 += normal * 25.0f;
+		p12 += normal * -25.0f;
+		p22 += normal * -50.0f;
 #endif // TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 
 		uint32_t idx = m_controlPoints.size();
@@ -1527,9 +1517,6 @@ namespace OML
 			std::swap(faces[0], faces[2]);
 			std::swap(faces[1], faces[3]);
 		}
-
-		// TODO: Don't know if this will be correct for all cases.
-		// Should probably test some cases where patches are added in weird orders.
 
 		Vec3f offset = point(vh);
 

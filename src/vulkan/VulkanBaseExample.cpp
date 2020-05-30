@@ -629,7 +629,7 @@ void VulkanExampleBase::updateOverlay(double dt)
 	ImGui::Render();
 
 	if (UIOverlay.update() || UIOverlay.updated) {
-		buildCommandBuffers();
+		rebuildCmdBuffers = true;
 		UIOverlay.updated = false;
 	}
 
@@ -2303,7 +2303,7 @@ void VulkanExampleBase::windowResize()
 	// references to the recreated frame buffer
 	destroyCommandBuffers();
 	createCommandBuffers();
-	buildCommandBuffers();
+	rebuildCmdBuffers = true;
 
 	vkDeviceWaitIdle(device);
 

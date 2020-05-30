@@ -121,13 +121,15 @@ namespace OML {
 			std::string numDataPoints, std::string set, std::string binding);
 
 		static std::string BlendingFunctionString();
-		static std::string BlendingFunctionTypes();
 
 		static std::string BiQuadEvaluatorString(std::string prefix);
 		static std::string BiQuadEvaluatorOnlyPosString(std::string prefix);
+		static std::string BiQuadEvaluatorWithDer2();
 		static std::string BiCubicEvaluatorString(std::string prefix);
 		static std::string BiCubicEvaluatorOnlyPosString(std::string prefix);
+		static std::string BiCubicEvaluatorWithDer2();
 		static std::string PlaneEvaluatorString(std::string prefix);
+		static std::string PlaneEvaluatorWithDer2();
 
 		static std::string SampleLocalSurfaceEvaluator(std::string prefix);
 		static std::string BatchedSampleLocalSurfaceEvaluator(std::string prefix);
@@ -138,6 +140,7 @@ namespace OML {
 		static std::string SampleBatchedLocalSurfacesString(std::string prefix);
 
 		static std::string BlendLocalSurfacesString(std::string prefix);
+		static std::string GetPixelAccGlobalSurfEvaluatorString();
 
 		static std::string EvaluateLocalSurfacesOnlyPosString(std::string prefix);
 		static std::string BlendLocalSurfacesOnlyPos(std::string prefix);

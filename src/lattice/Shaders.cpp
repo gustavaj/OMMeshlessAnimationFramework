@@ -82,16 +82,18 @@ namespace OML {
 				" \n"
 				"layout(location = 0) in uvec4 inLSInfo;\n"
 				"layout(location = 1) in vec3 inColor;\n"
+				"layout(location = 2) in uvec4 inLSInfo2;\n"
 				" \n"
 				"layout(location = 0) out LocalSurfaceInfo vLSInfo;\n"
-				"layout(location = 4) out vec3 vColor;\n"
+				"layout(location = 5) out vec3 vColor;\n"
 				" \n"
 				"void main() {\n"
 				"  LocalSurfaceInfo lsInfo;\n"
 				"  lsInfo.controlPointIndex = inLSInfo.x;\n"
-				"  lsInfo.controlPointCount = inLSInfo.y;\n"
 				"  lsInfo.matrixIndex = inLSInfo.z;\n"
 				"  lsInfo.boundaryIndex = inLSInfo.w;\n"
+				"  lsInfo.batchInfo = uvec3(inLSInfo2.x, inLSInfo2.y, inLSInfo2.z);\n"
+				"  lsInfo.dataIndex = inLSInfo2.w;\n"
 				" \n"
 				"  vLSInfo = lsInfo;\n"
 				"  vColor = inColor;\n"
@@ -111,24 +113,26 @@ namespace OML {
 		std::string nBoundaries = std::to_string(options.numPatches * 4);
 		std::string evalString;
 		std::string name = "Tesc_";
-		switch (lsType)
+		/*switch (lsType)
 		{
 		case LocalSurfaceType::Quadratic_Bezier: {
 			name += "QuadBezier_";
-			evalString = Shaders::BiQuadEvaluatorOnlyPosString("");
+			evalString = Shaders::BiQuadEvaluatorWithDer2();
 			break;
 		}
 		case LocalSurfaceType::Cubic_Bezier: {
 			name += "CubicBezier_";
-			evalString = Shaders::BiCubicEvaluatorOnlyPosString("");
+			evalString = Shaders::BiCubicEvaluatorWithDer2();
 			break;
 		}
 		case LocalSurfaceType::Plane: {
 			name += "Plane_";
-			evalString = Shaders::PlaneEvaluatorString("");
+			evalString = Shaders::PlaneEvaluatorWithDer2();
 			break;
 		}
-		}
+		}*/
+		name += "CubicBezier_";
+		evalString = Shaders::BiCubicEvaluatorWithDer2();
 		name += Shaders::LocalSurfaceInfoTescName + "_" + verts + "V_" + nControl + "C_" + nLocal + "L_" + nPatches + "P";
 		if (Shaders::NotInMap(name))
 		{
@@ -142,10 +146,10 @@ namespace OML {
 				"layout(vertices = " + verts + ") out;\n"
 				" \n"
 				"layout(location = 0) in LocalSurfaceInfo vLSInfo[];\n"
-				"layout(location = 4) in vec3 vColor[];\n"
+				"layout(location = 5) in vec3 vColor[];\n"
 				" \n"
 				"layout(location = 0) out LocalSurfaceInfo tcLSInfo[];\n"
-				"layout(location = 4) out vec3 tcColor[];\n"
+				"layout(location = 5) out vec3 tcColor[];\n"
 				" \n"
 				"const int TessFactorMethod_Static = 0;\n"
 				"const int TessFactorMethod_Dynamic = 1;\n"
@@ -155,7 +159,8 @@ namespace OML {
 				Shaders::MatrixStorageBufferString(nLocal, "0", "1") + " \n" +
 				Shaders::ControlPointStorageBufferString(nControl, "0", "2") + " \n" +
 				Shaders::BoundaryBufferString(nBoundaries, "0", "3") + " \n" +
-				" \n" +
+				Shaders::BlendingFunctionString() + " \n" +
+				Shaders::GetPixelAccGlobalSurfEvaluatorString() + " \n" +
 				evalString + " \n" +
 				" \n"
 				"float getPostProjectionSphereExtent(vec3 origin, float diameter) {\n"
@@ -173,17 +178,30 @@ namespace OML {
 				"  tcLSInfo[gl_InvocationID] = vLSInfo[gl_InvocationID];\n"
 				"  tcColor[gl_InvocationID] = vColor[gl_InvocationID];\n"
 				" \n"
-				"  if(gl_InvocationID == 0) {\n"
-				"    if(ubo.tessFactorMethod == TessFactorMethod_Static) {\n"
-				"      gl_TessLevelInner[0] = ubo.tessInner;\n"
-				"      gl_TessLevelInner[1] = ubo.tessInner;\n"
-				"      gl_TessLevelOuter[0] = ubo.tessOuter;\n"
-				"      gl_TessLevelOuter[1] = ubo.tessOuter;\n"
-				"      gl_TessLevelOuter[2] = ubo.tessOuter;\n"
-				"      gl_TessLevelOuter[3] = ubo.tessOuter;\n"
-				"    }\n";
-			if (patchVertices == 4) {
+				"  if(gl_InvocationID == 0) {\n";
+			if (patchVertices == 1)
+			{
 				src +=
+					"    gl_TessLevelInner[0] = ubo.tessInner;\n"
+					"    gl_TessLevelInner[1] = ubo.tessInner;\n"
+					"    gl_TessLevelOuter[0] = ubo.tessOuter;\n"
+					"    gl_TessLevelOuter[1] = ubo.tessOuter;\n"
+					"    gl_TessLevelOuter[2] = ubo.tessOuter;\n"
+					"    gl_TessLevelOuter[3] = ubo.tessOuter;\n"
+					"  }\n"
+					"}\n";
+			}
+			else 
+			{
+				src +=
+					"    if(ubo.tessFactorMethod == TessFactorMethod_Static) {\n"
+					"      gl_TessLevelInner[0] = ubo.tessInner;\n"
+					"      gl_TessLevelInner[1] = ubo.tessInner;\n"
+					"      gl_TessLevelOuter[0] = ubo.tessOuter;\n"
+					"      gl_TessLevelOuter[1] = ubo.tessOuter;\n"
+					"      gl_TessLevelOuter[2] = ubo.tessOuter;\n"
+					"      gl_TessLevelOuter[3] = ubo.tessOuter;\n"
+					"    }\n"
 					"    else if(ubo.tessFactorMethod == TessFactorMethod_Dynamic) {\n"
 					"      // https://developer.nvidia.com/content/dynamic-hardware-tessellation-basics \n"
 					"      // Calculate the four corner points\n"
@@ -203,16 +221,93 @@ namespace OML {
 					"      gl_TessLevelOuter[3] = tf3;\n"
 					" \n"
 					"      // Set inner tess factors based on the max factor in the respective directions\n"
+					"      // Should probably be no problems with cracks since the edges are the same\n"
 					"      gl_TessLevelInner[0] = max(tf1, tf3);\n"
 					"      gl_TessLevelInner[1] = max(tf0, tf2);\n"
 					"    }\n"
+					"    else if(ubo.tessFactorMethod == TessFactorMethod_PixelAccurate) {\n"
+					"      // Find the bounds on the second derivative and min/max values for surface\n"
+					"      // By evaluating the surface ubo.numPASamples^2 times\n"
+					"      float Zuu_max = -1.0f;\n"
+					"      float Zuv_max = -1.0f;\n"
+					"      float Zvv_max = -1.0f;\n"
+					"      float Xuu_max = -1.0f;\n"
+					"      float Xuv_max = -1.0f;\n"
+					"      float Xvv_max = -1.0f;\n"
+					"      float X_max = -1.0f;\n"
+					"      float Z_min = 100000000.0f;\n"
+					" \n"
+					"      for(int i = 0; i < ubo.numPASamples; i++) {\n"
+					"        float u = float(i) / float(ubo.numPASamples - 1);\n"
+					"        for(int j = 0; j < ubo.numPASamples; j++) {\n"
+					"          float v = float(j) / float(ubo.numPASamples - 1);\n"
+					"          Sampler2 res = evaluateGlobal(\n"
+					"            evaluateLocal(tcLSInfo[0], u, v),\n"
+					"            evaluateLocal(tcLSInfo[1], u, v),\n"
+					"            evaluateLocal(tcLSInfo[2], u, v),\n"
+					"            evaluateLocal(tcLSInfo[3], u, v), u, v);\n"
+					"          res.uu = vec3(ubo.modelview * vec4(res.uu, 0.0f));\n"
+					"          res.uv = vec3(ubo.modelview * vec4(res.uv, 0.0f));\n"
+					"          res.vv = vec3(ubo.modelview * vec4(res.vv, 0.0f));\n"
+					"          res.p = vec3(ubo.modelview * vec4(res.p, 1.0f));\n"
+					"          Zuu_max = max(Zuu_max, abs(res.uu.z));\n"
+					"          Zuv_max = max(Zuv_max, abs(res.uv.z));\n"
+					"          Zvv_max = max(Zvv_max, abs(res.vv.z));\n"
+					"          Xuu_max = max(Xuu_max, abs(res.uu.x));\n"
+					"          Xuv_max = max(Xuv_max, abs(res.uv.x));\n"
+					"          Xvv_max = max(Xvv_max, abs(res.vv.x));\n"
+					"          X_max = max(X_max, abs(res.p.x));\n"
+					"          Z_min = min(Z_min, abs(res.p.z));\n"
+					"        }\n"
+					"      }\n"
+					" \n"
+					"      // Find the tess factor using Hjelmervik's method\n"
+					"      float eps_x = 0.5f / ubo.windowSize.x;\n"
+					"      float A = ubo.projection[0][0];\n"
+					"      float target_error = (8 * eps_x) / A;\n"
+					"      int tess_u = 64;\n"
+					"      int tess_v = 64;\n"
+					"      float du = 1.0f / float(tess_u);\n"
+					"      float dv = 1.0f / float(tess_v);\n"
+					"      float a = ((Zuu_max * X_max) / pow(Z_min, 2)) + (Xuu_max / Z_min);\n"
+					"      float b = ((Zvv_max * X_max) / pow(Z_min, 2)) + (Xvv_max / Z_min);\n"
+					"      float c = ((Zuv_max * X_max) / pow(Z_min, 2)) + (Xuv_max / Z_min);\n"
+					"      float error = pow(du, 2) * a + pow(dv, 2) * b + 2 * du * dv * c;\n"
+					" \n"
+					"      while(target_error >= error) {\n"
+					"        int new_tess_u = max(1, tess_u - 1);\n"
+					"        int new_tess_v = max(1, tess_v - 1);\n"
+					"        float du_ = 1.0f / float(new_tess_u);\n"
+					"        float dv_ = 1.0f / float(new_tess_v);\n"
+					"        //error = pow(du_, 2) * a + pow(dv_, 2) * b + 2 * du_ * dv_ * c;\n"
+					"        float error_u = pow(du_, 2) * a + pow(dv, 2) * b + 2 * du_ * dv * c;\n"
+					"        float error_v = pow(du, 2) * a + pow(dv_, 2) * b + 2 * du * dv_ * c;\n"
+					"        if(error_u < error_v && error_u < target_error && tess_u != 1) {\n"
+					"          tess_u = new_tess_u;\n"
+					"          du = du_;\n"
+					"          error = error_u;\n"
+					"        }\n"
+					"        else if(error_v < target_error && tess_v != 1) {\n"
+					"          tess_v = new_tess_v;\n"
+					"          dv = dv_;\n"
+					"          error = error_v;\n"
+					"        }\n"
+					"        else {\n"
+					"          break;\n"
+					"        }\n"
+					"      }\n"
+					" \n"
+					"      // Set tess levels, needs to cooperate with neighbours to set\n"
+					"      // outer levels, for now, just set it as the same as the inner.\n"
+					"      gl_TessLevelInner[0] = tess_u;\n"
+					"      gl_TessLevelOuter[1] = tess_u;\n"
+					"      gl_TessLevelOuter[3] = tess_u;\n"
+					"      gl_TessLevelInner[1] = tess_v;\n"
+					"      gl_TessLevelOuter[0] = tess_v;\n"
+					"      gl_TessLevelOuter[2] = tess_v;\n"
+					"    }\n"
 					"  }\n"
 					"}";
-			}
-			else {
-				src +=
-					"  }\n"
-					"}";;
 			}
 			Shaders::LoadSpirv(name, src, shaderc_shader_kind::shaderc_tess_control_shader);
 		}
@@ -307,38 +402,37 @@ namespace OML {
 		switch (teseType)
 		{
 		case TeseShaderType::Normals:
+		case TeseShaderType::Local:
 		case TeseShaderType::Lattice: {
 			desc +=
 				"layout(location = 0) in LocalSurfaceInfo tcLSInfo[];\n"
-				"layout(location = 4) in vec3 tcColor[];\n"
+				"layout(location = 5) in vec3 tcColor[];\n"
 				" \n"
 				"layout(location = 0) out vec3 teColor;\n"
 				"layout(location = 1) out vec3 teNormal;\n"
 				"layout(location = 2) out vec3 tePosition;\n";
 			break;
 		}
-		case TeseShaderType::Surf_Accuracy:
-		case TeseShaderType::Local: {
+		case TeseShaderType::Surf_Accuracy: {
 			desc +=
 				"layout(location = 0) in LocalSurfaceInfo tcLSInfo[];\n"
-				"layout(location = 4) in vec3 tcColor[];\n"
+				"layout(location = 5) in vec3 tcColor[];\n"
 				" \n"
-				"layout(location = 0) out vec3 teColor;\n";
+				"layout(location = 0) out vec3 teColor;\n"
+				"layout(location = 1) out vec3 teNormal;\n";
 			break;
 		}
 		case TeseShaderType::Pixel_Accuracy: {
 			desc +=
 				"layout(location = 0) in LocalSurfaceInfo tcLSInfo[];\n"
-				"layout(location = 4) in vec3 tcColor[];\n"
+				"layout(location = 5) in vec3 tcColor[];\n"
 				" \n"
-				"layout(location = 0) out vec3 teColor;\n"
-				"layout(location = 1) out vec3 teNormal;\n"
-				"layout(location = 2) out vec3 tePosition;\n"
-				"layout(location = 3) out vec2 teUVCoords;\n"
-				"layout(location = 4) out LocalSurfaceInfo ls00Info;\n"
-				"layout(location = 8) out LocalSurfaceInfo ls10Info;\n"
-				"layout(location = 12) out LocalSurfaceInfo ls01Info;\n"
-				"layout(location = 16) out LocalSurfaceInfo ls11Info;\n";
+				"layout(location = 0) out vec3 teNormal;\n"
+				"layout(location = 1) out vec2 teUVCoords;\n"
+				"layout(location = 6) out LocalSurfaceInfo ls00Info;\n"
+				"layout(location = 11) out LocalSurfaceInfo ls10Info;\n"
+				"layout(location = 16) out LocalSurfaceInfo ls01Info;\n"
+				"layout(location = 21) out LocalSurfaceInfo ls11Info;\n";
 			break;
 		}
 		}
@@ -353,7 +447,6 @@ namespace OML {
 
 		if (teseType != TeseShaderType::Local) {
 			eval +=
-				Shaders::BlendingFunctionTypes() + "\n\n" +
 				Shaders::BlendingFunctionString() + "\n\n";
 		}
 
@@ -363,11 +456,13 @@ namespace OML {
 		if (teseType == TeseShaderType::Surf_Accuracy)
 		{
 			std::string refEval;
+			//refEval += Shaders::ClipToWindowFunctionString() + " \n";
+
 			switch (lsType)
 			{
-			case LocalSurfaceType::Quadratic_Bezier: refEval = Shaders::BiQuadEvaluatorString("ref_"); break;
-			case LocalSurfaceType::Cubic_Bezier: refEval = Shaders::BiCubicEvaluatorString("ref_"); break;
-			case LocalSurfaceType::Plane: refEval = Shaders::PlaneEvaluatorString("ref_"); break;
+			case LocalSurfaceType::Quadratic_Bezier: refEval += Shaders::BiQuadEvaluatorString("ref_"); break;
+			case LocalSurfaceType::Cubic_Bezier: refEval += Shaders::BiCubicEvaluatorString("ref_"); break;
+			case LocalSurfaceType::Plane: refEval += Shaders::PlaneEvaluatorString("ref_"); break;
 			}
 
 			switch (evalMethod)
@@ -418,7 +513,7 @@ namespace OML {
 		std::string main =
 			"\nvoid main() {\n"
 			"  float u = gl_TessCoord.x;\n"
-			"  float v = gl_TessCoord.y;\n\n";
+			"  float v = gl_TessCoord.y;\n \n";
 
 		if (teseType == TeseShaderType::Local)
 		{
@@ -432,6 +527,8 @@ namespace OML {
 			}
 			main +=
 				"  gl_Position = ubo.projection * ubo.modelview * vec4(local.p, 1.0f);\n"
+				"  tePosition = vec3(ubo.modelview * vec4(local.p, 1.0f));\n"
+				"  teNormal = vec3(ubo.normal * vec4(normalize(cross(local.u, local.v)), 0.0f));\n"
 				"  teColor = tcColor[0];\n"
 				"}";
 		}
@@ -451,11 +548,30 @@ namespace OML {
 			}
 
 			main +=
-				Shaders::BlendLocalSurfacesOnlyPos("") + " \n" +
-				"  gl_Position = ubo.projection * ubo.modelview * vec4(pos, 1.0f);\n" +
-				Shaders::EvaluateLocalSurfacesOnlyPosString("ref_") + " \n" +
-				Shaders::BlendLocalSurfacesOnlyPos("ref_") + " \n" +
-				"  float diff = distance(pos, ref_pos);\n" +
+				Shaders::BlendLocalSurfacesString("") + " \n" +
+				"  gl_Position = ubo.projection * ubo.modelview * vec4(pos, 1.0f);\n"
+				"  teNormal = vec3(ubo.normal * vec4(normalize(cross(dpdu, dpdv)), 0.0f));\n \n"
+				"  float ref_u = gl_TessCoord.x;\n"
+				"  float ref_v = gl_TessCoord.y;\n \n"
+				"  // Evaluate Local Surfaces\n"
+				"  Sampler ref_s00 = ref_evaluateLocal(tcLSInfo[0], ref_u, ref_v);\n"
+				"  Sampler ref_s10 = ref_evaluateLocal(tcLSInfo[1], ref_u, ref_v);\n"
+				"  Sampler ref_s01 = ref_evaluateLocal(tcLSInfo[2], ref_u, ref_v);\n"
+				"  Sampler ref_s11 = ref_evaluateLocal(tcLSInfo[3], ref_u, ref_v);\n \n"
+				"  // Evaluate tensor product blending spline surface\n"
+				"  float ref_Bu = 1.0 - bFunction(ref_u);\n"
+				"  float ref_Bv = 1.0 - bFunction(ref_v);\n"
+				" \n"
+				"  vec3 ref_Su0 = ref_s10.p + (ref_s00.p - ref_s10.p) * ref_Bu;\n"
+				"  vec3 ref_Su1 = ref_s11.p + (ref_s01.p - ref_s11.p) * ref_Bu;\n"
+				" \n"
+				"  vec3 ref_pos = ref_Su1 + (ref_Su0 - ref_Su1) * ref_Bv;\n \n"
+				//"  vec4 clip = ubo.projection * ubo.modelview * vec4(pos, 1.0f);\n"
+				//"  vec4 ref_clip = ubo.projection * ubo.modelview * vec4(ref_pos, 1.0f);\n"
+				//"  vec3 pos_v = vec3(ubo.modelview * vec4(pos, 1.0f));\n"
+				//"  vec3 ref_pos_v = vec3(ubo.modelview * vec4(ref_pos, 1.0f));\n"
+				//"  float diff = distance(clipToWindow(clip), clipToWindow(ref_clip));\n" + " \n" +
+				"  float diff = distance(pos, ref_pos);\n \n" +
 				Shaders::ColorByMaxErrorString() + " \n" +
 				"}";
 		}
@@ -476,26 +592,31 @@ namespace OML {
 
 			main +=
 				Shaders::BlendLocalSurfacesString("") + " \n" +
-				"  gl_Position = ubo.projection * ubo.modelview * vec4(pos, 1.0f);\n"
-				"  tePosition = vec3(ubo.modelview * vec4(pos, 1.0f));\n";
-			if (teseType == TeseShaderType::Normals)
-			{
-				main += "  teNormal = normalize(cross(dpdu, dpdv));\n";
-			}
-			else
-			{
-				main += "  teNormal = vec3(ubo.normal * vec4(normalize(cross(dpdu, dpdv)), 0.0f));\n";
-			}
-			main += "  teColor = tcColor[0];\n";
+				"  gl_Position = ubo.projection * ubo.modelview * vec4(pos, 1.0f);\n";
 
 			if (teseType == TeseShaderType::Pixel_Accuracy)
 			{
 				main +=
+					"  teNormal = vec3(ubo.normal * vec4(normalize(cross(dpdu, dpdv)), 0.0f));\n"
 					"  teUVCoords = vec2(u, v);\n"
 					"  ls00Info = tcLSInfo[0];\n"
 					"  ls10Info = tcLSInfo[1];\n"
 					"  ls01Info = tcLSInfo[2];\n"
 					"  ls11Info = tcLSInfo[3];\n";
+			}
+			else
+			{
+				main +=
+					"  tePosition = vec3(ubo.modelview * vec4(pos, 1.0f));\n"
+					"  teColor = tcColor[0];\n";
+				if (teseType == TeseShaderType::Normals)
+				{
+					main += "  teNormal = normalize(cross(dpdu, dpdv));\n";
+				}
+				else
+				{
+					main += "  teNormal = vec3(ubo.normal * vec4(normalize(cross(dpdu, dpdv)), 0.0f));\n";
+				}
 			}
 
 			main += "}";
@@ -762,16 +883,13 @@ namespace OML {
 				Shaders::LocalSurfaceInfoStruct() + " \n" +
 				Shaders::SamplerStruct() + " \n" +
 				Shaders::BoundaryInfoStruct() + " \n" +
-				Shaders::BlendingFunctionTypes() + " \n" +
 				" \n"
-				"layout(location = 0) in vec3 teColor;\n"
-				"layout(location = 1) in vec3 teNormal;\n"
-				"layout(location = 2) in vec3 tePosition;\n"
-				"layout(location = 3) in vec2 teUVCoords;\n"
-				"layout(location = 4) flat in LocalSurfaceInfo ls00Info;\n"
-				"layout(location = 8) flat in LocalSurfaceInfo ls10Info;\n"
-				"layout(location = 12) flat in LocalSurfaceInfo ls01Info;\n"
-				"layout(location = 16) flat in LocalSurfaceInfo ls11Info;\n"
+				"layout(location = 0) in vec3 teNormal;\n"
+				"layout(location = 1) in vec2 teUVCoords;\n"
+				"layout(location = 6) flat in LocalSurfaceInfo ls00Info;\n"
+				"layout(location = 11) flat in LocalSurfaceInfo ls10Info;\n"
+				"layout(location = 16) flat in LocalSurfaceInfo ls01Info;\n"
+				"layout(location = 21) flat in LocalSurfaceInfo ls11Info;\n"
 				" \n"
 				"layout(location = 0) out vec4 FragColor;\n"
 				" \n" +
@@ -879,9 +997,9 @@ namespace OML {
 			"layout(set = 0, binding = 0) uniform UniformBufferObject {\n"
 			"  int tessInner;\n"
 			"  int tessOuter;\n"
-			"  int bFunctionIndex;\n"
 			"  int tessFactorMethod;\n"
 			"  int pixelsPerEdge;\n"
+			"  int numPASamples;\n"
 			"  float maxError;\n"
 			"  float normalLength;\n"
 			"  mat4 projection;\n"
@@ -896,9 +1014,10 @@ namespace OML {
 		return 
 			"struct LocalSurfaceInfo {\n"
 			"  uint controlPointIndex;\n"
-			"  uint controlPointCount;\n"
 			"  uint matrixIndex;\n"
 			"  uint boundaryIndex;\n"
+			"  uvec3 batchInfo;\n"
+			"  uint dataIndex;\n"
 			"};\n";
 	}
 
@@ -972,36 +1091,12 @@ namespace OML {
 	{
 		return
 			"float bFunction(float w) {\n"
-			"  if (w < 1e-5) return 0.0f;\n"
-			"  if (1 - w < 1e-5) return 1.0f;\n"
-			"  switch (ubo.bFunctionIndex) {\n"
-			"    case BFunction_B1Poly: { return (3 * pow(w, 2) - 2 * pow(w, 3)); }\n"
-			"    case BFunction_B2Poly: { return 6 * pow(w, 5) - 15 * pow(w, 4) + 10 * pow(w, 3); }\n"
-			"    case BFunction_Lerbs: { return 1.0 / (1.0 + exp(1.0 / w - 1.0 / (1.0 - w))); }\n"
-			"  }\n"
+			"  return 6 * pow(w, 5) - 15 * pow(w, 4) + 10 * pow(w, 3);\n"
 			"}\n"
 			" \n"
 			"float bDerivative(float w) {\n"
-			"  if (w < 1e-5) return 0.0f;\n"
-			"  if (1 - w < 1e-5) return 0.0f;\n"
-			"  switch (ubo.bFunctionIndex) {\n"
-			"  case BFunction_B1Poly: { return 6 * w - 6 * pow(w, 2); }\n"
-			"  case BFunction_B2Poly: { return 30 * pow(w, 4) - 60 * pow(w, 3) + 30 * pow(w, 2); }\n"
-			"  case BFunction_Lerbs: {\n"
-			"    return (2 * exp(-((1.0) / ((w - 1.0) * w))) *\n"
-			"      (pow(w, 2.0) - w + 0.5)) /\n"
-			"      (pow(exp(-(1.0 / (w - 1.0))) + exp(1.0 / w), 2.0) *\n"
-			"       pow(w - 1.0, 2.0) * pow(w, 2.0)); }\n"
-			"  }\n"
+			"  return 30 * pow(w, 4) - 60 * pow(w, 3) + 30 * pow(w, 2);\n"
 			"}\n";
-	}
-
-	inline std::string Shaders::BlendingFunctionTypes()
-	{
-		return
-			"const int BFunction_B1Poly = 0;\n"
-			"const int BFunction_B2Poly = 1;\n"
-			"const int BFunction_Lerbs = 2;\n";
 	}
 
 	inline std::string Shaders::BiQuadEvaluatorString(std::string prefix)
@@ -1099,6 +1194,87 @@ namespace OML {
 			"}\n";
 	}
 
+	std::string Shaders::BiQuadEvaluatorWithDer2()
+	{
+		return
+			"vec3 bez3Basis(float t) {\n"
+			"  return vec3(pow(1-t, 2), 2*t*(1-t), pow(t, 2));\n"
+			"}\n"
+			" \n"
+			"vec3 bez3BasisDer(float t) {\n"
+			"  return vec3(2*t-2, 2-4*t, 2*t);\n"
+			"}\n"
+			" \n"
+			"vec3 bez3BasisDer2(float t) {\n"
+			"  return vec3(4, -8, 4);\n"
+			"}\n"
+			" \n"
+			"Sampler2 evaluateLocal(LocalSurfaceInfo lsInfo, float u, float v) {\n"
+			"  BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];\n"
+			"  float local_u = mix(bi.us, bi.ue, u);\n"
+			"  float local_v = mix(bi.vs, bi.ve, v);\n"
+			" \n"
+			"  vec3 bu = bez3Basis(local_u);\n"
+			"  vec3 bud = bez3BasisDer(local_u);\n"
+			"  vec3 bud2 = bez3BasisDer2(local_u);\n"
+			"  vec3 bv = bez3Basis(local_v);\n"
+			"  vec3 bvd = bez3BasisDer(local_v);\n"
+			"  vec3 bvd2 = bez3BasisDer2(local_v);\n"
+			" \n"
+			"  vec3 p00 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 0].xyz;\n"
+			"  vec3 p10 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 1].xyz;\n"
+			"  vec3 p20 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 2].xyz;\n"
+			"  vec3 p01 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 3].xyz;\n"
+			"  vec3 p11 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 4].xyz;\n"
+			"  vec3 p21 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 5].xyz;\n"
+			"  vec3 p02 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 6].xyz;\n"
+			"  vec3 p12 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 7].xyz;\n"
+			"  vec3 p22 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 8].xyz;\n"
+			" \n"
+			"  vec3 pos =\n"
+			"    p00 * bu[0] * bv[0] + p01 * bu[0] * bv[1] + p02 * bu[0] * bv[2] +\n"
+			"    p10 * bu[1] * bv[0] + p11 * bu[1] * bv[1] + p12 * bu[1] * bv[2] +\n"
+			"    p20 * bu[2] * bv[0] + p21 * bu[2] * bv[1] + p22 * bu[2] * bv[2];\n"
+			" \n"
+			"  vec3 dpdu =\n"
+			"    p00 * bud[0] * bv[0] + p01 * bud[0] * bv[1] + p02 * bud[0] * bv[2] +\n"
+			"    p10 * bud[1] * bv[0] + p11 * bud[1] * bv[1] + p12 * bud[1] * bv[2] +\n"
+			"    p20 * bud[2] * bv[0] + p21 * bud[2] * bv[1] + p22 * bud[2] * bv[2];\n"
+			" \n"
+			"  vec3 dpdv =\n"
+			"    p00 * bu[0] * bvd[0] + p01 * bu[0] * bvd[1] + p02 * bu[0] * bvd[2] +\n"
+			"    p10 * bu[1] * bvd[0] + p11 * bu[1] * bvd[1] + p12 * bu[1] * bvd[2] +\n"
+			"    p20 * bu[2] * bvd[0] + p21 * bu[2] * bvd[1] + p22 * bu[2] * bvd[2];\n"
+			" \n"
+			"  vec3 dpdudv =\n"
+			"    p00 * bud[0] * bvd[0] + p01 * bud[0] * bvd[1] + p02 * bud[0] * bvd[2] +\n"
+			"    p10 * bud[1] * bvd[0] + p11 * bud[1] * bvd[1] + p12 * bud[1] * bvd[2] +\n"
+			"    p20 * bud[2] * bvd[0] + p21 * bud[2] * bvd[1] + p22 * bud[2] * bvd[2];\n"
+			" \n"
+			"  vec3 dpdudu =\n"
+			"    p00 * bud2[0] * bv[0] + p01 * bud2[0] * bv[1] + p02 * bud2[0] * bv[2] +\n"
+			"    p10 * bud2[1] * bv[0] + p11 * bud2[1] * bv[1] + p12 * bud2[1] * bv[2] +\n"
+			"    p20 * bud2[2] * bv[0] + p21 * bud2[2] * bv[1] + p22 * bud2[2] * bv[2];\n"
+			" \n"
+			"  vec3 dpdvdv =\n"
+			"    p00 * bu[0] * bvd2[0] + p01 * bu[0] * bvd2[1] + p02 * bu[0] * bvd2[2] +\n"
+			"    p10 * bu[1] * bvd2[0] + p11 * bu[1] * bvd2[1] + p12 * bu[1] * bvd2[2] +\n"
+			"    p20 * bu[2] * bvd2[0] + p21 * bu[2] * bvd2[1] + p22 * bu[2] * bvd2[2];\n"
+			" \n"
+			"  mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];\n"
+			" \n"
+			"  pos = vec3(matrix * vec4(pos, 1.0f));\n"
+			"  // mat4 normalMat = transpose(inverse(matrix));\n"
+			"  dpdu = vec3(matrix * vec4(dpdu, 0.0f));\n"
+			"  dpdv = vec3(matrix * vec4(dpdv, 0.0f));\n"
+			"  dpdudv = vec3(matrix * vec4(dpdudv, 0.0f));\n"
+			"  dpdudu = vec3(matrix * vec4(dpdudu, 0.0f));\n"
+			"  dpdvdv = vec3(matrix * vec4(dpdvdv, 0.0f));\n"
+			" \n"
+			"  return Sampler2(pos, dpdu, dpdv, dpdudv, dpdudu, dpdvdv);\n"
+			"}\n";
+	}
+
 	std::string Shaders::BiCubicEvaluatorString(std::string prefix)
 	{
 		return
@@ -1141,19 +1317,19 @@ namespace OML {
 			"    p00 * bu[0] * bv[0] + p01 * bu[0] * bv[1] + p02 * bu[0] * bv[2] + p03 * bu[0] * bv[3] +\n"
 			"    p10 * bu[1] * bv[0] + p11 * bu[1] * bv[1] + p12 * bu[1] * bv[2] + p13 * bu[1] * bv[3] +\n"
 			"    p20 * bu[2] * bv[0] + p21 * bu[2] * bv[1] + p22 * bu[2] * bv[2] + p23 * bu[2] * bv[3] +\n"
-			"		 p30 * bu[3] * bv[0] + p31 * bu[3] * bv[1] + p32 * bu[3] * bv[2] + p33 * bu[3] * bv[3];\n"
+			"    p30 * bu[3] * bv[0] + p31 * bu[3] * bv[1] + p32 * bu[3] * bv[2] + p33 * bu[3] * bv[3];\n"
 			" \n"
 			"  vec3 dpdu =\n"
 			"    p00 * bud[0] * bv[0] + p01 * bud[0] * bv[1] + p02 * bud[0] * bv[2] + p03 * bud[0] * bv[3] +\n"
 			"    p10 * bud[1] * bv[0] + p11 * bud[1] * bv[1] + p12 * bud[1] * bv[2] + p13 * bud[1] * bv[3] +\n"
 			"    p20 * bud[2] * bv[0] + p21 * bud[2] * bv[1] + p22 * bud[2] * bv[2] + p23 * bud[2] * bv[3] +\n"
-			"		 p30 * bud[3] * bv[0] + p31 * bud[3] * bv[1] + p32 * bud[3] * bv[2] + p33 * bud[3] * bv[3];\n"
+			"    p30 * bud[3] * bv[0] + p31 * bud[3] * bv[1] + p32 * bud[3] * bv[2] + p33 * bud[3] * bv[3];\n"
 			" \n"
 			"  vec3 dpdv =\n"
 			"    p00 * bu[0] * bvd[0] + p01 * bu[0] * bvd[1] + p02 * bu[0] * bvd[2] + p03 * bu[0] * bvd[3] +\n"
 			"    p10 * bu[1] * bvd[0] + p11 * bu[1] * bvd[1] + p12 * bu[1] * bvd[2] + p13 * bu[1] * bvd[3] +\n"
 			"    p20 * bu[2] * bvd[0] + p21 * bu[2] * bvd[1] + p22 * bu[2] * bvd[2] + p23 * bu[2] * bvd[3] +\n"
-			"		 p30 * bu[3] * bvd[0] + p31 * bu[3] * bvd[1] + p32 * bu[3] * bvd[2] + p33 * bu[3] * bvd[3];\n"
+			"    p30 * bu[3] * bvd[0] + p31 * bu[3] * bvd[1] + p32 * bu[3] * bvd[2] + p33 * bu[3] * bvd[3];\n"
 			" \n"
 			"  mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];\n"
 			" \n"
@@ -1202,13 +1378,107 @@ namespace OML {
 			"    p00 * bu[0] * bv[0] + p01 * bu[0] * bv[1] + p02 * bu[0] * bv[2] + p03 * bu[0] * bv[3] +\n"
 			"    p10 * bu[1] * bv[0] + p11 * bu[1] * bv[1] + p12 * bu[1] * bv[2] + p13 * bu[1] * bv[3] +\n"
 			"    p20 * bu[2] * bv[0] + p21 * bu[2] * bv[1] + p22 * bu[2] * bv[2] + p23 * bu[2] * bv[3] +\n"
-			"		 p30 * bu[3] * bv[0] + p31 * bu[3] * bv[1] + p32 * bu[3] * bv[2] + p33 * bu[3] * bv[3];\n"
+			"    p30 * bu[3] * bv[0] + p31 * bu[3] * bv[1] + p32 * bu[3] * bv[2] + p33 * bu[3] * bv[3];\n"
 			" \n"
 			"  mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];\n"
 			" \n"
 			"  pos = matrix * vec4(pos, 1.0f);\n"
 			" \n"
 			"  return Sampler(pos.xyz, vec3(0.0), vec3(0.0));\n"
+			"}\n";
+	}
+
+	std::string Shaders::BiCubicEvaluatorWithDer2()
+	{
+		return
+			"vec4 bez4Basis(float t) {\n"
+			"  return vec4(pow(1-t, 3), 3*t*pow((1-t),2), 3*t*t*(1-t), pow(t, 3));\n"
+			"}\n"
+			" \n"
+			"vec4 bez4BasisDer(float t) {\n"
+			"  return vec4(-3*pow(1-t, 2), 3*(1-t)*(1-3*t), 3*t*(2-3*t), 3*t*t);\n"
+			"}\n"
+			" \n"
+			"vec4 bez4BasisDer2(float t) {\n"
+			"  return vec4(6-6*t, 18*t - 12, 6 - 18 * t, 6 * t);\n"
+			"}\n"
+			" \n"
+			"Sampler2 evaluateLocal(LocalSurfaceInfo lsInfo, float u, float v) {\n"
+			"  BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];\n"
+			"  float local_u = mix(bi.us, bi.ue, u);\n"
+			"  float local_v = mix(bi.vs, bi.ve, v);\n"
+			" \n"
+			"  vec4 bu = bez4Basis(local_u);\n"
+			"  vec4 bud = bez4BasisDer(local_u);\n"
+			"  vec4 bud2 = bez4BasisDer2(local_u);\n"
+			"  vec4 bv = bez4Basis(local_v);\n"
+			"  vec4 bvd = bez4BasisDer(local_v);\n"
+			"  vec4 bvd2 = bez4BasisDer2(local_v);\n"
+			" \n"
+			"  vec3 p00 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 0].xyz;\n"
+			"  vec3 p10 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 1].xyz;\n"
+			"  vec3 p20 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 2].xyz;\n"
+			"  vec3 p30 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 3].xyz;\n"
+			"  vec3 p01 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 4].xyz;\n"
+			"  vec3 p11 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 5].xyz;\n"
+			"  vec3 p21 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 6].xyz;\n"
+			"  vec3 p31 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 7].xyz;\n"
+			"  vec3 p02 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 8].xyz;\n"
+			"  vec3 p12 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 9].xyz;\n"
+			"  vec3 p22 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 10].xyz;\n"
+			"  vec3 p32 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 11].xyz;\n"
+			"  vec3 p03 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 12].xyz;\n"
+			"  vec3 p13 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 13].xyz;\n"
+			"  vec3 p23 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 14].xyz;\n"
+			"  vec3 p33 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 15].xyz;\n"
+			" \n"
+			"  vec3 pos =\n"
+			"    p00 * bu[0] * bv[0] + p01 * bu[0] * bv[1] + p02 * bu[0] * bv[2] + p03 * bu[0] * bv[3] +\n"
+			"    p10 * bu[1] * bv[0] + p11 * bu[1] * bv[1] + p12 * bu[1] * bv[2] + p13 * bu[1] * bv[3] +\n"
+			"    p20 * bu[2] * bv[0] + p21 * bu[2] * bv[1] + p22 * bu[2] * bv[2] + p23 * bu[2] * bv[3] +\n"
+			"    p30 * bu[3] * bv[0] + p31 * bu[3] * bv[1] + p32 * bu[3] * bv[2] + p33 * bu[3] * bv[3];\n"
+			" \n"
+			"  vec3 dpdu =\n"
+			"    p00 * bud[0] * bv[0] + p01 * bud[0] * bv[1] + p02 * bud[0] * bv[2] + p03 * bud[0] * bv[3] +\n"
+			"    p10 * bud[1] * bv[0] + p11 * bud[1] * bv[1] + p12 * bud[1] * bv[2] + p13 * bud[1] * bv[3] +\n"
+			"    p20 * bud[2] * bv[0] + p21 * bud[2] * bv[1] + p22 * bud[2] * bv[2] + p23 * bud[2] * bv[3] +\n"
+			"    p30 * bud[3] * bv[0] + p31 * bud[3] * bv[1] + p32 * bud[3] * bv[2] + p33 * bud[3] * bv[3];\n"
+			" \n"
+			"  vec3 dpdv =\n"
+			"    p00 * bu[0] * bvd[0] + p01 * bu[0] * bvd[1] + p02 * bu[0] * bvd[2] + p03 * bu[0] * bvd[3] +\n"
+			"    p10 * bu[1] * bvd[0] + p11 * bu[1] * bvd[1] + p12 * bu[1] * bvd[2] + p13 * bu[1] * bvd[3] +\n"
+			"    p20 * bu[2] * bvd[0] + p21 * bu[2] * bvd[1] + p22 * bu[2] * bvd[2] + p23 * bu[2] * bvd[3] +\n"
+			"    p30 * bu[3] * bvd[0] + p31 * bu[3] * bvd[1] + p32 * bu[3] * bvd[2] + p33 * bu[3] * bvd[3];\n"
+			" \n"
+			"  vec3 dpdudv =\n"
+			"    p00 * bud[0] * bvd[0] + p01 * bud[0] * bvd[1] + p02 * bud[0] * bvd[2] + p03 * bud[0] * bvd[3] +\n"
+			"    p10 * bud[1] * bvd[0] + p11 * bud[1] * bvd[1] + p12 * bud[1] * bvd[2] + p13 * bud[1] * bvd[3] +\n"
+			"    p20 * bud[2] * bvd[0] + p21 * bud[2] * bvd[1] + p22 * bud[2] * bvd[2] + p23 * bud[2] * bvd[3] +\n"
+			"    p30 * bud[3] * bvd[0] + p31 * bud[3] * bvd[1] + p32 * bud[3] * bvd[2] + p33 * bud[3] * bvd[3];\n"
+			" \n"
+			"  vec3 dpdudu =\n"
+			"    p00 * bud2[0] * bv[0] + p01 * bud2[0] * bv[1] + p02 * bud2[0] * bv[2] + p03 * bud2[0] * bv[3] +\n"
+			"    p10 * bud2[1] * bv[0] + p11 * bud2[1] * bv[1] + p12 * bud2[1] * bv[2] + p13 * bud2[1] * bv[3] +\n"
+			"    p20 * bud2[2] * bv[0] + p21 * bud2[2] * bv[1] + p22 * bud2[2] * bv[2] + p23 * bud2[2] * bv[3] +\n"
+			"    p30 * bud2[3] * bv[0] + p31 * bud2[3] * bv[1] + p32 * bud2[3] * bv[2] + p33 * bud2[3] * bv[3];\n"
+			" \n"
+			"  vec3 dpdvdv =\n"
+			"    p00 * bu[0] * bvd2[0] + p01 * bu[0] * bvd2[1] + p02 * bu[0] * bvd2[2] + p03 * bu[0] * bvd2[3] +\n"
+			"    p10 * bu[1] * bvd2[0] + p11 * bu[1] * bvd2[1] + p12 * bu[1] * bvd2[2] + p13 * bu[1] * bvd2[3] +\n"
+			"    p20 * bu[2] * bvd2[0] + p21 * bu[2] * bvd2[1] + p22 * bu[2] * bvd2[2] + p23 * bu[2] * bvd2[3] +\n"
+			"    p30 * bu[3] * bvd2[0] + p31 * bu[3] * bvd2[1] + p32 * bu[3] * bvd2[2] + p33 * bu[3] * bvd2[3];\n"
+			" \n"
+			"  mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];\n"
+			" \n"
+			"  pos = vec3(matrix * vec4(pos, 1.0f));\n"
+			"  // mat4 normalMat = transpose(inverse(matrix));\n"
+			"  dpdu = vec3(matrix * vec4(dpdu, 0.0f));\n"
+			"  dpdv = vec3(matrix * vec4(dpdv, 0.0f));\n"
+			"  dpdudv = vec3(matrix * vec4(dpdudv, 0.0f));\n"
+			"  dpdudu = vec3(matrix * vec4(dpdudu, 0.0f));\n"
+			"  dpdvdv = vec3(matrix * vec4(dpdvdv, 0.0f));\n"
+			" \n"
+			"  return Sampler2(pos, dpdu, dpdv, dpdudv, dpdudu, dpdvdv);\n"
 			"}\n";
 	}
 
@@ -1242,6 +1512,36 @@ namespace OML {
 			"}\n";
 	}
 
+	std::string Shaders::PlaneEvaluatorWithDer2()
+	{
+		return
+			"Sampler2 evaluateLocal(LocalSurfaceInfo lsInfo, float u, float v) {\n"
+			"  BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];\n"
+			"  float local_u = mix(bi.us, bi.ue, u);\n"
+			"  float local_v = mix(bi.vs, bi.ve, v);\n"
+			" \n"
+			"  vec3 p00 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 0].xyz;\n"
+			"  vec3 p10 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 1].xyz;\n"
+			"  vec3 p01 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 2].xyz;\n"
+			"  vec3 p11 = controlPointBuffer.controlPoints[lsInfo.controlPointIndex + 3].xyz;\n"
+			" \n"
+			"  vec3 pos = mix(mix(p00, p10, local_u), mix(p01, p11, local_u), local_v);\n"
+			" \n"
+			"  vec3 dpdu = p10 - p00;\n"
+			" \n"
+			"  vec3 dpdv = p01 - p00;\n"
+			" \n"
+			"  mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];\n"
+			" \n"
+			"  pos = vec3(matrix * vec4(pos, 1.0f));\n"
+			"  // mat4 normalMat = transpose(inverse(matrix));\n"
+			"  dpdu = vec3(matrix * vec4(dpdu, 0.0f));\n"
+			"  dpdv = vec3(matrix * vec4(dpdv, 0.0f));\n"
+			" \n"
+			"  return Sampler2(pos.xyz, dpdu.xyz, dpdv.xyz, vec3(0.0f), vec3(0.0f), vec3(0.0f));\n"
+			"}\n";
+	}
+
 	inline std::string Shaders::SampleLocalSurfaceEvaluator(std::string prefix)
 	{
 		return
@@ -1269,11 +1569,11 @@ namespace OML {
 	{
 		return
 			"Sampler evaluateLocal(LocalSurfaceInfo lsInfo, float u, float v, int layer) {\n"
-			"  ivec3 dim = textureSize (surfSampler, 0);\n"
-			"  float ss = float(lsInfo.controlPointIndex + 0.5);\n"
-			"  float se = float(lsInfo.controlPointIndex + lsInfo.boundaryIndex - 0.5);\n"
-			"  float ts = float(lsInfo.controlPointCount + 0.5);\n"
-			"  float te = float(lsInfo.controlPointCount + lsInfo.boundaryIndex - 0.5);\n"
+			"  ivec3 dim = textureSize(surfSampler, 0);\n"
+			"  float ss = float(lsInfo.batchInfo[0] + 0.5);\n"
+			"  float se = float(lsInfo.batchInfo[0] + lsInfo.batchInfo[2] - 0.5);\n"
+			"  float ts = float(lsInfo.batchInfo[1] + 0.5);\n"
+			"  float te = float(lsInfo.batchInfo[1] + lsInfo.batchInfo[2] - 0.5);\n"
 			"  float s = mix(ss, se, u) / float(dim.x);\n"
 			"  float t = mix(ts, te, v) / float(dim.y);\n"
 			" \n"
@@ -1341,16 +1641,15 @@ namespace OML {
 			"Sampler " + prefix + "evaluateLocal(LocalSurfaceInfo lsInfo, float u, float v) {\n"
 			"  BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];\n"
 			" \n"
-			"  Sampler s = sampleBuffer(int(lsInfo.controlPointIndex * " + nSampU + " * " + nSampV + " * 3), \n"
+			"  Sampler s = sampleBuffer(int(lsInfo.dataIndex * " + nSampU + " * " + nSampV + " * 3), \n"
 			"    mix(bi.us, bi.ue, u), mix(bi.vs, bi.ve, v));\n"
 			" \n"
 			"  mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];\n"
 			" \n"
-			"  s.p = vec3 (matrix * vec4 (s.p, 1.0f));\n"
-			"  // Should probbly do this! Or make another matrix buffer for normal matrices\n"
+			"  s.p = vec3(matrix * vec4(s.p, 1.0f));\n"
 			"  // mat4 normalMat = transpose(inverse(matrix));\n"
-			"  s.u = vec3 (matrix * vec4 (s.u, 0.0f));\n"
-			"  s.v = vec3 (matrix * vec4 (s.v, 0.0f));\n"
+			"  s.u = vec3(matrix * vec4(s.u, 0.0f));\n"
+			"  s.v = vec3(matrix * vec4(s.v, 0.0f));\n"
 			" \n"
 			"  return s;\n"
 			"}\n";
@@ -1412,6 +1711,62 @@ namespace OML {
 			"    + (" + prefix + "Su0 - " + prefix + "Su1) * " + prefix + "Bv1;\n";
 	}
 
+	std::string Shaders::GetPixelAccGlobalSurfEvaluatorString()
+	{
+		return
+			"float bDerivative2(float w) {\n"
+			"  return 120 * pow(w, 3) - 180 * pow(w, 2) + 60 * w;\n"
+			"}\n"
+			" \n"
+			"struct Sampler2 {\n"
+			"  vec3 p, u, v, uv, uu, vv;\n"
+			"};\n"
+			" \n"
+			"Sampler2 evaluateGlobal(Sampler2 s00, Sampler2 s10,\n"
+			"  Sampler2 s01, Sampler2 s11, float u, float v) {\n"
+			"  Sampler2 res;\n"
+			"  float Bu = 1.0 - bFunction(u);\n"
+			"  float Bv = 1.0 - bFunction(v);\n"
+			"  float Bu1 = -bDerivative(u);\n"
+			"  float Bv1 = -bDerivative(v);\n"
+			"  float Bu2 = -bDerivative2(u);\n"
+			"  float Bv2 = -bDerivative2(v);\n"
+			" \n"
+			"  vec3 Su0 = s10.p + (s00.p - s10.p) * Bu;\n"
+			"  vec3 Su1 = s11.p + (s01.p - s11.p) * Bu;\n"
+			" \n"
+			"  vec3 Uu0 = s10.u + (s00.u - s10.u) * Bu\n"
+			"    + (s00.p - s10.p) * Bu1;\n"
+			"  vec3 Uu1 = s11.u + (s01.u - s11.u) * Bu\n"
+			"    + (s01.p - s11.p) * Bu1;\n"
+			" \n"
+			"  vec3 Vu0 = s10.v + (s00.v - s10.v) * Bu;\n"
+			"  vec3 Vu1 = s11.v + (s01.v - s11.v) * Bu;\n"
+			" \n"
+			"  vec3 UUu0 = s10.uu + (s00.uu - s10.uu) * Bu\n"
+			"    + 2 * (s00.u - s10.u) * Bu1 + (s00.p - s10.p) * Bu2;\n"
+			"  vec3 UUu1 = s11.uu + (s01.uu - s11.uu) * Bu\n"
+			"    + 2 * (s01.u - s11.u) * Bu1 + (s01.p - s11.p) * Bu2;\n"
+			" \n"
+			"  vec3 VVu0 = s10.vv + (s00.vv - s10.vv) * Bu;\n"
+			"  vec3 VVu1 = s11.vv + (s01.vv - s11.vv) * Bu;\n"
+			" \n"
+			"  vec3 UVu0 = s10.uv + (s00.uv - s10.uv) * Bu\n"
+			"    + (s00.p - s10.p) * Bu1;\n"
+			"  vec3 UVu1 = s11.uv + (s01.uv - s11.uv) * Bu\n"
+			"    + (s01.p - s11.p) * Bu1;\n"
+			" \n"
+			"  res.p = Su1 + (Su0 - Su1) * Bv;\n"
+			"  res.u = Uu1 + (Uu0 - Uu1) * Bv;\n"
+			"  res.v = Vu1 + (Vu0 - Vu1) * Bv + (Su0 - Su1) * Bv1;\n"
+			"  res.uv = UVu1 + (UVu0 - UVu1) * Bv + (Su0 - Su1) * Bv1;\n"
+			"  res.uu = UUu1 + (UUu0 - UUu1) * Bv;\n"
+			"  res.vv = VVu1 + (VVu0 - VVu1) * Bv + 2 * ((Vu0 - Vu1) * Bv1) + (Su0 - Su1) * Bv2;\n"
+			" \n"
+			"  return res;\n"
+			"}\n";
+	}
+
 	inline std::string Shaders::EvaluateLocalSurfacesOnlyPosString(std::string prefix)
 	{
 		return
@@ -1438,13 +1793,13 @@ namespace OML {
 	inline std::string Shaders::ColorByMaxErrorString()
 	{
 		return
-			"  if(diff <= ubo.maxError * 0.1) {\n"
+			"  if(diff <= (ubo.maxError * 0.1f)) {\n"
 			"    teColor = vec3(0.5, 0.5, 0.5);\n"
 			"  }\n"
-			"  else if (diff <= ubo.maxError * 0.2) {\n"
+			"  else if (diff <= (ubo.maxError * 0.2f)) {\n"
 			"    teColor = vec3(0.0, 1.0, 0.0);\n"
 			"  }\n"
-			"  else if (diff <= ubo.maxError * 0.5) {\n"
+			"  else if (diff <= (ubo.maxError * 0.5f)) {\n"
 			"    teColor = vec3(0.0, 0.0, 1.0);\n"
 			"  }\n"
 			"  else if (diff <= ubo.maxError) {\n"
