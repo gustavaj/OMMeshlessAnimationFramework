@@ -134,6 +134,7 @@ namespace OML {
 		static std::string SampleLocalSurfaceEvaluator(std::string prefix);
 		static std::string BatchedSampleLocalSurfaceEvaluator(std::string prefix);
 		static std::string SampleBufferEvaluator(std::string prefix, std::string nSampU, std::string nSampV);
+		static std::string SampleBufferNoInterpEvaluator(std::string prefix, std::string nSampU, std::string nSampV);
 
 		static std::string EvaluateLocalSurfacesString(std::string prefix);
 		static std::string SampleLocalSurfacesString(std::string prefix);

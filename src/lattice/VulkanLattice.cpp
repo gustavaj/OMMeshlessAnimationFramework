@@ -257,7 +257,8 @@ namespace OML
 #endif
 				break;
 			}
-			case EvaluationMethod::Pre_Sampled_Buffer: {
+			case EvaluationMethod::Pre_Sampled_Buffer:
+			case EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation: {
 				vkCmdDraw(commandBuffer, m_patchVertexBuffer.count, 1, 0, 0);
 				break;
 			}
@@ -289,7 +290,8 @@ namespace OML
 				switch (m_evalMethod)
 				{
 				case EvaluationMethod::Direct:
-				case EvaluationMethod::Pre_Sampled_Buffer: {
+				case EvaluationMethod::Pre_Sampled_Buffer:
+				case EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation: {
 					vkCmdDraw(commandBuffer, m_patchVertexBuffer.count, 1, 0, 0);
 					break;
 				}
@@ -761,7 +763,7 @@ namespace OML
 		m_localSurfaceVertices.resize(m_loci.size());
 		for (size_t i = 0; i < m_loci.size(); i++)
 		{
-			if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer) {
+			if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer || m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation) {
 				// Evaluate local surfaces and load them as textures.
 				auto res = m_LSIdxToLSBufferMap.find(m_loci[i].controlPointIndex);
 				if (res == m_LSIdxToLSBufferMap.end()) {
@@ -895,7 +897,7 @@ namespace OML
 				sampler.p11Sampler = &m_localSurfaceTextures[locus11.controlPointIndex];
 				m_patchSamplers.push_back(sampler);
 			}
-			else if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer)
+			else if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer || m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation)
 			{
 				localVert00.dataIndex = m_LSIdxToLSBufferMap[locus00.controlPointIndex];
 				localVert10.dataIndex = m_LSIdxToLSBufferMap[locus10.controlPointIndex];
@@ -1023,7 +1025,7 @@ namespace OML
 			sizeof(OML::BoundaryInfo) * m_boundaries.size()
 		));
 
-		if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer)
+		if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer || m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation)
 		{
 			VK_CHECK_RESULT(m_vulkanDevice->createBuffer(
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -1049,7 +1051,7 @@ namespace OML
 			m_boundaries.data(), m_boundariesBuffer.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		m_boundariesBuffer.descriptor.buffer = m_boundariesBuffer.buffer;
 
-		if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer)
+		if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer || m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation)
 		{
 			auto lsData = m_LSBuffer.getData();
 			createDeviceLocalBuffer(m_localSurfaceDataBuffer.buffer, m_localSurfaceDataBuffer.memory,
@@ -1083,7 +1085,7 @@ namespace OML
 				VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 				3)
 		};
-		if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer)
+		if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer || m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation)
 		{
 			setLayoutBindings.push_back(
 				vks::initializers::descriptorSetLayoutBinding(
@@ -1419,7 +1421,7 @@ namespace OML
 		{
 			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
 			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-				m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer ? 4 : 3)
+				(m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer || m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation) ? 4 : 3)
 		};
 
 		uint32_t maxSets = 1;
@@ -1477,7 +1479,7 @@ namespace OML
 				3,
 				&m_boundariesBuffer.descriptor)
 		};
-		if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer)
+		if (m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer || m_evalMethod == EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation)
 		{
 			writeDescriptorSets.push_back(
 				vks::initializers::writeDescriptorSet(

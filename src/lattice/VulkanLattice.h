@@ -15,16 +15,16 @@
 
 //#define DIRECT_MULTIPLE_DRAW_CALLS
 //#define ADD_DUMMY_DATA_TO_CONTROL_POINT_BUFFER
-//const size_t DUMMY_DATA_SIZE_BYTES = 10000000;
+//const size_t DUMMY_DATA_SIZE_BYTES = 500000000;
 
 namespace OML {
 
 	// Parameters used for pre-evaluation
-	const int NUM_SAMPLES_U = 32;
-	const int NUM_SAMPLES_V = 32;
-	const int NUM_PATCHES_PER_BATCH = 9;
-	const int BATCH_ROWS = 3;
-	const int BATCH_COLS = 3;
+	const int NUM_SAMPLES_U = 16;
+	const int NUM_SAMPLES_V = 16;
+	const int NUM_PATCHES_PER_BATCH = 1024;
+	const int BATCH_ROWS = 32;
+	const int BATCH_COLS = 32;
 	const int MAX_BATCHES = 1;
 
 	// Various structs used by the vulkan implementation

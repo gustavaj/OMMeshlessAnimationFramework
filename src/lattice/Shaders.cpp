@@ -343,9 +343,10 @@ namespace OML {
 		{
 			switch (evalMethod)
 			{
-			case EvaluationMethod::Pre_Sampled_Image:			name += "PreImg_"; break;
-			case EvaluationMethod::Pre_Sampled_Image_Batched:	name += "PreImgBatch_"; break;
-			case EvaluationMethod::Pre_Sampled_Buffer:			name += "PreBuf_"; break;
+			case EvaluationMethod::Pre_Sampled_Image:					name += "PreImg_"; break;
+			case EvaluationMethod::Pre_Sampled_Image_Batched:			name += "PreImgBatch_"; break;
+			case EvaluationMethod::Pre_Sampled_Buffer:					name += "PreBuf_"; break;
+			case EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation: name += "PreBufNoInterp_"; break;
 			}
 
 			switch (teseType)
@@ -393,7 +394,7 @@ namespace OML {
 		{
 			desc += "layout(set = 1, binding = 0) uniform sampler2DArray surfSampler;\n\n";
 		}
-		else if (evalMethod == EvaluationMethod::Pre_Sampled_Buffer)
+		else if (evalMethod == EvaluationMethod::Pre_Sampled_Buffer || evalMethod == EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation)
 		{
 			std::string nLocalSurfaceData = std::to_string(options.numLocal * options.numSamplesU * options.numSamplesV * 3);
 			desc += Shaders::LocalSurfaceDataBufferString(nLocalSurfaceData, "0", "4") + "\n\n";
@@ -482,6 +483,11 @@ namespace OML {
 				eval += Shaders::SampleBufferEvaluator("", nSampU, nSampV);
 				break;
 			}
+			case EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation: {
+				eval += refEval + " \n";
+				eval += Shaders::SampleBufferNoInterpEvaluator("", nSampU, nSampV);
+				break;
+			}
 			}
 
 		}
@@ -501,6 +507,7 @@ namespace OML {
 			case EvaluationMethod::Pre_Sampled_Image: eval += Shaders::SampleLocalSurfaceEvaluator(""); break;
 			case EvaluationMethod::Pre_Sampled_Image_Batched: eval += Shaders::BatchedSampleLocalSurfaceEvaluator(""); break;
 			case EvaluationMethod::Pre_Sampled_Buffer: eval += Shaders::SampleBufferEvaluator("", nSampU, nSampV); break;
+			case EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation: eval += Shaders::SampleBufferNoInterpEvaluator("", nSampU, nSampV); break;
 			}
 		}
 
@@ -1633,6 +1640,51 @@ namespace OML {
 			"  vec3 v01 = lsDataBuffer.localSurfaceData[idx + c01 + offsetV].xyz;\n"
 			"  vec3 v11 = lsDataBuffer.localSurfaceData[idx + c11 + offsetV].xyz;\n"
 			"  res.v = (((1 - fu) * v00 + fu * v10) * (1 - fv) + ((1 - fu) * v01 + fu * v11) * fv);\n"
+			" \n"
+			"  // Return the sampled values\n"
+			"  return res;\n"
+			"}\n"
+			" \n"
+			"Sampler " + prefix + "evaluateLocal(LocalSurfaceInfo lsInfo, float u, float v) {\n"
+			"  BoundaryInfo bi = boundaryBuffer.boundaries[lsInfo.boundaryIndex];\n"
+			" \n"
+			"  Sampler s = sampleBuffer(int(lsInfo.dataIndex * " + nSampU + " * " + nSampV + " * 3), \n"
+			"    mix(bi.us, bi.ue, u), mix(bi.vs, bi.ve, v));\n"
+			" \n"
+			"  mat4 matrix = matrixBuffer.matrices[lsInfo.matrixIndex];\n"
+			" \n"
+			"  s.p = vec3(matrix * vec4(s.p, 1.0f));\n"
+			"  // mat4 normalMat = transpose(inverse(matrix));\n"
+			"  s.u = vec3(matrix * vec4(s.u, 0.0f));\n"
+			"  s.v = vec3(matrix * vec4(s.v, 0.0f));\n"
+			" \n"
+			"  return s;\n"
+			"}\n";
+	}
+
+	std::string Shaders::SampleBufferNoInterpEvaluator(std::string prefix, std::string nSampU, std::string nSampV)
+	{
+		return
+			"// Takes in a u and v coordinate and returns a Sampler object (p,u,v)\n"
+			"// Uses linear interpolation to mix the neighbouring values when the u and\n"
+			"// v coordinates are between sample values\n"
+			"Sampler sampleBuffer(int idx, float u, float v) {\n"
+			"  Sampler res;\n"
+			"  // Step one, transform u,v coordinates [0,1]^2 to buffer coordinates [0,numSamplesU]x[0,numSamplesV]\n"
+			"  float fi = u * (" + nSampU + " - 1);\n"
+			"  float fj = v * (" + nSampV + " - 1);\n"
+			"  int i = int(round(fi));\n"
+			"  int j = int(round(fj));\n"
+			" \n"
+			"  int c00 = j * " + nSampU + " + i;\n"
+			" \n"
+			"  res.p = vec3(lsDataBuffer.localSurfaceData[idx + c00]);\n"
+			" \n"
+			"  int offsetU = " + nSampU + " * " + nSampV + ";\n"
+			"  res.u = vec3(lsDataBuffer.localSurfaceData[idx + c00 + offsetU]);\n"
+			" \n"
+			"  int offsetV = offsetU * 2;\n"
+			"  res.v = vec3(lsDataBuffer.localSurfaceData[idx + c00 + offsetV]);\n"
 			" \n"
 			"  // Return the sampled values\n"
 			"  return res;\n"

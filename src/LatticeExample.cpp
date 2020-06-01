@@ -884,22 +884,24 @@ public:
 	AllMethodsGridExample(bool enableValidation, bool moveLocals,
 		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
 		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
-		: LatticeExample(enableValidation, lsType, evalMethod), m_moveLocals(moveLocals) {}
+		: LatticeExample(enableValidation, lsType, evalMethod, false), m_moveLocals(moveLocals) {}
 
 	bool m_moveLocals = false;
 
 	virtual void createLatticeGeometry() override
 	{
-		std::vector<std::string> names = { "Direct", "Pre_Img", "Pre_Batch", "Pre_Buf" };
+		std::vector<std::string> names = { "Direct", "Pre_Img", "Pre_Batch", "Pre_Buf", "Pre_Buf_NoInterp" };
 		std::vector<OML::EvaluationMethod> evals = { OML::EvaluationMethod::Direct, OML::EvaluationMethod::Pre_Sampled_Image,
-			OML::EvaluationMethod::Pre_Sampled_Image_Batched, OML::EvaluationMethod::Pre_Sampled_Buffer };
-		std::vector<glm::vec3> colors = {glm::vec3(0,0,0), glm::vec3(0,1,0), glm::vec3(0,0,1), glm::vec3(1,1,0)};
-		for (size_t i = 0; i < 4; i++)
+			OML::EvaluationMethod::Pre_Sampled_Image_Batched, OML::EvaluationMethod::Pre_Sampled_Buffer,
+			OML::EvaluationMethod::Pre_Sampled_Buffer_No_Interpolation };
+		std::vector<glm::vec3> colors = {glm::vec3(0,0,0), glm::vec3(0,1,0), glm::vec3(0,0,1), glm::vec3(1,1,0), glm::vec3(1,0,1) };
+		for (size_t i = 0; i < 5; i++)
 		{
 			OML::VulkanLattice lat(names[i]);
-			lat.setUseRandomPatchColors(true);
+			lat.setUseRandomPatchColors(false);
 			lat.setPatchColor(colors[i]);
 			lat.setLocalSurfaceType(static_cast<OML::LocalSurfaceType>(lsTypeIdx));
+			lat.setDraw(false);
 			lat.setEvaluationMethod(evals[i]);
 			lat.addGrid(OML::Vec2f(-100.0f, -100.0f), 200.0f, 200.0f, 3, 3);
 			lat.induceLattice();
@@ -986,40 +988,57 @@ public:
 	}
 };
 
+
+
+/*
+	Benchmark setup:
+		- fullscreen
+		- no validation layers
+		- 64-bit debug build
+		- 2 sec warmup
+		- 5 sec duration
+		- B2Poly B-function
+		- no gui
+		- no pipeline queries/timings
+
+*/
 class BenchmarkGrid : public LatticeExample
 {
 public:
 	int tess, rowcol;
 	std::string resultDir;
+	double warmup = 2.0;
+	double duration = 5.0;
 
 	BenchmarkGrid(int rowcol, int tess, std::string resultDir, OML::LocalSurfaceType lsType, OML::EvaluationMethod evalMethod)
 		: LatticeExample(false, lsType, evalMethod), rowcol(rowcol), tess(tess), resultDir(resultDir)
 	{
+		settings.overlay = false;
+		settings.fullscreen = true;
 	}
 
 	virtual void createLatticeGeometry() override
 	{
 		OML::VulkanLattice lat("Grid");
 		lat.addGrid(OML::Vec2f(-250.0f, -250.0f), 500.0f, 500.0f, rowcol, rowcol);
-		lat.setUseRandomPatchColors(false);
+		lat.setUseRandomPatchColors(true);
+		lat.setTessellationFactors(tess, tess);
 
 		std::string benchmarkFilename = resultDir;
 		benchmarkFilename += std::to_string(rowcol) + "x" + std::to_string(rowcol) + "grid_";
 		benchmarkFilename += std::to_string(tess) + "x" + std::to_string(tess) + "tess_";
 		benchmarkFilename += "lsType" + std::to_string(lsTypeIdx) + "_evalMethod"
-			+ std::to_string(evalMethodIdx) + ".txt";
+			+ std::to_string(evalMethodIdx) + "_" + std::to_string(static_cast<int>(warmup)) 
+			+ "w_" + std::to_string(static_cast<int>(duration)) + "d.txt";
 
 		benchmark.active = true;
-		benchmark.warmup = 10;
-		benchmark.duration = 20;
+		benchmark.warmup = warmup;
+		benchmark.duration = duration;
 		benchmark.filename = benchmarkFilename;
 
-		camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 10000.0f);
+		//camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 10000.0f);
 		camera.setRotation(glm::vec3(0, 0, 0));
 		camera.setTranslation(glm::vec3(0, 0, -500));
-
-		settings.overlay = false;
-		settings.fullscreen = true;
 
 		addLattice(lat);
 	}

@@ -220,9 +220,6 @@ namespace OML {
 		// Called by the update function, can be used in implementations
 		virtual void localUpdate(double dt) = 0;
 
-		// Resets all the matrices to their initial matrices. Used to remove any simulation. Could be private)
-		void resetMatrices();
-
 		std::string m_name;
 		LocalSurfaceType m_lsType;
 		// The transformation matrix for the Lattice
@@ -252,8 +249,6 @@ namespace OML {
 		std::vector<BoundaryInfo> m_boundaries;
 		boundary_map m_boundaryMap;
 		size_t m_numUniqueBoundaries = 0;
-		// The initial matrices the local surfaces were created with, used for resetting transformations
-		std::vector<glm::mat4> m_initialMatrices; // TODO: Do I still need this, after simulators removes their simulation?
 		// The transofrmation matrices for the local surfaces.
 		std::vector<glm::mat4> m_matrices;
 

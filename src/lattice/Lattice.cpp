@@ -381,17 +381,6 @@ namespace OML
 		Timer::Stop("induceLattice", "Lattice::induceLattice()");
 	}
 
-	// TODO: I dont know if this is needed anymore, after simulators was changed to clean up after themselves,
-	// just unecessary memory usage now.
-	void Lattice::resetMatrices()
-	{
-		m_matrices.resize(0);
-		for (auto mat : m_initialMatrices)
-		{
-			m_matrices.push_back(mat);
-		}
-	}
-
 	// Set the color of the edges based on if they are on the boundary or not
 	void Lattice::setupEdgeColor()
 	{
@@ -751,8 +740,6 @@ namespace OML
 	{
 		if (addMatrix) {
 			m_matrices.push_back(
-				glm::translate(glm::mat4(1.0f), glm::vec3(offset[0], offset[1], offset[2])));
-			m_initialMatrices.push_back(
 				glm::translate(glm::mat4(1.0f), glm::vec3(offset[0], offset[1], offset[2])));
 		}
 
@@ -1259,10 +1246,10 @@ namespace OML
 #elif defined(TRANSLATE_MIDDLE_POINTS_OF_CUBIC_BEZ_PRE_DEFINED)
 		glm::vec4 normal = glm::vec4(glm::normalize(
 			glm::cross(glm::vec3(p30 - p00), glm::vec3(p03 - p00))), 0.0f);
-		p11 += normal * 50.0f;
-		p21 += normal * 25.0f;
-		p12 += normal * -25.0f;
-		p22 += normal * -50.0f;
+		p11 += normal * 225.0f;
+		p21 += normal * 150.0f;
+		p12 += normal * -75.0f;
+		p22 += normal * -200.0f;
 #endif // TRANSLATE_MIDDLE_POINTS_OF_LOCAL_SURFACE
 
 		uint32_t idx = m_controlPoints.size();

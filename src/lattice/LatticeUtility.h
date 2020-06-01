@@ -26,7 +26,8 @@ namespace OML {
 		Direct = 0,
 		Pre_Sampled_Image,
 		Pre_Sampled_Image_Batched,
-		Pre_Sampled_Buffer
+		Pre_Sampled_Buffer,
+		Pre_Sampled_Buffer_No_Interpolation
 	};
 
 	// This does seem to be working..
