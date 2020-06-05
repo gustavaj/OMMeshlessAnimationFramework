@@ -7,6 +7,9 @@
     <Filter Include="lattice">
       <UniqueIdentifier>{2d863040-148a-4716-8629-f21c85d58481}</UniqueIdentifier>
     </Filter>
+    <Filter Include="imgui">
+      <UniqueIdentifier>{a32fa258-7719-4ca0-b492-738f81c74a84}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\lattice\Lattice.cpp">
@@ -20,18 +23,6 @@
     </ClCompile>
     <ClCompile Include="src\lattice\Simulators.cpp">
       <Filter>lattice</Filter>
-    </ClCompile>
-    <ClCompile Include="src\vulkan\imgui.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="src\vulkan\imgui_demo.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="src\vulkan\imgui_draw.cpp">
-      <Filter>vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="src\vulkan\imgui_widgets.cpp">
-      <Filter>vulkan</Filter>
     </ClCompile>
     <ClCompile Include="src\vulkan\VulkanAndroid.cpp">
       <Filter>vulkan</Filter>
@@ -67,6 +58,18 @@
     </ClCompile>
     <ClCompile Include="src\lattice\LatticeUtility.cpp">
       <Filter>lattice</Filter>
+    </ClCompile>
+    <ClCompile Include="src\imgui\imgui.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\imgui\imgui_demo.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\imgui\imgui_draw.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\imgui\imgui_widgets.cpp">
+      <Filter>imgui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -156,6 +159,9 @@
     </ClInclude>
     <ClInclude Include="src\lattice\VulkanLattice.h">
       <Filter>lattice</Filter>
+    </ClInclude>
+    <ClInclude Include="src\imgui\imgui.h">
+      <Filter>imgui</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

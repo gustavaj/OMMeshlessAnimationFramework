@@ -29,7 +29,7 @@ namespace OML {
 		LocalSurfaceType type)
 	{
 		if (isFull()) {
-			return { 0, 0 };
+			return { 0, 0 }; // This might have unintended consequences?
 		}
 
 		// Add new element in m_data matrix based on type.

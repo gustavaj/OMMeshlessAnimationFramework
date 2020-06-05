@@ -2,8 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
-// TODO: Remove all dependencies on Sascha Willems' framework. Then rename.. Maybe not.
-// Sascha willems
+// TODO: Remove all dependencies on Sascha Willems' framework.
 #include "../vulkan/VulkanDevice.hpp"
 #include "../vulkan/VulkanBuffer.hpp"
 #include "../vulkan/VulkanUIOverlay.h"
@@ -20,8 +19,8 @@
 namespace OML {
 
 	// Parameters used for pre-evaluation
-	const int NUM_SAMPLES_U = 16;
-	const int NUM_SAMPLES_V = 16;
+	const int NUM_SAMPLES_U = 17;
+	const int NUM_SAMPLES_V = 17;
 	const int NUM_PATCHES_PER_BATCH = 1024;
 	const int BATCH_ROWS = 32;
 	const int BATCH_COLS = 32;

@@ -580,7 +580,7 @@ public:
 	GridLatticeExample(bool enableValidation, float width, float height, int rows, int cols,
 		OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Quadratic_Bezier,
 		OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct)
-		: LatticeExample(enableValidation, lsType, evalMethod, true), 
+		: LatticeExample(enableValidation, lsType, evalMethod, false), 
 		m_width(width), m_height(height), m_rows(rows), m_cols(cols)
 	{
 	}
@@ -898,7 +898,7 @@ public:
 		for (size_t i = 0; i < 5; i++)
 		{
 			OML::VulkanLattice lat(names[i]);
-			lat.setUseRandomPatchColors(false);
+			lat.setUseRandomPatchColors(true);
 			lat.setPatchColor(colors[i]);
 			lat.setLocalSurfaceType(static_cast<OML::LocalSurfaceType>(lsTypeIdx));
 			lat.setDraw(false);
@@ -943,15 +943,15 @@ class PixelAccTest : public LatticeExample
 public:
 	PixelAccTest(bool enableValidation)
 		: LatticeExample(enableValidation, OML::LocalSurfaceType::Plane, OML::EvaluationMethod::Direct){
-		camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 100000.0f);
-		camera.setTranslation(glm::vec3(0, 100.0f, -750.0f));
+		camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 10000.0f);
+		//camera.setTranslation(glm::vec3(0, 100.0f, -750.0f));
 	}
 
 	virtual void createLatticeGeometry() override
 	{
 		camera.setRotation(glm::vec3(70, 0.0f, 0.0f));
-		camera.setTranslation(glm::vec3(0.0f, 0.0f, -13000.0f));
-		zoomSpeed = 500.0f;
+		camera.setTranslation(glm::vec3(0.0f, 0.0f, -130.0f));
+		zoomSpeed = 25.0f;
 
 		OML::VulkanLattice lat("PixelAccTestLattice");
 		lat.setUseRandomPatchColors(true);
@@ -959,7 +959,7 @@ public:
 		lat.setEvaluationMethod(OML::EvaluationMethod::Direct);
 		int rows = 20;
 		int cols = 20;
-		lat.addGrid(OML::Vec2f(-75000.0f, -75000.0f), 100000.0f, 100000.0f, rows, cols);
+		lat.addGrid(OML::Vec2f(-750.0f, -750.0f), 1000.0f, 1000.0f, rows, cols);
 		lat.induceLattice();
 		lat.initVulkan(&device, vulkanDevice, &queue, &cmdPool, &descriptorPool, &renderPass, nullptr);
 		lat.onViewChanged(camera.matrices.perspective, camera.matrices.view);
@@ -971,7 +971,7 @@ public:
 				float ti = ((float)i / (float)(rows)) * 2 * M_PI;
 				float tj = ((float)j / (float)(cols)) * 2 * M_PI;
 				lat.translateLocalSurface(j * cols + i, glm::vec3(
-					0, 0, std::sin(4*ti) * std::sin(5*tj) * 3000.0f));
+					0, 0, std::sin(4*ti) * std::sin(5*tj) * 30.0f));
 			}
 		}
 		/*for (size_t i = 0; i < 2601; i++)

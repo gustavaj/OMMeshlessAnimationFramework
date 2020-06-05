@@ -55,9 +55,9 @@ namespace OML {
 					p10 * bu[1] * bvd[0] + p11 * bu[1] * bvd[1] + p12 * bu[1] * bvd[2] +
 					p20 * bu[2] * bvd[0] + p21 * bu[2] * bvd[1] + p22 * bu[2] * bvd[2];
 
-				lsData.positions[j * m_numSamplesV + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
-				lsData.partialU[j * m_numSamplesV + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
-				lsData.partialV[j * m_numSamplesV + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
+				lsData.positions[j * m_numSamplesU + i] = glm::vec4(pos.x, pos.y, pos.z, 1.0f);
+				lsData.partialU[j * m_numSamplesU + i] = glm::vec4(dpdu.x, dpdu.y, dpdu.z, 0.0f);
+				lsData.partialV[j * m_numSamplesU + i] = glm::vec4(dpdv.x, dpdv.y, dpdv.z, 0.0f);
 			}
 		}
 

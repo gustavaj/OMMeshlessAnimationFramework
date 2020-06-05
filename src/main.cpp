@@ -36,7 +36,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	//example = new LatticeExample(debug, lsType, evalMethod);
 
 	// Grid example
-	//example = new GridLatticeExample(debug, 200.0f, 200.0f, 3, 3, lsType, evalMethod);
+	example = new GridLatticeExample(debug, 500.0f, 500.0f, 10, 10, lsType, evalMethod);
 
 	// Random grid example
 	//example = new RandomGridLatticeExample(debug, 100.0f, 100.0f, 10, 10, lsType, evalMethod);
@@ -63,11 +63,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	// Example with several lattices
 	//example = new MultiLatticeExample(debug, lsType, evalMethod);
 
-	// Example with all the evaluation methods on top of each other
+	// Example with all the evaluation methods for the same surface
 	//example = new AllMethodsGridExample(debug, true, OML::LocalSurfaceType::Cubic_Bezier);
 
 	// Example to test pixel acc in report.
-	example = new PixelAccTest(debug);
+	//example = new PixelAccTest(false);
 
 	// Benchmarks
 	//OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Cubic_Bezier;

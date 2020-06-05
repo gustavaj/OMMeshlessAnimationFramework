@@ -99,7 +99,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_WINDOWS;VK_USE_PLATFORM_WIN32_KHR;NOMINMAX;_USE_MATH_DEFINES;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>P:\Projects\master\VulkanSascha\Vulkan\external\imgui;P:\Projects\ExternalLibs\vcpkg\installed\x64-windows\include;C:\VulkanSDK\1.1.121.2\Include\shaderc;C:\VulkanSDK\1.1.121.2\Include;C:\Users\Gustav\Desktop\OpenMesh-8.0\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>P:\Projects\ExternalLibs\vcpkg\installed\x64-windows\include;C:\VulkanSDK\1.1.121.2\Include\shaderc;C:\VulkanSDK\1.1.121.2\Include;C:\Users\Gustav\Desktop\OpenMesh-8.0\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <EnableModules>false</EnableModules>
@@ -159,6 +159,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\imgui\imgui.cpp" />
+    <ClCompile Include="src\imgui\imgui_demo.cpp" />
+    <ClCompile Include="src\imgui\imgui_draw.cpp" />
+    <ClCompile Include="src\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\LatticeExample.cpp" />
     <ClCompile Include="src\lattice\Lattice.cpp" />
     <ClCompile Include="src\lattice\LatticeUtility.cpp" />
@@ -171,10 +175,6 @@
     <ClCompile Include="src\lattice\Simulators.cpp" />
     <ClCompile Include="src\lattice\VulkanLattice.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\vulkan\imgui.cpp" />
-    <ClCompile Include="src\vulkan\imgui_demo.cpp" />
-    <ClCompile Include="src\vulkan\imgui_draw.cpp" />
-    <ClCompile Include="src\vulkan\imgui_widgets.cpp" />
     <ClCompile Include="src\vulkan\VulkanAndroid.cpp" />
     <ClCompile Include="src\vulkan\VulkanBaseExample.cpp" />
     <ClCompile Include="src\vulkan\VulkanDebug.cpp" />
@@ -182,6 +182,7 @@
     <ClCompile Include="src\vulkan\VulkanUIOverlay.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\imgui\imgui.h" />
     <ClInclude Include="src\lattice\Lattice.h" />
     <ClInclude Include="src\lattice\LatticeUtility.h" />
     <ClInclude Include="src\lattice\LocalSurface.h" />
