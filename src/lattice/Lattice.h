@@ -27,12 +27,6 @@
 	TODO list:
 		Sphere:
 		-Set all the top and bottom local surfaces to point to the same matrix.
-
-		Simulators:
-		-Fix RandomSphereSimulator
-
-		Pixel-accurate rendering:
-		-Set tessellation factors in the TCS based on some error metric.
 */
 
 namespace OML {

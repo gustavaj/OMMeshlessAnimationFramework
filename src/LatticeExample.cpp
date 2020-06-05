@@ -996,7 +996,7 @@ public:
 	Benchmark setup:
 		- fullscreen
 		- no validation layers
-		- 64-bit debug build
+		- 64-bit release build
 		- 2 sec warmup
 		- 5 sec duration
 		- B2Poly B-function

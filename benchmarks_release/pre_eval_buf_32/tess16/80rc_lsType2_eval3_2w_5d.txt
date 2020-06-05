@@ -1,0 +1,10 @@
+Device: GeForce GTX 970
+Driver version: 1811939328
+Warmup: 2002.7357 ms
+Duration: 5002.6817 ms
+Frames: 1165
+Fps: 232.8751
+Min: 3.8180 ms
+Max: 4.7430 ms
+Avg: 4.2941 ms
+Mean: 4.2862 ms 
