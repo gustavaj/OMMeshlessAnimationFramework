@@ -7,5 +7,4 @@ Dependencies:
   * OpenMeshCored.lib
 * Shaderc
   * shaderc_combined.lib
-* ImGui (Tested with 1.65)
 * GLM

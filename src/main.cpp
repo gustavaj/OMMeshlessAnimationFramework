@@ -28,7 +28,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	std::cerr << "asd" << std::endl;
 	for (size_t i = 0; i < __argc; i++) { LatticeExample::args.push_back(__argv[i]); };
 
-	bool debug = true;
+	bool debug = false;
 	OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Cubic_Bezier;
 	OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct;
 
@@ -36,7 +36,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	//example = new LatticeExample(debug, lsType, evalMethod);
 
 	// Grid example
-	example = new GridLatticeExample(debug, 500.0f, 500.0f, 10, 10, lsType, evalMethod);
+	example = new GridLatticeExample(debug, 500.0f, 500.0f, 60, 60, lsType, evalMethod);
 
 	// Random grid example
 	//example = new RandomGridLatticeExample(debug, 100.0f, 100.0f, 10, 10, lsType, evalMethod);
@@ -72,9 +72,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	// Benchmarks
 	//OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Cubic_Bezier;
 	//OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct;
-	//int rowcol = 60; // 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120
-	//int tess = 16; // 16, 32, 64
-	//example = new BenchmarkGrid(rowcol, tess, "./benchmarks/", lsType, evalMethod);
+	//int rowcol = 120; // 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120
+	//int tess = 64; // 16, 32, 64
+	//example = new BenchmarkGrid(rowcol, tess, "./benchmarks_/", lsType, evalMethod);
 
 	OML::Timer::Start("init", "Setup example");
 
@@ -87,11 +87,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 	//example->lattices[0].setSurfaceColorMethod(OML::SurfaceColor::PixelAccuracy);
 	//example->rebuildCmdBuffers = true;
 
+	//example->lattices[0].setAnimate(true);
+	//example->lattices[0].addNormalRotationSimulation();
 
-	/*std::string base = "./benchmarks/direct_eval_bez3_500MB/";
+
+	/*std::string base = "./benchmarks_/";
 	std::string filename = base + "tess16/" + std::to_string(rowcol) + "rc_lsType"
 		+ std::to_string(static_cast<int>(lsType)) + "_eval" + std::to_string(static_cast<int>(evalMethod))
-		+ "_2w_5d.txt";
+		+ "_2w_5d_d.txt";
 	example->lattices[0].setTessellationFactors(16, 16);
 	example->lattices[0].updateUniformBuffer();
 	example->rebuildCmdBuffers = true;
@@ -101,7 +104,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 
 	filename = base + "tess32/" + std::to_string(rowcol) + "rc_lsType"
 		+ std::to_string(static_cast<int>(lsType)) + "_eval" + std::to_string(static_cast<int>(evalMethod))
-		+ "_2w_5d.txt";
+		+ "_2w_5d_d.txt";
 	example->lattices[0].setTessellationFactors(32, 32);
 	example->lattices[0].updateUniformBuffer();
 	example->rebuildCmdBuffers = true;
@@ -110,7 +113,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 
 	filename = base + "tess64/" + std::to_string(rowcol) + "rc_lsType"
 		+ std::to_string(static_cast<int>(lsType)) + "_eval" + std::to_string(static_cast<int>(evalMethod))
-		+ "_2w_5d.txt";
+		+ "_2w_5d_d.txt";
 	example->lattices[0].setTessellationFactors(64, 64);
 	example->lattices[0].updateUniformBuffer();
 	example->rebuildCmdBuffers = true;
