@@ -5,6 +5,9 @@
 
 imgui.ini
 
+external/
+external/*
+
 # User-specific files
 *.rsuser
 *.suo

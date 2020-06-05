@@ -237,6 +237,8 @@ public:
 		VulkanExampleBase::prepareFrame();
 
 		// Submit to queue
+		// Note: The synchronization code with semaphores and fences that is inside VulkanBaseExample
+		// is taken from https://vulkan-tutorial.com/Drawing_a_triangle/Drawing/Rendering_and_presentation#page_Synchronization
 		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, inFlightFences[currentFrame]));
 
 		VulkanExampleBase::submitFrame();
