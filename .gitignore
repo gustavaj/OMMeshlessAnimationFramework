@@ -5,8 +5,9 @@
 
 imgui.ini
 
-external/
-external/*
+external/glm
+external/OpenMesh 8.0
+external/shaderc
 
 # User-specific files
 *.rsuser
