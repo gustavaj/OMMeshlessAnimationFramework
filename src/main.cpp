@@ -25,13 +25,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow)
 {
-	std::cerr << "qwe" << std::endl;
+	std::cerr << "asd" << std::endl;
 	for (size_t i = 0; i < __argc; i++) { LatticeExample::args.push_back(__argv[i]); };
 
 	bool debug = false;
 	OML::LocalSurfaceType lsType = OML::LocalSurfaceType::Cubic_Bezier;
 	OML::EvaluationMethod evalMethod = OML::EvaluationMethod::Direct;
 
+	// Note: this base example might not work, as it does not set up any geometry.
+	// Instead, use another example and delete the lattice if you want an empty example.
 	// Base example
 	//example = new LatticeExample(debug, lsType, evalMethod);
 
